@@ -1,0 +1,160 @@
+/* Schnellerfassung: Modal im Hauptfenster und Hotkey-Fenster. */
+
+.capture-dialog .dialog-body {
+  padding: 2px 18px 16px;
+  overflow: visible;
+}
+.capture-box {
+  display: grid;
+  gap: 10px;
+}
+.capture-input {
+  width: 100%;
+  min-height: 46px;
+  max-height: 240px;
+  field-sizing: content;
+  resize: none;
+  padding: 11px 13px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 15.5px;
+  line-height: 1.45;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.capture-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.capture-input::placeholder {
+  color: var(--fg-faint);
+}
+.capture-box.is-window .capture-input {
+  min-height: 34px;
+  padding: 4px 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 18px;
+}
+.capture-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  min-height: 22px;
+}
+.capture-chip.is-accepted {
+  background: var(--accent-soft);
+  color: var(--accent-soft-fg);
+  padding-right: 4px;
+}
+.capture-help {
+  color: var(--fg-faint);
+  font-size: 12px;
+}
+.capture-error {
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  background: var(--danger-soft);
+  color: var(--danger-fg);
+  font-size: 12.5px;
+}
+.capture-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.capture-box.is-window .capture-bar {
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+.capture-target {
+  max-width: 300px;
+  margin-left: -8px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.capture-keys {
+  color: var(--fg-faint);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.capture-keys kbd {
+  font-size: 10px;
+}
+.capture-picker .fp-body {
+  padding: 10px 10px 6px;
+}
+.capture-picker-list {
+  max-height: 260px;
+  border-top: 1px solid var(--border-subtle);
+}
+.capture-picker-list .menu-path .sp-path {
+  display: inline;
+}
+
+/* Hotkey-Fenster (rahmenlos, transparent) */
+.capture-app {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 10px 16px 16px;
+}
+.capture-card {
+  width: 100%;
+  padding: 2px 16px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg);
+  box-shadow: var(--shadow-xl);
+  animation: pop-in var(--dur) var(--ease-out);
+}
+.capture-grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 24px;
+  margin: 0 -16px 4px;
+  color: var(--fg-faint);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.capture-success {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 4px 14px;
+  color: var(--accent);
+  animation: fade-in var(--dur) var(--ease-out);
+}
+.capture-success-title {
+  color: var(--fg);
+  font-size: 15px;
+}
+.capture-success-sub {
+  margin-top: 2px;
+  color: var(--fg-subtle);
+  font-size: 12.5px;
+}
+.capture-card > .capture-error {
+  margin-top: 8px;
+}
+
+@media (max-width: 560px) {
+  .capture-keys {
+    display: none;
+  }
+}

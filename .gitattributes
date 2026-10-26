@@ -1,0 +1,9 @@
+* text=auto eol=lf
+
+# Windows-Batchdateien brauchen CRLF (Sprungmarken/goto scheitern mit LF).
+*.cmd text eol=crlf
+
+*.png binary
+*.ico binary
+*.rgba binary
+*.woff2 binary

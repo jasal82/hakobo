@@ -1,0 +1,10 @@
+{
+  "name": "sqizzo-workspace",
+  "private": true,
+  "workspaces": ["web"],
+  "scripts": {
+    "build": "npm run build -w web",
+    "typecheck": "npm run typecheck -w web",
+    "dev": "npm run dev -w web"
+  }
+}
