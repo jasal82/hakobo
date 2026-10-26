@@ -1,7 +1,7 @@
 // Einstellungen: Allgemein, Schnellerfassung, Erinnerungen, Versionen & Sync, Notizbuch, Über.
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Bell, Cloud, CloudOff, FolderOpen, GitBranch, Info, Keyboard, Minus, Monitor, Moon, Notebook, Plus, RefreshCw, Sun, TriangleAlert } from 'lucide-react';
+import { Bell, Cloud, CloudOff, FolderOpen, GitBranch, Info, Keyboard, Minus, Monitor, Moon, Notebook, Plus, RefreshCw, RotateCcw, Sun, TriangleAlert } from 'lucide-react';
 import { getZoom, setZoom, stepZoom, useZoom, ZOOM_STEPS } from '../lib/zoom';
 import { api, type Info as AppInfo } from '../lib/api';
 import { formatDateTime, relativeTime } from '../lib/dates';
@@ -24,15 +24,35 @@ const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
 
 const DEFAULT_HOTKEY = 'Ctrl+Shift+Space';
 
-function Row({ label, hint, children }: { label: ReactNode; hint?: ReactNode; children: ReactNode }) {
+/** Einstellungszeile: Beschriftung links, Steuerelement rechts. `note` steht
+ *  als eigene Zeile darunter über die ganze Breite (für längere Erklärungen). */
+function Row({ label, hint, note, children }: { label: ReactNode; hint?: ReactNode; note?: ReactNode; children: ReactNode }) {
   return (
-    <div className="set-row">
+    <div className={`set-row${note ? ' has-note' : ''}`}>
       <div className="set-row-text">
         <div className="set-row-label">{label}</div>
         {hint && <div className="set-row-hint">{hint}</div>}
       </div>
       <div className="set-row-control">{children}</div>
+      {note && <div className="set-row-note">{note}</div>}
     </div>
+  );
+}
+
+/** Zurücksetzen-Knopf vor einem Steuerelement. Er belegt seinen Platz auch
+ *  unsichtbar, damit nichts springt, wenn er erscheint. */
+function ResetButton({ show, onClick, title }: { show: boolean; onClick: () => void; title: string }) {
+  return (
+    <button
+      className={`btn btn-ghost btn-icon btn-sm set-reset${show ? '' : ' is-hidden'}`}
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      aria-hidden={!show}
+      tabIndex={show ? 0 : -1}
+    >
+      <RotateCcw size={14} />
+    </button>
   );
 }
 
@@ -208,13 +228,14 @@ function ZoomRow() {
   return (
     <Row
       label="Schriftgröße"
-      hint={
+      note={
         <>
-          Vergrößert Text und Bedienelemente der ganzen App, auch das Erfassungsfenster. Schneller: <kbd>Strg</kbd> <kbd>+</kbd> / <kbd>−</kbd>, <kbd>Strg</kbd> <kbd>0</kbd> oder <kbd>Strg</kbd> + Mausrad.
+          Vergrößert Text und Bedienelemente der ganzen App, auch das Erfassungsfenster. Schneller geht es mit <kbd>Strg</kbd> <kbd>+</kbd> / <kbd>−</kbd>, <kbd>Strg</kbd> <kbd>0</kbd> oder <kbd>Strg</kbd> + Mausrad.
         </>
       }
     >
       <div className="zoom-ctl">
+        <ResetButton show={zoom !== 1} onClick={() => setZoom(1)} title="Auf 100 % zurücksetzen" />
         <button className="btn btn-icon btn-sm" onClick={() => stepZoom(-1)} disabled={zoom <= ZOOM_STEPS[0] + 0.001} aria-label="Kleiner">
           <Minus size={14} />
         </button>
@@ -229,11 +250,6 @@ function ZoomRow() {
         <button className="btn btn-icon btn-sm" onClick={() => stepZoom(1)} disabled={zoom >= ZOOM_STEPS[ZOOM_STEPS.length - 1] - 0.001} aria-label="Größer">
           <Plus size={14} />
         </button>
-        {zoom !== 1 && (
-          <button className="btn btn-ghost btn-sm" onClick={() => setZoom(1)}>
-            Zurücksetzen
-          </button>
-        )}
       </div>
     </Row>
   );
@@ -282,12 +298,8 @@ function CaptureTab({ settings, setHotkey }: { settings: Settings; setHotkey: (h
       <p className="set-text">Öffnet von überall ein kleines Fenster, in das du eine Idee, ein Todo oder einen Termin tippst. Der Eintrag landet in der Inbox – einsortieren kannst du ihn später.</p>
       <Row label="Tastenkürzel" hint="Klicken und die gewünschte Kombination drücken. Esc bricht ab.">
         <div className="set-inline">
+          <ResetButton show={settings.hotkey !== DEFAULT_HOTKEY} onClick={() => setHotkey(DEFAULT_HOTKEY)} title="Standard wiederherstellen (Strg+Umschalt+Leertaste)" />
           <HotkeyInput value={settings.hotkey} onChange={setHotkey} />
-          {settings.hotkey !== DEFAULT_HOTKEY && (
-            <button className="btn btn-ghost btn-sm" onClick={() => setHotkey(DEFAULT_HOTKEY)}>
-              Zurücksetzen
-            </button>
-          )}
         </div>
       </Row>
       {desktop === false && <Notice kind="warning">Das Tastenkürzel wirkt nur in der Desktop-App, nicht im Browser.</Notice>}

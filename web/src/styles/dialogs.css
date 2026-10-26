@@ -116,6 +116,21 @@
   display: flex;
   align-items: center;
 }
+/* Längere Erklärung als eigene Zeile über die ganze Breite. */
+.set-row.has-note {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+.set-row-note {
+  flex-basis: 100%;
+  color: var(--fg-subtle);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+/* Unsichtbar, aber mit Platz: das Steuerelement daneben springt nicht. */
+.set-reset.is-hidden {
+  visibility: hidden;
+}
 .set-inline {
   display: flex;
   align-items: center;
