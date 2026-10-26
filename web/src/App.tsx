@@ -3,6 +3,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { CircleCheck, CircleAlert, X } from 'lucide-react';
 import { store, useStore } from './lib/store';
 import { visibleList } from './lib/outline';
+import { loadZoom, setZoom, stepZoom } from './lib/zoom';
 import { TitleBar } from './components/TitleBar';
 import { Sidebar } from './components/Sidebar';
 import { SearchPalette } from './components/SearchPalette';
@@ -78,6 +79,21 @@ export function App() {
 
   useEffect(() => {
     void store().init();
+    // Schriftgröße: gespeicherten Wert übernehmen, auch nach Änderungen in anderen Fenstern.
+    void loadZoom();
+    const onSettings = () => void loadZoom();
+    window.addEventListener('sqizzo-settings', onSettings);
+    // Strg+Mausrad vergrößert/verkleinert.
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey || e.deltaY === 0) return;
+      e.preventDefault();
+      stepZoom(e.deltaY < 0 ? 1 : -1);
+    };
+    window.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      window.removeEventListener('sqizzo-settings', onSettings);
+      window.removeEventListener('wheel', onWheel);
+    };
   }, []);
 
   useEffect(() => {
@@ -98,6 +114,15 @@ export function App() {
       } else if (mod && e.key === '\\') {
         e.preventDefault();
         s.set({ sidebar: !s.sidebar });
+      } else if (mod && !e.altKey && (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd')) {
+        e.preventDefault();
+        stepZoom(1);
+      } else if (mod && !e.altKey && (e.key === '-' || e.code === 'NumpadSubtract')) {
+        e.preventDefault();
+        stepZoom(-1);
+      } else if (mod && !e.altKey && !e.shiftKey && (e.key === '0' || e.code === 'Numpad0')) {
+        e.preventDefault();
+        setZoom(1);
       } else if (mod && e.key === ',') {
         e.preventDefault();
         s.set({ settingsOpen: true });

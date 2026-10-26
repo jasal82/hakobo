@@ -540,7 +540,7 @@ mark {
 }
 .body-editor .cm-editor {
   font-size: 13.5px;
-  max-height: 60vh;
+  max-height: calc(60vh / var(--ui-zoom, 1));
 }
 .body-editor .cm-editor.cm-focused {
   outline: none;

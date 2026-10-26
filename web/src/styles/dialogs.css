@@ -2,8 +2,8 @@
 
 /* -- Einstellungen ------------------------------------------------------- */
 .settings-dialog {
-  height: min(660px, 86vh);
-  max-height: 86vh;
+  height: min(660px, calc(86vh / var(--ui-zoom, 1)));
+  max-height: calc(86vh / var(--ui-zoom, 1));
 }
 .settings-dialog .dialog-body {
   flex: 1;
@@ -388,7 +388,7 @@
 
 /* -- Versionen ------------------------------------------------------------ */
 .history-dialog {
-  height: 82vh;
+  height: calc(82vh / var(--ui-zoom, 1));
 }
 .history-dialog .dialog-body {
   flex: 1;
@@ -596,4 +596,18 @@
     border-right: 0;
     border-bottom: 1px solid var(--border-subtle);
   }
+}
+
+/* Schriftgröße */
+.zoom-ctl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.zoom-select {
+  width: auto;
+  min-width: 132px;
+  height: 26px;
+  padding: 0 8px;
+  font-size: 13px;
 }

@@ -31,6 +31,8 @@ pub enum UserEvent {
     HideCapture,
     Menu(String),
     SetHotkey(String, mpsc::Sender<Result<(), String>>),
+    /// Schriftgröße/Zoom der Oberfläche.
+    Zoom(f64),
     Title(String),
     Quit,
 }
@@ -87,7 +89,8 @@ impl Desktop {
         let p2 = proxy.clone();
         let p3 = proxy.clone();
         let p4 = proxy.clone();
-        let p5 = proxy;
+        let p5 = proxy.clone();
+        let p6 = proxy;
         Shell {
             focus: Some(Arc::new(move || send(&p1, UserEvent::Focus))),
             capture: Some(Arc::new(move || send(&p2, UserEvent::ShowCapture))),
@@ -102,6 +105,7 @@ impl Desktop {
                     Err(_) => Err(anyhow!("Keine Antwort vom Fenster")),
                 }
             })),
+            set_zoom: Some(Arc::new(move |z: f64| send(&p6, UserEvent::Zoom(z)))),
         }
     }
 
@@ -165,6 +169,8 @@ impl Desktop {
         }
         let capture = cbuilder.build(&event_loop).map_err(|e| anyhow!("Erfassungsfenster: {e}"))?;
         let capture_view = build_capture_webview(&capture, &mut context, &proxy, &opts)?;
+
+        apply_zoom(&webview, &capture_view, &capture, opts.app.settings.lock().ui_scale);
 
         // -- Tray ---------------------------------------------------------
         let hotkey_label = |hk: &str| format!("Schnell erfassen\t{}", hk.replace("Ctrl", "Strg").replace("Shift", "Umschalt").replace("Space", "Leertaste"));
@@ -343,11 +349,22 @@ impl Desktop {
                     let _ = reply.send(result);
                 }
                 Event::UserEvent(UserEvent::Title(t)) => window.set_title(&t),
+                Event::UserEvent(UserEvent::Zoom(z)) => apply_zoom(&webview, &capture_view, &capture, z),
                 Event::UserEvent(UserEvent::Quit) => exit(control_flow, &window, normal),
                 _ => {}
             }
         })
     }
+}
+
+/// Schriftgröße (Zoom) beider Fenster; das Erfassungsfenster wächst mit.
+fn apply_zoom(main: &WebView, capture_view: &WebView, capture: &Window, z: f64) {
+    let z = crate::settings::clamp_ui_scale(z);
+    if let Err(e) = main.zoom(z) {
+        tracing::warn!("Zoom nicht möglich: {e}");
+    }
+    let _ = capture_view.zoom(z);
+    capture.set_inner_size(LogicalSize::new(720.0 * z, 460.0 * z));
 }
 
 fn show_main(window: &Window) {
@@ -393,6 +410,8 @@ fn build_main_webview(window: &Window, context: &mut WebContext, proxy: &Proxy, 
         .with_background_color(background)
         .with_devtools(cfg!(debug_assertions))
         .with_clipboard(true)
+        // Zoom steuert Sqizzo selbst (Einstellung Schriftgröße).
+        .with_hotkeys_zoom(false)
         .with_ipc_handler(move |req| send(&ipc, UserEvent::MainIpc(req.body().clone())))
         .with_document_title_changed_handler(move |t| send(&title, UserEvent::Title(t)))
         .with_new_window_req_handler(move |url, _features| {
@@ -418,6 +437,8 @@ fn build_capture_webview(window: &Window, context: &mut WebContext, proxy: &Prox
         .with_background_color((0, 0, 0, 0))
         .with_devtools(cfg!(debug_assertions))
         .with_clipboard(true)
+        // Zoom steuert Sqizzo selbst (Einstellung Schriftgröße).
+        .with_hotkeys_zoom(false)
         .with_ipc_handler(move |req| send(&ipc, UserEvent::CaptureIpc(req.body().clone())))
         .with_new_window_req_handler(move |url, _features| {
             open_external(&url, &base, &token);

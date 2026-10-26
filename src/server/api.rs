@@ -212,8 +212,15 @@ async fn get_settings(State(s): State<AppState>) -> Json<Value> {
     Json(json!({ "settings": settings, "vault": s.app.vault_dir(), "defaultVault": crate::settings::default_vault() }))
 }
 
-async fn put_settings(State(s): State<AppState>, Json(new): Json<Settings>) -> ApiResult<Json<Value>> {
+async fn put_settings(State(s): State<AppState>, Json(mut new): Json<Settings>) -> ApiResult<Json<Value>> {
     let old = s.app.settings.lock().clone();
+    new.ui_scale = crate::settings::clamp_ui_scale(new.ui_scale);
+    if (new.ui_scale - old.ui_scale).abs() > f64::EPSILON {
+        let zoom = s.app.shell.lock().set_zoom.clone();
+        if let Some(z) = zoom {
+            z(new.ui_scale);
+        }
+    }
     let mut warnings: Vec<String> = Vec::new();
     if new.hotkey != old.hotkey {
         let setter = s.app.shell.lock().set_hotkey.clone();

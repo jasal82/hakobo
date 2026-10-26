@@ -1,7 +1,8 @@
 // Einstellungen: Allgemein, Schnellerfassung, Erinnerungen, Versionen & Sync, Notizbuch, Über.
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Bell, Cloud, CloudOff, FolderOpen, GitBranch, Info, Keyboard, Monitor, Moon, Notebook, RefreshCw, Sun, TriangleAlert } from 'lucide-react';
+import { Bell, Cloud, CloudOff, FolderOpen, GitBranch, Info, Keyboard, Minus, Monitor, Moon, Notebook, Plus, RefreshCw, Sun, TriangleAlert } from 'lucide-react';
+import { getZoom, setZoom, stepZoom, useZoom, ZOOM_STEPS } from '../lib/zoom';
 import { api, type Info as AppInfo } from '../lib/api';
 import { formatDateTime, relativeTime } from '../lib/dates';
 import { store, useStore } from '../lib/store';
@@ -111,7 +112,8 @@ export function SettingsDialog() {
   /** Ändert Einstellungen; gespeichert wird kurz danach (alle Felder auf einmal). */
   const update = (patch: Partial<Settings>, immediate = false) => {
     if (!settings) return;
-    const next = { ...settings, ...patch };
+    // Die Schriftgröße kann sich auch per Tastenkürzel geändert haben.
+    const next = { ...settings, ...patch, uiScale: patch.uiScale ?? getZoom() };
     setSettings(next);
     window.clearTimeout(timer.current);
     if (immediate) {
@@ -132,7 +134,7 @@ export function SettingsDialog() {
     () => () => {
       if (timer.current !== undefined && latest.current) {
         window.clearTimeout(timer.current);
-        void api.saveSettings(latest.current).catch(() => undefined);
+        void api.saveSettings({ ...latest.current, uiScale: getZoom() }).catch(() => undefined);
       }
     },
     [],
@@ -143,7 +145,7 @@ export function SettingsDialog() {
     window.clearTimeout(timer.current);
     timer.current = undefined;
     const prev = saved.current?.hotkey ?? settings.hotkey;
-    const next = { ...settings, hotkey: hk };
+    const next = { ...settings, hotkey: hk, uiScale: getZoom() };
     setSettings(next);
     const ok = await save(next);
     if (!ok) {
@@ -199,6 +201,44 @@ export function SettingsDialog() {
 
 type TabProps = { settings: Settings; update: (p: Partial<Settings>, immediate?: boolean) => void };
 
+/** Schriftgröße der ganzen Oberfläche (wirkt sofort, wird automatisch gespeichert). */
+function ZoomRow() {
+  const zoom = useZoom();
+  const pct = Math.round(zoom * 100);
+  return (
+    <Row
+      label="Schriftgröße"
+      hint={
+        <>
+          Vergrößert Text und Bedienelemente der ganzen App, auch das Erfassungsfenster. Schneller: <kbd>Strg</kbd> <kbd>+</kbd> / <kbd>−</kbd>, <kbd>Strg</kbd> <kbd>0</kbd> oder <kbd>Strg</kbd> + Mausrad.
+        </>
+      }
+    >
+      <div className="zoom-ctl">
+        <button className="btn btn-icon btn-sm" onClick={() => stepZoom(-1)} disabled={zoom <= ZOOM_STEPS[0] + 0.001} aria-label="Kleiner">
+          <Minus size={14} />
+        </button>
+        <select className="select zoom-select" value={ZOOM_STEPS.includes(zoom) ? String(zoom) : 'custom'} onChange={(e) => setZoom(Number(e.target.value))} aria-label="Schriftgröße">
+          {!ZOOM_STEPS.includes(zoom) && <option value="custom">{pct} %</option>}
+          {ZOOM_STEPS.map((s) => (
+            <option key={s} value={String(s)}>
+              {Math.round(s * 100)} %{s === 1 ? ' (Standard)' : ''}
+            </option>
+          ))}
+        </select>
+        <button className="btn btn-icon btn-sm" onClick={() => stepZoom(1)} disabled={zoom >= ZOOM_STEPS[ZOOM_STEPS.length - 1] - 0.001} aria-label="Größer">
+          <Plus size={14} />
+        </button>
+        {zoom !== 1 && (
+          <button className="btn btn-ghost btn-sm" onClick={() => setZoom(1)}>
+            Zurücksetzen
+          </button>
+        )}
+      </div>
+    </Row>
+  );
+}
+
 function GeneralTab({ settings, update }: TabProps) {
   const choose = (t: Theme) => {
     applyTheme(t);
@@ -222,6 +262,7 @@ function GeneralTab({ settings, update }: TabProps) {
           ))}
         </div>
       </Row>
+      <ZoomRow />
       <h3>Programm</h3>
       <Row label="Beim Schließen im Infobereich weiterlaufen" hint="Nötig, damit Tastenkürzel und Erinnerungen auch bei geschlossenem Fenster funktionieren.">
         <Toggle checked={settings.closeToTray} onChange={(v) => update({ closeToTray: v })} />

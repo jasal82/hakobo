@@ -45,6 +45,7 @@ Unter Linux und macOS `./build.sh`. Das Notizbuch liegt standardmäßig in `Doku
 | `Strg+K` | Suche mit Vorschau |
 | `Strg+N` | schnell erfassen |
 | `Strg+Umschalt+Leertaste` | Schnellerfassung systemweit (einstellbar) |
+| `Strg+Plus` / `Strg+Minus` / `Strg+0` | Schriftgröße der ganzen App (auch Strg+Mausrad, Einstellungen → Allgemein) |
 
 Beim Tippen helfen Vorschläge: `/` für Befehle und Daten, `#` für Tags, `@` für Personen, `[[` für Links auf Seiten und Zeilen. Mehrzeilig eingefügter Text (z. B. eine Markdown-Liste) wird zu einzelnen Zeilen.
 

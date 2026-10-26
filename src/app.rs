@@ -58,6 +58,8 @@ pub struct Shell {
     pub hide_capture: Option<Callback>,
     pub quit: Option<Callback>,
     pub set_hotkey: Option<Arc<dyn Fn(String) -> Result<()> + Send + Sync>>,
+    /// Zoom der Fenster (Schriftgröße) ändern.
+    pub set_zoom: Option<Arc<dyn Fn(f64) + Send + Sync>>,
 }
 
 #[derive(Default)]

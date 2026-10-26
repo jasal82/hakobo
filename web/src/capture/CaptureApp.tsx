@@ -2,6 +2,7 @@
 // eine Karte mit dem Eingabefeld. Die Desktop-Hülle ruft bei jedem Öffnen
 // `window.__sqizzoCapture.show()` auf.
 
+import { loadZoom } from '../lib/zoom';
 import { useEffect, useRef, useState } from 'react';
 import { CircleCheck, GripHorizontal } from 'lucide-react';
 import { CaptureBox, type Captured } from '../components/CaptureBox';
@@ -17,11 +18,14 @@ export function CaptureApp() {
   useEffect(() => {
     // Notizbuch laden (Typen und Knoten für Vorschläge und Linktexte).
     void store().init();
+    void loadZoom();
     window.__sqizzoCapture = {
       show: () => {
         window.clearTimeout(timer.current);
         setSuccess(null);
         setResetKey((k) => k + 1);
+        // Schriftgröße könnte sich im Hauptfenster geändert haben.
+        void loadZoom();
       },
     };
     return () => {

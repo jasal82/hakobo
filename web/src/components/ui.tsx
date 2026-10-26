@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { cssZoom } from '../lib/zoom';
 
 export function Dialog({
   title,
@@ -77,7 +78,7 @@ export function Popover({ anchor, onClose, children, className, width }: { ancho
     return () => window.removeEventListener('mousedown', onDown, true);
   }, [onClose]);
   return createPortal(
-    <div ref={ref} className={`popover ${className ?? ''}`} style={{ left: pos.left, top: pos.top, width }} onMouseDown={(e) => e.preventDefault()}>
+    <div ref={ref} className={`popover ${className ?? ''}`} style={{ left: pos.left / cssZoom(), top: pos.top / cssZoom(), width }} onMouseDown={(e) => e.preventDefault()}>
       {children}
     </div>,
     document.body,

@@ -160,6 +160,7 @@ export interface Settings {
   allDayReminders: boolean;
   allDayTime: string;
   theme: 'system' | 'light' | 'dark';
+  uiScale: number;
 }
 
 export interface CommitInfo {

@@ -28,6 +28,8 @@ pub struct Settings {
     pub all_day_time: String,
     /// `system`, `light` oder `dark`.
     pub theme: String,
+    /// Schriftgröße bzw. Zoom der ganzen Oberfläche (1.0 = 100 %).
+    pub ui_scale: f64,
 }
 
 impl Default for Settings {
@@ -44,8 +46,17 @@ impl Default for Settings {
             all_day_reminders: true,
             all_day_time: "09:00".into(),
             theme: "system".into(),
+            ui_scale: 1.0,
         }
     }
+}
+
+pub const UI_SCALE_MIN: f64 = 0.7;
+pub const UI_SCALE_MAX: f64 = 2.0;
+
+/// Zulässiger Zoomfaktor (ungültige Werte → 100 %).
+pub fn clamp_ui_scale(v: f64) -> f64 {
+    if v.is_finite() { v.clamp(UI_SCALE_MIN, UI_SCALE_MAX) } else { 1.0 }
 }
 
 impl Settings {

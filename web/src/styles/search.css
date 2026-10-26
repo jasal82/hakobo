@@ -1,7 +1,7 @@
 /* Suche (Strg+K), Einsortieren und Zuordnen. */
 
 .search-dialog {
-  height: min(660px, 82vh);
+  height: min(660px, calc(82vh / var(--ui-zoom, 1)));
 }
 .search-dialog .dialog-body,
 .pick-dialog .dialog-body {
@@ -401,7 +401,7 @@
   border-top: 1px solid var(--border-subtle);
 }
 .pick-list {
-  max-height: min(420px, 52vh);
+  max-height: min(420px, calc(52vh / var(--ui-zoom, 1)));
   overflow: auto;
   padding: 6px;
 }
