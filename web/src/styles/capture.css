@@ -12,8 +12,7 @@
   width: 100%;
   min-height: 46px;
   max-height: 240px;
-  field-sizing: content;
-  resize: none;
+  overflow: auto;
   padding: 11px 13px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
@@ -23,13 +22,10 @@
   line-height: 1.45;
   transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
 }
-.capture-input:focus {
+.capture-input:focus-within {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-ring);
-}
-.capture-input::placeholder {
-  color: var(--fg-faint);
 }
 .capture-box.is-window .capture-input {
   min-height: 34px;

@@ -1,5 +1,6 @@
 // Gemeinsame Bausteine für Suche, Einsortieren, Zuordnen und Erfassen.
 
+import { isCodeNode, parseFence } from '../../lib/code';
 import { useEffect, useRef, useState } from 'react';
 import { CheckSquare, FileText, Inbox, Square } from 'lucide-react';
 import { api } from '../../lib/api';
@@ -12,6 +13,11 @@ import { Highlighted } from '../ui';
 export function nodeTitle(n: Node | undefined): string {
   if (!n) return '';
   if (n.kind === 'root') return 'Notizbuch';
+  if (n.kind === 'item' && !n.text.trim() && isCodeNode(n)) {
+    // Codeblock: erste Codezeile (wie der Suchindex).
+    const line = (parseFence(n.body)?.code ?? '').split('\n').map((l) => l.trim()).find(Boolean) ?? '';
+    return [...line].slice(0, 80).join('');
+  }
   return n.kind === 'item' ? plainText(n.text) : n.text;
 }
 

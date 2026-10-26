@@ -1,11 +1,12 @@
 // Vorschläge beim Tippen: Slash-Befehle, #Tags, @Erwähnungen, [[Links.
 
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { AtSign, Bell, CalendarClock, CalendarDays, CheckSquare, Code2, FileText, FolderInput, Hash, Heading1, Heading2, Heading3, Link2, Plus, Repeat, StickyNote, Text, ZoomIn } from 'lucide-react';
 import { api } from '../../lib/api';
 import { humanWhen } from '../../lib/dates';
 import { newId } from '../../lib/ids';
 import { plainText } from '../../lib/inline';
+import { languageLabel } from '../../lib/code';
 import { linkTextFor } from '../../lib/links';
 import { typeHome } from '../../lib/outline';
 import { ancestors, store, whenSaved } from '../../lib/store';
@@ -59,7 +60,7 @@ export interface SuggestContext {
   /** Ersetzt den Auslöser durch `insert`. */
   replace: (insert: string) => { text: string; caret: number };
   onCommand?: (r: CommandResult, rest: { text: string; caret: number }) => void;
-  onAction?: (action: string) => void;
+  onAction?: (action: string, arg?: string, rest?: { text: string; caret: number }) => void;
   /** Befehle, die in diesem Feld angeboten werden. */
   commands?: 'full' | 'capture';
 }
@@ -185,11 +186,12 @@ export function useSuggestions(trigger: Trigger | null, ctx: SuggestContext): { 
             if (capture && !cmd.capture) continue;
             if (hasArgs ? !cmd.words.some((w) => w === firstWord.toLowerCase() || w.startsWith(q.toLowerCase())) : !matchCmd(cmd, q)) continue;
             if (hasArgs && cmd.insert) continue;
+            const arg = hasArgs ? q.slice(firstWord.length).trim() : '';
             list.push({
               key: cmd.id,
               icon: cmd.icon,
-              label: cmd.label,
-              hint: cmd.hint,
+              label: cmd.id === 'code' && arg ? `Codeblock (${languageLabel(arg)})` : cmd.label,
+              hint: cmd.id === 'code' && !arg ? '/code rust' : cmd.hint,
               run: async () => {
                 if (cmd.insert) return c().replace('/' + cmd.insert);
                 const rest = c().without();
@@ -210,7 +212,7 @@ export function useSuggestions(trigger: Trigger | null, ctx: SuggestContext): { 
                   const text = t + sep + '#' + tag + ' ' + rest.text.slice(rest.caret).replace(/^\s+/, '');
                   return { text, caret: t.length + sep.length + tag.length + 2 };
                 }
-                c().onAction?.(cmd.id);
+                c().onAction?.(cmd.id, arg, rest);
                 return rest;
               },
             });
@@ -341,7 +343,9 @@ export function SuggestMenu({ anchor, items, active, onPick, onHover, loading, f
 }
 
 interface UseSuggestOptions {
-  el: RefObject<HTMLTextAreaElement | HTMLInputElement | null>;
+  el?: RefObject<HTMLTextAreaElement | HTMLInputElement | null>;
+  /** Bildschirmposition einer Textstelle (für Editoren ohne Textfeld). */
+  anchorAt?: (index: number) => Anchor | null;
   text: string;
   /** Übernimmt einen neuen Text samt Cursor. */
   apply: (text: string, caret: number) => void;
@@ -349,7 +353,7 @@ interface UseSuggestOptions {
   kinds?: TriggerKind[];
   commands?: 'full' | 'capture';
   onCommand?: (r: CommandResult, rest: { text: string; caret: number }) => void;
-  onAction?: (action: string) => void;
+  onAction?: (action: string, arg?: string, rest?: { text: string; caret: number }) => void;
 }
 
 /** Bindet Vorschläge an ein Textfeld. `update` nach jeder Eingabe/Cursorbewegung aufrufen. */
@@ -378,8 +382,9 @@ export function useSuggest(o: UseSuggestOptions) {
         if (!prev || prev.start !== t.start || prev.kind !== t.kind) setActive(0);
         return t;
       });
-      const el = o.el.current;
-      if (el) setAnchor(caretAnchor(el, t.start));
+      const el = o.el?.current;
+      const a = o.anchorAt ? o.anchorAt(t.start) : el ? caretAnchor(el, t.start) : null;
+      if (a) setAnchor(a);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [o.el, (o.kinds ?? []).join()],
@@ -428,7 +433,7 @@ export function useSuggest(o: UseSuggestOptions) {
   const open = !!trigger && (items.length > 0 || loading);
 
   /** Liefert `true`, wenn die Taste vom Menü verarbeitet wurde. */
-  const onKeyDown = (e: KeyboardEvent): boolean => {
+  const onKeyDown = (e: Pick<globalThis.KeyboardEvent, 'key' | 'shiftKey' | 'ctrlKey' | 'metaKey' | 'preventDefault' | 'stopPropagation'>): boolean => {
     if (!open) return false;
     if (e.key === 'ArrowDown') {
       e.preventDefault();

@@ -1,5 +1,6 @@
 // Suche (Strg+K): Fuzzy-Treffer links, Vorschau des aktiven Treffers rechts.
 
+import { isCodeNode } from '../lib/code';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRight, Clock, CornerDownLeft, FileText, Link2, Search } from 'lucide-react';
 import { api } from '../lib/api';
@@ -303,7 +304,7 @@ function Preview({ id, onOpen }: { id: string; onOpen: (id: string, zoom?: boole
       <div className="pv-head">
         {n.kind === 'item' && n.task && <TaskBox node={n} size={17} />}
         {n.kind === 'page' && <FileText size={18} className="pv-page-icon" />}
-        <h2 className={n.task === 'done' || n.task === 'cancelled' ? 'is-closed' : undefined}>{n.text ? <RichText text={n.text} source={n} /> : <span className="faint">Ohne Titel</span>}</h2>
+        <h2 className={n.task === 'done' || n.task === 'cancelled' ? 'is-closed' : undefined}>{n.text ? <RichText text={n.text} source={n} /> : <span className="faint">{isCodeNode(n) ? 'Codeblock' : 'Ohne Titel'}</span>}</h2>
       </div>
       {n.kind !== 'root' && (
         <div className="pv-meta">

@@ -5,10 +5,12 @@ import { ChevronRight, CircleCheck, CircleDot, Copy, FileOutput, FileText, Folde
 import { createSubpage, cycleTask, deleteNode, moveInto, selectRange, toggleSelected, toggleTodo, toPage } from '../../lib/outline';
 import { isAncestor, isCollapsed, store, typesOf, useStore } from '../../lib/store';
 import type { Node } from '../../lib/types';
+import { isCodeNode } from '../../lib/code';
 import { Markdown } from '../Markdown';
 import { caretFromClick, RichText } from '../RichText';
 import { Popover, type Anchor } from '../ui';
 import { BodyEditor } from './BodyEditor';
+import { CodeBlock } from './CodeBlock';
 import { MetaChips, TaskBox } from './fields';
 import { copyLink, TitleEditor } from './TitleEditor';
 
@@ -74,6 +76,7 @@ export const NodeRow = memo(function NodeRow({ id, root, inbox }: { id: string; 
   if (!node) return null;
 
   const isPage = node.kind === 'page';
+  const code = isCodeNode(node);
   const hasKids = node.children.length > 0;
   const typeKeys = typesOf(node, types);
   const color = typeKeys.length ? types[typeKeys[0]].color : undefined;
@@ -108,7 +111,7 @@ export const NodeRow = memo(function NodeRow({ id, root, inbox }: { id: string; 
   return (
     <div className={`row${flash ? ' is-flash' : ''}${closed ? ' is-closed' : ''}`} data-id={id}>
       <div
-        className={`row-line${focused ? ' is-focused' : ''}${selected ? ' is-selected' : ''}${dropAt ? ` drop-${dropAt}` : ''}${heading ? ` is-h${heading}` : ''}${isPage ? ' is-page' : ''}`}
+        className={`row-line${focused ? ' is-focused' : ''}${selected ? ' is-selected' : ''}${dropAt ? ` drop-${dropAt}` : ''}${heading ? ` is-h${heading}` : ''}${isPage ? ' is-page' : ''}${code ? ' is-code' : ''}`}
         onDragOver={(e) => {
           if (!dragId) return;
           const pos = dropPosition(e, e.currentTarget);
@@ -155,21 +158,23 @@ export const NodeRow = memo(function NodeRow({ id, root, inbox }: { id: string; 
           </a>
         </span>
         {node.task && <TaskBox node={node} />}
-        <div className="row-content" onClick={startEdit}>
-          {focused ? (
+        <div className="row-content" onClick={code ? undefined : startEdit}>
+          {code ? (
+            <CodeBlock id={id} root={root} focused={focused} />
+          ) : focused ? (
             <TitleEditor id={id} root={root} placeholder={isPage ? 'Seitentitel' : undefined} />
           ) : (
             <div className={`row-text${node.text ? '' : ' is-empty'}`}>{node.text ? <RichText text={node.text} source={node} /> : '​'}</div>
           )}
-          {!isPage && <MetaChips node={node} />}
+          {!isPage && !code && <MetaChips node={node} />}
         </div>
         <span className="row-actions">
-          {inbox && !isPage && (
+          {inbox && !isPage && !code && (
             <button className="btn btn-ghost btn-sm" onMouseDown={(e) => e.preventDefault()} onClick={() => store().set({ move: { ids: [id] } })} title="Einsortieren (Strg+M)">
               <FolderInput size={14} /> Einsortieren
             </button>
           )}
-          {inbox && !isPage && (
+          {inbox && !isPage && !code && (
             <button className="btn btn-ghost btn-sm" onMouseDown={(e) => e.preventDefault()} onClick={() => store().set({ assign: { id } })} title="Zuordnen: Tag oder Link vergeben">
               <Tag size={14} /> Zuordnen
             </button>
@@ -179,7 +184,7 @@ export const NodeRow = memo(function NodeRow({ id, root, inbox }: { id: string; 
           </button>
         </span>
       </div>
-      {bodyEdit ? (
+      {code ? null : bodyEdit ? (
         <div className="row-body">
           <BodyEditor
             id={id}

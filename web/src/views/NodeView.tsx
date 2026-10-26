@@ -1,5 +1,6 @@
 // Gezoomte Ansicht eines Knotens (Seite, Eintrag oder Notizbuch-Wurzel).
 
+import { isCodeNode } from '../lib/code';
 import { useEffect, useMemo } from 'react';
 import { ChevronRight, FilePlus2, FileText, FolderInput, History, Inbox as InboxIcon, Link2, MoreHorizontal, Plus, StickyNote } from 'lucide-react';
 import { useState } from 'react';
@@ -181,7 +182,7 @@ export function NodeView({ id, inbox }: { id: string; inbox?: boolean }) {
                 {focused && id !== store().inbox ? (
                   <TitleEditor id={id} root={id} className="is-zoom" placeholder={node.kind === 'page' ? 'Seitentitel' : 'Ohne Titel'} />
                 ) : (
-                  <h1>{node.text ? <RichText text={node.text} source={node} /> : <span className="faint">{node.kind === 'page' ? 'Unbenannt' : 'Ohne Titel'}</span>}</h1>
+                  <h1>{node.text ? <RichText text={node.text} source={node} /> : <span className="faint">{node.kind === 'page' ? 'Unbenannt' : isCodeNode(node) ? 'Codeblock' : 'Ohne Titel'}</span>}</h1>
                 )}
               </div>
               <button

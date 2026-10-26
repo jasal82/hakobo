@@ -115,7 +115,7 @@ Läuft die App, sprechen die Befehle mit ihr (Fenster und Dateien bleiben synchr
 npm install
 npm run build                      # Oberfläche nach web/dist (wird in die EXE eingebettet)
 cargo test                         # Parser, Notizbuch, Git-Sync, Datum, Suche, Agenda
-bash scripts/dev-server.sh         # Backend mit Demo-Notizbuch, Token "dev", Port 4519
+bash scripts/dev-server.sh         # Backend mit Demo-Notizbuch, Token "dev", Port 4590
 npm run dev                        # Vite mit Hot-Reload auf Port 5174 (spricht mit dem Backend)
 ```
 

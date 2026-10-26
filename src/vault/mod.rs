@@ -247,6 +247,18 @@ pub fn valid_id(id: &str) -> bool {
     !id.is_empty() && id.len() <= 40 && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') && id != ROOT
 }
 
+/// Titel eines Codeblock-Knotens für die Suche: erste Codezeile.
+fn code_title(body: &str) -> String {
+    let mut lines = body.lines();
+    match lines.next() {
+        Some(first) if first.starts_with("```") || first.starts_with("~~~") => {
+            let line = lines.map(str::trim).find(|l| !l.is_empty() && !l.starts_with("```") && !l.starts_with("~~~")).unwrap_or("");
+            line.chars().take(80).collect()
+        }
+        _ => String::new(),
+    }
+}
+
 /// Anzeigetitel: Klartext ohne Tags (für Linktexte).
 pub fn display_title(text: &str) -> String {
     let plain = search::plain_text(text);
@@ -683,7 +695,7 @@ impl Vault {
             docs.push(SearchDoc {
                 id: n.id.clone(),
                 is_page: n.kind == Kind::Page,
-                title: titles.get(n.id.as_str()).cloned().unwrap_or_default(),
+                title: titles.get(n.id.as_str()).filter(|t| !t.trim().is_empty()).cloned().unwrap_or_else(|| code_title(&n.body)),
                 body: search::plain_text(&n.body),
                 path,
                 tags: self.tags_of(n),

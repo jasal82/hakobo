@@ -753,3 +753,253 @@ button.ff-value:hover {
 .backlink-text {
   font-size: 13.5px;
 }
+
+/* Inline-Editor (CodeMirror) für Zeilen und Schnellerfassung */
+.inline-editor {
+  min-width: 0;
+}
+.inline-editor .cm-editor {
+  background: transparent;
+  font: inherit;
+}
+.inline-editor .cm-editor.cm-focused {
+  outline: none;
+}
+.inline-editor .cm-scroller {
+  font-family: inherit;
+  line-height: inherit;
+  overflow: visible;
+}
+.inline-editor .cm-content {
+  padding: 0;
+  caret-color: var(--fg);
+}
+.inline-editor .cm-line {
+  padding: 0;
+}
+.inline-editor .cm-placeholder {
+  color: var(--fg-faint);
+}
+.inline-editor .cm-selectionBackground,
+.inline-editor .cm-focused .cm-selectionBackground {
+  background: var(--accent-soft) !important;
+}
+.inline-editor.title-editor {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 55%;
+  font-size: 14.5px;
+  line-height: 20px;
+}
+.inline-editor.title-editor.is-zoom {
+  font-size: 28px;
+  font-weight: 680;
+  line-height: 38px;
+  letter-spacing: -.022em;
+}
+.inline-editor.title-editor.is-h1 {
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 30px;
+}
+.inline-editor.title-editor.is-h2 {
+  font-size: 18px;
+  font-weight: 640;
+  line-height: 26px;
+}
+.inline-editor.title-editor.is-h3 {
+  font-size: 15.5px;
+  font-weight: 650;
+}
+.cm-chip {
+  color: var(--link);
+  font-weight: 500;
+  border-bottom: 1px solid color-mix(in srgb, var(--link) 35%, transparent);
+  cursor: default;
+}
+.cm-chip.is-person {
+  border-bottom: 0;
+  background: var(--accent-soft);
+  border-radius: 4px;
+  padding: 0 3px;
+}
+.cm-chip.is-broken {
+  color: var(--fg-subtle);
+  border-bottom-style: dashed;
+}
+.cm-tag {
+  color: var(--tag);
+  background: var(--tag-bg);
+  border-radius: 4px;
+  font-weight: 500;
+}
+.cm-url {
+  color: var(--link);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--link) 40%, transparent);
+}
+.cm-icode {
+  font-family: var(--font-mono);
+  font-size: .88em;
+  background: var(--code-bg);
+  border-radius: 3px;
+}
+.cm-strong {
+  font-weight: 650;
+}
+.cm-em {
+  font-style: italic;
+}
+.cm-strike {
+  text-decoration: line-through;
+}
+.cm-hl {
+  background: var(--mark);
+}
+
+/* Codeblock als Knoten */
+.row-line.is-code .row-content {
+  padding: 3px 0 4px;
+}
+.row-line.is-code.is-focused {
+  background: transparent;
+}
+.code-block {
+  position: relative;
+  flex: 1 1 100%;
+  min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--code-bg);
+  cursor: auto;
+}
+.code-block.is-editing {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.code-view {
+  margin: 0;
+  padding: 10px 12px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--fg);
+  cursor: text;
+  tab-size: 4;
+}
+.code-view code {
+  font-family: inherit;
+}
+.code-head {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  z-index: 2;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--dur-fast);
+}
+.code-block:hover .code-head,
+.code-block.is-editing .code-head {
+  opacity: 1;
+}
+.code-lang,
+.code-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--fg-subtle);
+  font-size: 11.5px;
+}
+.code-lang:hover,
+.code-copy:hover {
+  color: var(--fg);
+  border-color: var(--border-strong);
+}
+.code-lang.is-guess {
+  font-style: italic;
+}
+.code-editor .cm-editor {
+  background: transparent;
+  font-size: 12.5px;
+}
+.code-editor .cm-editor.cm-focused {
+  outline: none;
+}
+.code-editor .cm-scroller {
+  font-family: var(--font-mono);
+  line-height: 1.6;
+}
+.code-editor .cm-content {
+  padding: 10px 0;
+  caret-color: var(--fg);
+}
+.code-editor .cm-gutters {
+  background: transparent;
+  border-right: 1px solid var(--border-subtle);
+  color: var(--fg-faint);
+}
+.code-editor .cm-activeLine {
+  background: var(--bg-hover);
+}
+.code-editor .cm-activeLineGutter {
+  background: transparent;
+  color: var(--fg-subtle);
+}
+.code-editor .cm-selectionBackground,
+.code-editor .cm-focused .cm-selectionBackground {
+  background: var(--editor-selection, var(--accent-soft)) !important;
+}
+.code-editor .cm-matchingBracket {
+  background: var(--accent-soft);
+  outline: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.lang-picker .menu-item.is-current .menu-label {
+  font-weight: 600;
+}
+
+/* Code in Notizen */
+.body-editor .cm-codeline {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  background: var(--code-bg);
+}
+.body-editor .cm-codeline.is-first {
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
+}
+.body-editor .cm-codeline.is-last {
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
+}
+.md pre.md-code {
+  padding-top: 12px;
+}
+.md-copy {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  height: 22px;
+  padding: 0 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--fg-subtle);
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  opacity: 0;
+  transition: opacity var(--dur-fast);
+}
+.md pre:hover .md-copy {
+  opacity: 1;
+}
+.md pre:hover::after {
+  opacity: 0;
+}

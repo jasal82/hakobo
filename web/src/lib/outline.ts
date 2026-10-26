@@ -1,5 +1,6 @@
 // Strukturoperationen des Outliners (Workflowy-artig).
 
+import { formatFence, guessLanguage } from './code';
 import { newId } from './ids';
 import { applyLocal, createOp, field, isCollapsed, pageOf, store, withField } from './store';
 import type { CommandResult, Field, Node, Op, Task } from './types';
@@ -76,6 +77,37 @@ export function createChild(parent: string, index?: number, text = ''): string |
   S().commit([op], { focusAfter: { id: op.id, caret: 'end' } });
   if (S().collapsed[parent]) S().setCollapsed(parent, false);
   return op.id;
+}
+
+/** Gemeinsame Einrückung entfernen (eingefügter Code). */
+export function dedent(code: string): string {
+  const lines = code.replace(/\r\n/g, '\n').replace(/^\n+|\s+$/g, '').split('\n');
+  const indents = lines.filter((l) => l.trim()).map((l) => /^[ \t]*/.exec(l)![0].length);
+  const min = indents.length ? Math.min(...indents) : 0;
+  return lines.map((l) => l.slice(min)).join('\n');
+}
+
+/** Macht eine leere Zeile zum Codeblock bzw. legt unter einer Zeile mit Text einen an. */
+export function makeCode(id: string, lang = '', code = ''): string | null {
+  const n = N(id);
+  if (!n || n.kind !== 'item') return null;
+  const body = formatFence(lang, code);
+  if (!n.text.trim() && !n.task && !n.body.trim()) {
+    S().commit([{ op: 'update', id, text: '', body }], { focusAfter: { id, caret: 'end' } });
+    return id;
+  }
+  const op = createOp(id, 0, '', { body });
+  S().commit([op], { focusAfter: { id: op.id, caret: 'end' } });
+  if (isCollapsed(S().collapsed, n)) S().setCollapsed(id, false);
+  return op.id;
+}
+
+/** Eingefügten Code als Codeblock übernehmen (Zaun oder erkannte Sprache). */
+export function pasteCode(id: string, text: string): string | null {
+  const fenced = /^\s*(```|~~~)([^\n]*)\n([\s\S]*?)\n\s*\1\s*$/.exec(text.replace(/\r\n/g, '\n'));
+  const code = dedent(fenced ? fenced[3] : text);
+  const lang = fenced ? fenced[2].trim() : (guessLanguage(code) ?? '');
+  return makeCode(id, lang, code);
 }
 
 /** Knoten als eigene Seite auslagern und öffnen. */

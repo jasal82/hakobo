@@ -8,6 +8,7 @@ import { api, type CapturePreview } from '../lib/api';
 import { extractTags, plainText } from '../lib/inline';
 import { store, useStore } from '../lib/store';
 import type { CommandResult } from '../lib/types';
+import { InlineEditor, type InlineEditorHandle } from './InlineEditor';
 import { useSuggest } from './outline/suggest';
 import { allPages, NodeIcon, nodeTitle, PathLine, pathTitles, useCandidates, useListKeys, waitForNode } from './search/common';
 import { Dialog, Highlighted, Popover, useScrollActive, type Anchor } from './ui';
@@ -74,7 +75,7 @@ export function CaptureBox({ variant, onDone, onCancel, resetKey = 0 }: { varian
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [picker, setPicker] = useState<Anchor | null>(null);
-  const ref = useRef<HTMLTextAreaElement>(null);
+  const ref = useRef<InlineEditorHandle>(null);
   const commandTaken = useRef(false);
   const targetBtn = useRef<HTMLButtonElement>(null);
   const inboxTitle = useStore((s) => s.nodes[s.inbox]?.text ?? 'Inbox');
@@ -93,16 +94,12 @@ export function CaptureBox({ variant, onDone, onCancel, resetKey = 0 }: { varian
       window.setTimeout(() => sug.update(finalText, finalCaret), 30);
     }
     setText(t);
-    requestAnimationFrame(() => {
-      const el = ref.current;
-      if (!el) return;
-      el.focus();
-      el.setSelectionRange(caret, caret);
-    });
+    ref.current?.setText(t, caret);
+    requestAnimationFrame(() => ref.current?.focus());
   };
 
   const sug = useSuggest({
-    el: ref,
+    anchorAt: (i) => ref.current?.coordsAt(i) ?? null,
     text,
     apply,
     commands: 'capture',
@@ -147,7 +144,7 @@ export function CaptureBox({ variant, onDone, onCancel, resetKey = 0 }: { varian
   const sugOpen = sug.open;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && (picker || (sugOpen && document.activeElement === ref.current))) {
+      if (e.key === 'Escape' && (picker || (sugOpen && ref.current?.hasFocus()))) {
         e.stopImmediatePropagation();
         e.preventDefault();
         if (picker) setPicker(null);
@@ -184,31 +181,33 @@ export function CaptureBox({ variant, onDone, onCancel, resetKey = 0 }: { varian
     }
   };
 
-  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const onKeyDown = (e: KeyboardEvent): boolean => {
     // Bei Slash-Befehlen speichert Enter direkt (der Server wertet sie aus);
     // Tab übernimmt den Vorschlag als Chip.
     if (e.key === 'Enter' && !e.shiftKey && sug.trigger?.kind === 'slash') {
       e.preventDefault();
       sug.close();
       void save(e.ctrlKey || e.metaKey);
-      return;
+      return true;
     }
-    if (sug.onKeyDown(e)) return;
+    if (sug.onKeyDown(e)) return true;
     const mod = e.ctrlKey || e.metaKey;
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       void save(mod);
-      return;
+      return true;
     }
     if (e.key === 'Tab' && !e.shiftKey && !mod) {
       e.preventDefault();
       openPicker();
-      return;
+      return true;
     }
     if (e.key === 'Escape') {
       e.preventDefault();
       onCancel();
+      return true;
     }
+    return false;
   };
 
   // Chips: übernommene Befehle (entfernbar) und im Text erkannte (aus der Vorschau).
@@ -225,19 +224,19 @@ export function CaptureBox({ variant, onDone, onCancel, resetKey = 0 }: { varian
 
   return (
     <div className={`capture-box is-${variant}`}>
-      <textarea
-        ref={ref}
+      <InlineEditor
+        handleRef={ref}
         className="capture-input"
         value={text}
         autoFocus
-        rows={1}
+        multiline
+        ownHistory
         placeholder="Idee, Todo oder Termin … /morgen 14 uhr #tag @person"
-        spellCheck
-        onChange={(e) => {
-          setText(e.target.value);
-          sug.update(e.target.value, e.target.selectionStart ?? e.target.value.length);
+        onChange={(t, c) => {
+          setText(t);
+          sug.update(t, c);
         }}
-        onSelect={(e) => sug.update(e.currentTarget.value, e.currentTarget.selectionStart ?? 0, false)}
+        onSelectionChange={(t, c) => sug.update(t, c, false)}
         onKeyDown={onKeyDown}
         onBlur={() => sug.close()}
       />

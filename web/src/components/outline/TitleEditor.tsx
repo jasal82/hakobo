@@ -1,7 +1,9 @@
 // Bearbeitung der Textzeile eines Knotens mit Tastatursteuerung und Vorschlägen.
+// Links und Erwähnungen erscheinen als Chips (siehe InlineEditor).
 
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { api } from '../../lib/api';
+import { looksLikeCode } from '../../lib/code';
 import {
   applyCommand,
   backspaceAtStart,
@@ -9,10 +11,12 @@ import {
   deleteAtEnd,
   deleteNode,
   indent,
+  makeCode,
   moveDown,
   moveUp,
   nextVisible,
   outdent,
+  pasteCode,
   prevVisible,
   selectRange,
   setHeading,
@@ -22,47 +26,46 @@ import {
 } from '../../lib/outline';
 import { createOp, store, useStore } from '../../lib/store';
 import type { Op } from '../../lib/types';
+import { InlineEditor, type InlineEditorHandle } from '../InlineEditor';
 import { useSuggest } from './suggest';
+
+/** ``` bzw. ```rust am Zeilenanfang macht die Zeile zum Codeblock. */
+const FENCE_START = /^(?:```|~~~)\s*([\w+#.-]*)\s*$/;
 
 export function TitleEditor({ id, root, className, placeholder }: { id: string; root: string; className?: string; placeholder?: string }) {
   const node = useStore((s) => s.nodes[id]);
   const focus = useStore((s) => (s.focus?.id === id ? s.focus : null));
-  const ref = useRef<HTMLTextAreaElement>(null);
+  const h = useRef<InlineEditorHandle>(null);
   const text = node?.text ?? '';
 
   const apply = (t: string, caret: number) => {
     store().setText(id, t, caret);
-    requestAnimationFrame(() => {
-      const el = ref.current;
-      if (el) {
-        el.setSelectionRange(caret, caret);
-        sug.update(t, caret);
-      }
-    });
+    h.current?.setText(t, caret);
+    requestAnimationFrame(() => sug.update(t, caret));
   };
 
   const sug = useSuggest({
-    el: ref,
+    anchorAt: (i) => h.current?.coordsAt(i) ?? null,
     text,
     apply,
     nodeId: id,
     onCommand: (r, rest) => {
       applyCommand(id, r, rest.text);
-      requestAnimationFrame(() => ref.current?.setSelectionRange(rest.caret, rest.caret));
+      requestAnimationFrame(() => h.current?.setSelection(rest.caret));
     },
-    onAction: (a) => action(a),
+    onAction: (a, arg, rest) => action(a, arg ?? '', rest),
   });
 
   // Fokus und Cursor setzen, wenn der Fokus (neu) hierher wechselt.
   useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el || !focus) return;
-    if (document.activeElement !== el) el.focus({ preventScroll: true });
-    const len = el.value.length;
+    const ed = h.current;
+    if (!ed || !focus) return;
+    if (!ed.hasFocus()) ed.focus();
+    const len = ed.getText().length;
     const c = focus.caret === 'start' ? 0 : focus.caret === 'end' || focus.caret === undefined ? len : Math.min(focus.caret, len);
-    el.setSelectionRange(c, focus.selEnd !== undefined ? Math.min(focus.selEnd, len) : c);
-    const r = el.getBoundingClientRect();
-    if (r.top < 60 || r.bottom > window.innerHeight - 40) el.scrollIntoView({ block: 'nearest' });
+    ed.setSelection(c, focus.selEnd !== undefined ? Math.min(focus.selEnd, len) : c);
+    const r = ed.dom()?.getBoundingClientRect();
+    if (r && (r.top < 60 || r.bottom > window.innerHeight - 40)) ed.dom()?.scrollIntoView({ block: 'nearest' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus?.nonce]);
 
@@ -71,12 +74,7 @@ export function TitleEditor({ id, root, className, placeholder }: { id: string; 
 
   if (!node) return null;
 
-  function caret() {
-    const el = ref.current!;
-    return [el.selectionStart ?? 0, el.selectionEnd ?? 0] as const;
-  }
-
-  function action(a: string) {
+  function action(a: string, arg: string, rest?: { text: string; caret: number }) {
     const s = store();
     switch (a) {
       case 'h1':
@@ -90,13 +88,11 @@ export function TitleEditor({ id, root, className, placeholder }: { id: string; 
       case 'note':
         s.set({ bodyEdit: id });
         break;
-      case 'code': {
-        const n = s.nodes[id];
-        const body = (n.body ? n.body + '\n\n' : '') + '```\n\n```';
-        s.commit([{ op: 'update', id, body }]);
-        s.set({ bodyEdit: id });
+      case 'code':
+        // Zuerst den Befehl aus dem Text nehmen, dann entscheiden: leere Zeile → Codeblock, sonst Kind.
+        if (rest) s.setText(id, rest.text, rest.caret);
+        makeCode(id, arg);
         break;
-      }
       case 'move':
         s.set({ move: { ids: [id] } });
         break;
@@ -109,168 +105,172 @@ export function TitleEditor({ id, root, className, placeholder }: { id: string; 
     }
   }
 
-  const navigate = (dir: -1 | 1, col?: number) => {
+  const navigate = (dir: -1 | 1) => {
     const target = dir < 0 ? prevVisible(id, root) : nextVisible(id, root);
-    if (!target) return;
-    store().setFocus({ id: target, caret: col ?? (dir < 0 ? 'end' : 'start') });
+    if (!target) return false;
+    store().setFocus({ id: target, caret: dir < 0 ? 'end' : 'start' });
+    return true;
   };
 
-  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (sug.onKeyDown(e)) return;
+  const onKeyDown = (e: KeyboardEvent, ed: InlineEditorHandle): boolean => {
+    if (sug.onKeyDown(e)) return true;
     const s = store();
     const mod = e.ctrlKey || e.metaKey;
-    const [start, end] = caret();
-    const el = e.currentTarget;
+    const [start, end] = ed.getSelection();
+    const t = ed.getText();
+    const done = () => {
+      e.preventDefault();
+      return true;
+    };
 
     if (mod && !e.shiftKey && e.key.toLowerCase() === 'z') {
-      e.preventDefault();
       s.undo();
-      return;
+      return done();
     }
     if (mod && ((e.shiftKey && e.key.toLowerCase() === 'z') || e.key.toLowerCase() === 'y')) {
-      e.preventDefault();
       s.redo();
-      return;
+      return done();
     }
     switch (e.key) {
-      case 'Enter':
-        e.preventDefault();
+      case 'Enter': {
         if (mod && e.shiftKey) toggleTodo(id);
         else if (mod) cycleTask(id);
         else if (e.shiftKey) s.set({ bodyEdit: id });
         else if (e.altKey) s.zoom(id);
-        else splitAt(id, start, end, root);
-        return;
+        else {
+          const fence = node.kind === 'item' && !node.task ? FENCE_START.exec(t) : null;
+          if (fence) {
+            s.setText(id, '', 0);
+            makeCode(id, fence[1]);
+          } else splitAt(id, start, end, root);
+        }
+        return done();
+      }
       case 'Tab':
-        e.preventDefault();
         if (e.shiftKey) outdent(id, root, start);
         else indent(id, start);
-        return;
+        return done();
       case 'Backspace':
         if (mod && e.shiftKey) {
-          e.preventDefault();
           deleteNode(id, root);
-          return;
+          return done();
         }
-        if (start === 0 && end === 0 && backspaceAtStart(id, root)) e.preventDefault();
-        return;
+        if (start === 0 && end === 0 && backspaceAtStart(id, root)) return done();
+        return false;
       case 'Delete':
         if (mod && e.shiftKey) {
-          e.preventDefault();
           deleteNode(id, root);
-          return;
+          return done();
         }
-        if (start === text.length && end === start && deleteAtEnd(id, root)) e.preventDefault();
-        return;
+        if (start === t.length && end === start && deleteAtEnd(id, root)) return done();
+        return false;
       case 'ArrowUp':
       case 'ArrowDown': {
         const dir = e.key === 'ArrowUp' ? -1 : 1;
         if ((e.altKey || mod) && e.shiftKey) {
-          e.preventDefault();
           if (dir < 0) moveUp(id, start);
           else moveDown(id, start);
-          return;
+          return done();
         }
         if (mod) {
-          e.preventDefault();
           if (node.children.length) s.setCollapsed(id, dir < 0);
-          return;
+          return done();
         }
         if (e.shiftKey && !e.altKey) {
           // Am Rand (oder alles markiert): Knoten statt Text auswählen.
-          const atEdge = (dir < 0 && start === 0 && end === 0) || (dir > 0 && start === text.length && end === text.length) || (start === 0 && end === text.length && text.length > 0);
-          if (atEdge) {
-            e.preventDefault();
-            // Sonst erweitert der Auswahl-Handler am Fenster gleich noch einmal.
-            e.stopPropagation();
-            s.commitTitle(id);
-            const other = dir < 0 ? prevVisible(id, root) : nextVisible(id, root);
-            selectRange(root, id, other && other !== root ? other : id);
-            el.blur();
-          }
-          return;
+          const atEdge = (dir < 0 && start === 0 && end === 0) || (dir > 0 && start === t.length && end === t.length) || (start === 0 && end === t.length && t.length > 0);
+          if (!atEdge) return false;
+          // Sonst erweitert der Auswahl-Handler am Fenster gleich noch einmal.
+          e.stopPropagation();
+          s.commitTitle(id);
+          const other = dir < 0 ? prevVisible(id, root) : nextVisible(id, root);
+          selectRange(root, id, other && other !== root ? other : id);
+          ed.blur();
+          return done();
         }
-        if (e.altKey) return;
-        // Erst die Standardbewegung abwarten: Bleibt der Cursor stehen, war er in der ersten/letzten Zeile.
-        const before = start;
-        requestAnimationFrame(() => {
-          if (document.activeElement !== el) return;
-          if (el.selectionStart === before) navigate(dir);
-        });
-        return;
+        if (e.altKey) return false;
+        // In der ersten/letzten sichtbaren Zeile: zum vorherigen/nächsten Knoten.
+        if (ed.atEdge(dir) && navigate(dir)) return done();
+        return false;
       }
       case 'ArrowRight':
         if (e.altKey) {
-          e.preventDefault();
           s.zoom(id);
+          return done();
         }
-        return;
+        return false;
       case 'ArrowLeft':
         if (e.altKey) {
-          e.preventDefault();
           const parent = node.parent;
           if (id === root && parent) s.navigate({ view: 'node', id: parent });
           else if (root !== s.root) s.navigate({ view: 'node', id: s.nodes[root]?.parent ?? s.root });
           s.setFocus({ id: id === root ? id : root, caret: 'end' });
+          return done();
         }
-        return;
+        return false;
       case 'Escape':
-        e.preventDefault();
         s.commitTitle(id);
         s.setFocus(null);
-        el.blur();
-        return;
+        ed.blur();
+        return done();
     }
     if (mod && !e.shiftKey && !e.altKey) {
       const k = e.key.toLowerCase();
       if (k === 'm') {
-        e.preventDefault();
         s.set({ move: { ids: [id] } });
-      } else if (k === 'b' || k === 'i') {
-        e.preventDefault();
+        return done();
+      }
+      if (k === 'b' || k === 'i') {
         const mark = k === 'b' ? '**' : '*';
-        const t = text.slice(0, start) + mark + text.slice(start, end) + mark + text.slice(end);
-        apply(t, end + mark.length * (start === end ? 1 : 2));
-      } else if (k === '.') {
-        e.preventDefault();
+        apply(t.slice(0, start) + mark + t.slice(start, end) + mark + t.slice(end), end + mark.length * (start === end ? 1 : 2));
+        return done();
+      }
+      if (k === '.') {
         s.zoom(id);
-      } else if (k === 'l') {
-        e.preventDefault();
+        return done();
+      }
+      if (k === 'l') {
         void copyLink(id);
+        return done();
       }
     }
+    return false;
   };
 
-  const onPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const data = e.clipboardData.getData('text/plain');
-    if (!data.includes('\n') || node.kind !== 'item') return;
-    e.preventDefault();
-    pasteOutline(id, data, caret());
+  const onPaste = (e: ClipboardEvent, ed: InlineEditorHandle): boolean => {
+    const data = e.clipboardData?.getData('text/plain') ?? '';
+    if (!data.includes('\n') || node.kind !== 'item') return false;
+    if (looksLikeCode(data)) pasteCode(id, data);
+    else pasteOutline(id, data, ed.getSelection());
+    return true;
   };
 
   const level = /^(#{1,3}) /.exec(text)?.[1].length ?? 0;
 
   return (
     <>
-      <textarea
-        ref={ref}
-        className={`title-editor${level ? ` is-h${level}` : ''} ${className ?? ''}`}
+      <InlineEditor
+        handleRef={h}
         value={text}
-        rows={1}
-        spellCheck
+        source={node}
+        className={`title-editor${level ? ` is-h${level}` : ''} ${className ?? ''}`}
         placeholder={placeholder}
-        onChange={(e) => {
-          const t = e.target.value.replace(/\r?\n/g, ' ');
-          const c = e.target.selectionStart ?? t.length;
+        onChange={(t, c) => {
           store().setText(id, t, c);
           sug.update(t, c);
+          // ```rust + Leertaste → Codeblock
+          const m = node.kind === 'item' && !node.task && /^(?:```|~~~)([\w+#.-]*) $/.exec(t);
+          if (m) {
+            store().setText(id, '', 0);
+            makeCode(id, m[1]);
+          }
         }}
-        onSelect={(e) => sug.update(e.currentTarget.value, e.currentTarget.selectionStart ?? 0, false)}
+        onSelectionChange={(t, c) => sug.update(t, c, false)}
         onKeyDown={onKeyDown}
         onPaste={onPaste}
         onFocus={() => {
           const f = store().focus;
-          if (f?.id !== id) store().setFocus({ id, caret: ref.current?.selectionStart ?? 'end' });
+          if (f?.id !== id) store().setFocus({ id, caret: h.current?.getSelection()[0] ?? 'end' });
         }}
         onBlur={() => {
           sug.close();
@@ -278,7 +278,7 @@ export function TitleEditor({ id, root, className, placeholder }: { id: string; 
           // Fokus verlassen, sofern nicht gleich ein anderer Knoten übernimmt.
           window.setTimeout(() => {
             const f = store().focus;
-            if (f?.id === id && document.activeElement !== ref.current && !document.activeElement?.closest('.popover, .dialog, .field-pop')) store().setFocus(null);
+            if (f?.id === id && !h.current?.hasFocus() && !document.activeElement?.closest('.cm-editor, .popover, .dialog, .field-pop')) store().setFocus(null);
           }, 0);
         }}
       />

@@ -6,6 +6,7 @@ import DOMPurify from 'dompurify';
 import { LanguageDescription } from '@codemirror/language';
 import { languages } from '@codemirror/language-data';
 import { classHighlighter, highlightCode } from '@lezer/highlight';
+import { findLanguage, guessLanguage, languageLabel } from './code';
 import { linkKey, parseLinkInner } from './inline';
 
 const md = new Marked({ gfm: true, breaks: true, async: false });
@@ -24,7 +25,7 @@ const cache = new Map<string, string | null>();
 export async function highlight(code: string, lang: string): Promise<string | null> {
   const key = `${lang}\u0000${code}`;
   if (cache.has(key)) return cache.get(key)!;
-  const desc = LanguageDescription.matchLanguageName(languages, lang, true);
+  const desc = findLanguage(lang) ?? LanguageDescription.matchLanguageName(languages, lang, true);
   if (!desc) {
     cache.set(key, null);
     return null;
@@ -107,12 +108,23 @@ export function enhance(root: HTMLElement, e: Enhancer) {
   });
   root.querySelectorAll('pre > code').forEach((code) => {
     const el = code as HTMLElement;
-    const lang = /language-([\w+#.-]+)/.exec(el.className)?.[1];
-    el.parentElement?.classList.add('md-code');
-    if (lang) el.parentElement?.setAttribute('data-lang', lang);
+    const pre = el.parentElement!;
+    const src = el.textContent ?? '';
+    const given = /language-([\w+#.-]+)/.exec(el.className)?.[1];
+    // Ohne Angabe: Sprache erraten (nur zur Anzeige).
+    const lang = given ?? guessLanguage(src) ?? '';
+    pre.classList.add('md-code');
+    if (lang) pre.setAttribute('data-lang', given ? languageLabel(lang) : `${languageLabel(lang)}?`);
+    if (!pre.querySelector('.md-copy')) {
+      const btn = document.createElement('button');
+      btn.className = 'md-copy';
+      btn.type = 'button';
+      btn.title = 'Code kopieren';
+      btn.textContent = 'Kopieren';
+      pre.append(btn);
+    }
     if (!lang || el.dataset.hl) return;
     el.dataset.hl = '1';
-    const src = el.textContent ?? '';
     void highlight(src, lang).then((html) => {
       if (html !== null && el.isConnected && el.textContent === src) el.innerHTML = html;
     });

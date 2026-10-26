@@ -29,6 +29,17 @@ export const Markdown = memo(function Markdown({ text, source, className, onClic
       ref={ref}
       className={`md ${className ?? ''}`}
       onClick={(e) => {
+        const copy = (e.target as HTMLElement).closest('.md-copy');
+        if (copy) {
+          e.preventDefault();
+          e.stopPropagation();
+          const code = copy.parentElement?.querySelector('code')?.textContent ?? '';
+          void navigator.clipboard.writeText(code).then(
+            () => store().toast('Code kopiert', 'success'),
+            () => store().toast('Kopieren nicht möglich', 'error'),
+          );
+          return;
+        }
         const a = (e.target as HTMLElement).closest('a') as HTMLAnchorElement | null;
         if (a) {
           e.preventDefault();

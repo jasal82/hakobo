@@ -1,19 +1,98 @@
 // Notiz eines Knotens bearbeiten (CodeMirror, Markdown mit Code-Hervorhebung).
 
 import { useEffect, useRef } from 'react';
-import { autocompletion, type Completion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
-import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
-import { bracketMatching, indentOnInput, syntaxHighlighting } from '@codemirror/language';
+import { autocompletion, closeBrackets, closeBracketsKeymap, type Completion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
+import { defaultKeymap, history, historyKeymap, indentLess, indentMore } from '@codemirror/commands';
+import { markdown, markdownKeymap, markdownLanguage } from '@codemirror/lang-markdown';
+import { bracketMatching, indentOnInput, syntaxHighlighting, syntaxTree } from '@codemirror/language';
 import { languages } from '@codemirror/language-data';
-import { EditorState } from '@codemirror/state';
-import { EditorView, keymap, placeholder } from '@codemirror/view';
+import { EditorState, RangeSetBuilder, type EditorState as State } from '@codemirror/state';
+import { Decoration, EditorView, ViewPlugin, keymap, placeholder, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { classHighlighter } from '@lezer/highlight';
 import { api } from '../../lib/api';
+import { indentFor } from '../../lib/code';
 import { plainText } from '../../lib/inline';
 import { linkTextFor } from '../../lib/links';
 import { ancestors, store } from '../../lib/store';
 import { detectTrigger } from './suggest';
+
+/** Codeblock (```…```) an einer Position: Bereich und Sprache. */
+function fencedAt(state: State, pos: number): { from: number; to: number; lang: string } | null {
+  let node = syntaxTree(state).resolveInner(pos, -1);
+  for (let n: typeof node | null = node; n; n = n.parent) {
+    if (n.name === 'FencedCode') {
+      const info = n.getChild('CodeInfo');
+      return { from: n.from, to: n.to, lang: info ? state.sliceDoc(info.from, info.to) : '' };
+    }
+    node = n;
+  }
+  return null;
+}
+
+/** Zeilen innerhalb von Codeblöcken als Code darstellen (Monospace, Hintergrund). */
+const codeLines = ViewPlugin.fromClass(
+  class {
+    deco: DecorationSet;
+    constructor(view: EditorView) {
+      this.deco = this.build(view);
+    }
+    update(u: ViewUpdate) {
+      if (u.docChanged || u.viewportChanged || syntaxTree(u.startState) !== syntaxTree(u.state)) this.deco = this.build(u.view);
+    }
+    build(view: EditorView): DecorationSet {
+      const b = new RangeSetBuilder<Decoration>();
+      for (const { from, to } of view.visibleRanges) {
+        syntaxTree(view.state).iterate({
+          from,
+          to,
+          enter: (n) => {
+            if (n.name !== 'FencedCode') return;
+            const first = view.state.doc.lineAt(n.from).number;
+            const last = view.state.doc.lineAt(n.to).number;
+            for (let l = first; l <= last; l++) {
+              const line = view.state.doc.line(l);
+              const cls = `cm-codeline${l === first ? ' is-first' : ''}${l === last ? ' is-last' : ''}`;
+              b.add(line.from, line.from, Decoration.line({ class: cls }));
+            }
+            return false;
+          },
+        });
+      }
+      return b.finish();
+    }
+  },
+  { decorations: (v) => v.deco },
+);
+
+/** Enter im Code: Einrückung übernehmen, nach {, (, [ oder : eine Stufe mehr. */
+function codeEnter(view: EditorView): boolean {
+  const { state } = view;
+  const sel = state.selection.main;
+  const block = fencedAt(state, sel.head);
+  if (!block) return false;
+  const line = state.doc.lineAt(sel.head);
+  if (line.from === state.doc.lineAt(block.from).from) return false;
+  const before = state.sliceDoc(line.from, sel.head);
+  const indent = /^[ \t]*/.exec(line.text)![0];
+  const unit = indentFor(block.lang, state.sliceDoc(block.from, block.to));
+  const extra = /[{([:]\s*$/.test(before) ? unit : '';
+  // Zwischen { und }: Schließende Klammer auf eine eigene Zeile.
+  const after = state.sliceDoc(sel.head, line.to);
+  const closing = extra && /^\s*[})\]]/.test(after) ? '\n' + indent : '';
+  const insert = '\n' + indent + extra;
+  view.dispatch(state.update({ changes: { from: sel.from, to: sel.to, insert: insert + closing }, selection: { anchor: sel.from + insert.length }, scrollIntoView: true, userEvent: 'input' }));
+  return true;
+}
+
+/** Tab im Code: Einrückung am Cursor (bzw. Zeilen einrücken bei Auswahl). */
+function codeTab(view: EditorView): boolean {
+  const { state } = view;
+  const block = fencedAt(state, state.selection.main.head);
+  if (!block) return indentMore(view);
+  if (!state.selection.main.empty) return indentMore(view);
+  view.dispatch(state.replaceSelection(indentFor(block.lang, state.sliceDoc(block.from, block.to))));
+  return true;
+}
 
 /** Vervollständigung für [[Links, #Tags und @Erwähnungen in Notizen. */
 async function complete(ctx: CompletionContext): Promise<CompletionResult | null> {
@@ -69,11 +148,20 @@ export function BodyEditor({ id, onClose }: { id: string; onClose: (focusTitle: 
         history(),
         indentOnInput(),
         bracketMatching(),
-        markdown({ base: markdownLanguage, codeLanguages: languages }),
+        closeBrackets(),
+        markdown({ base: markdownLanguage, codeLanguages: languages, addKeymap: false }),
         syntaxHighlighting(classHighlighter),
+        codeLines,
         EditorView.lineWrapping,
+        EditorState.tabSize.of(4),
         placeholder('Notiz … (Markdown, ```code```, [[Link]], #tag)'),
         autocompletion({ override: [complete], icons: false }),
+        keymap.of([
+          { key: 'Enter', run: codeEnter },
+          { key: 'Tab', run: codeTab, shift: indentLess },
+          ...closeBracketsKeymap,
+          ...markdownKeymap,
+        ]),
         keymap.of([
           {
             key: 'Escape',
@@ -89,7 +177,6 @@ export function BodyEditor({ id, onClose }: { id: string; onClose: (focusTitle: 
               return true;
             },
           },
-          indentWithTab,
           ...defaultKeymap,
           ...historyKeymap,
         ]),

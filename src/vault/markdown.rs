@@ -315,6 +315,13 @@ impl<'a> Parser<'a> {
         let mut pending_blank = 0usize;
         let mut field_zone = true;
         let mut fence: Option<((char, usize), usize)> = None;
+        // `- ```rust`: Der Knoten ist ein Codeblock (Text leer, Code in der Notiz).
+        if let Some(f) = fence_open(after) {
+            item = ParsedItem::default();
+            body.push(after.trim_end().to_string());
+            fence = Some((f, content_col));
+            field_zone = false;
+        }
 
         while self.pos < self.lines.len() {
             let line = &self.lines[self.pos];
@@ -525,8 +532,60 @@ fn escape_body_line(line: &str) -> String {
     line.to_string()
 }
 
+/// Ist der Knoten ein reiner Codeblock (leerer Text, Notiz beginnt mit Zaun)?
+pub fn is_code_item(item: &ParsedItem) -> bool {
+    let body = item.body.trim_start_matches('\n');
+    item.text.trim().is_empty()
+        && item.task.is_none()
+        && item.id.is_none()
+        && item.fields.is_empty()
+        && body.lines().next().is_some_and(|l| !l.starts_with([' ', '\t']) && fence_open(l).is_some())
+}
+
+/// Schreibt Notizzeilen eingerückt; Aufzählungszeichen außerhalb von Code werden maskiert.
+fn write_body_lines<'a>(out: &mut String, content: &str, lines: impl Iterator<Item = &'a str>, mut fence: Option<(char, usize)>) {
+    for line in lines {
+        let line = line.trim_end_matches('\r');
+        if line.trim().is_empty() {
+            out.push('\n');
+            continue;
+        }
+        let rest = line.trim_start();
+        let written = match fence {
+            Some(f) => {
+                if fence_close(rest, f) {
+                    fence = None;
+                }
+                line.to_string()
+            }
+            None => {
+                fence = fence_open(rest);
+                if fence.is_some() { line.to_string() } else { escape_body_line(line) }
+            }
+        };
+        out.push_str(content);
+        out.push_str(&written);
+        out.push('\n');
+    }
+}
+
 pub fn write_item(out: &mut String, item: &ParsedItem, depth: usize) {
     let indent = "  ".repeat(depth);
+    if is_code_item(item) {
+        // `- ```rust` direkt am Aufzählungspunkt, der Code eingerückt darunter.
+        let body = item.body.trim_matches('\n');
+        let mut lines = body.split('\n');
+        let first = lines.next().unwrap_or("").trim_end();
+        out.push_str(&indent);
+        out.push_str("- ");
+        out.push_str(first);
+        out.push('\n');
+        write_body_lines(out, &format!("{indent}  "), lines, fence_open(first));
+        for child in &item.children {
+            write_item(out, child, depth + 1);
+        }
+        return;
+    }
     out.push_str(&indent);
     out.push('-');
     if let Some(t) = item.task {
@@ -561,30 +620,7 @@ pub fn write_item(out: &mut String, item: &ParsedItem, depth: usize) {
         if parse_field(first.trim_start()).is_some() {
             out.push('\n');
         }
-        let mut fence: Option<(char, usize)> = None;
-        for line in body.split('\n') {
-            let line = line.trim_end_matches('\r');
-            if line.trim().is_empty() {
-                out.push('\n');
-                continue;
-            }
-            let rest = line.trim_start();
-            let written = match fence {
-                Some(f) => {
-                    if fence_close(rest, f) {
-                        fence = None;
-                    }
-                    line.to_string()
-                }
-                None => {
-                    fence = fence_open(rest);
-                    if fence.is_some() { line.to_string() } else { escape_body_line(line) }
-                }
-            };
-            out.push_str(&content);
-            out.push_str(&written);
-            out.push('\n');
-        }
+        write_body_lines(out, &content, body.split('\n'), None);
     }
     for child in &item.children {
         write_item(out, child, depth + 1);
@@ -682,6 +718,40 @@ mod tests {
         let p = parse_page(src);
         assert_eq!(p.items[0].body, "```rust\nfn main() {\n\n    let x = 1;\n}\n```");
         assert_eq!(write_page(&p), src);
+    }
+
+    #[test]
+    fn code_items_start_at_the_bullet() {
+        let src = "- ```rust\n  fn main() {\n      let x = 1;\n\n      // - kein Kind\n  }\n  ```\n  - Kind\n- danach\n";
+        let p = parse_page(src);
+        let it = &p.items[0];
+        assert_eq!(it.text, "");
+        assert_eq!(it.body, "```rust\nfn main() {\n    let x = 1;\n\n    // - kein Kind\n}\n```");
+        assert_eq!(it.children.len(), 1);
+        assert_eq!(p.items[1].text, "danach");
+        assert_eq!(write_page(&p), src);
+    }
+
+    #[test]
+    fn empty_item_with_code_body_is_written_compactly() {
+        let it = ParsedItem { body: "```\nint main() {\n  return 0;\n}\n```".into(), ..Default::default() };
+        let out = write_page(&ParsedPage { items: vec![it.clone()], ..Default::default() });
+        assert_eq!(out, "- ```\n  int main() {\n    return 0;\n  }\n  ```\n");
+        assert_eq!(parse_page(&out).items[0], it);
+        // Alte Form (leere Zeile, Code darunter) wird beim Schreiben kompakt.
+        assert_eq!(write_page(&parse_page("-\n  ```c\n  x\n  ```\n")), "- ```c\n  x\n  ```\n");
+        // Mit Text, Kästchen oder ID bleibt der Code in der Notiz.
+        let titled = "- Titel\n  ```c\n  x\n  ```\n";
+        assert_eq!(write_page(&parse_page(titled)), titled);
+        let pinned = "- ^abcdef\n  ```c\n  x\n  ```\n";
+        assert_eq!(write_page(&parse_page(pinned)), pinned);
+    }
+
+    #[test]
+    fn inline_code_title_is_not_a_code_item() {
+        let p = parse_page("- ```a``` b\n");
+        assert_eq!(p.items[0].text, "```a``` b");
+        assert_eq!(p.items[0].body, "");
     }
 
     #[test]
