@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 //! Übernahme von Sqizzo, dem früheren Namen von Hakobo: Einstellungsordner,
 //! Notizbuch im Standardordner, `.sqizzo/` im Notizbuch und Windows-Einträge.
 

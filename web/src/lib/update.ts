@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 // Update der lokalen App (siehe src/update.rs): Stand abfragen, prüfen, installieren.
 //
 // Für das Update beendet sich das Programm: Das App-Fenster schließt sich und die neue

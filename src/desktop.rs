@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 //! Desktop-Hülle: Hauptfenster (WebView2/WKWebView, rahmenlos mit eigener
 //! Titelleiste), Erfassungsfenster für den globalen Hotkey, Symbol im
 //! Infobereich (Tray).

@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Copyright (C) 2026 Johannes Asal
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 # Baut Hakobo (Oberfläche und Programm) und legt das fertige Programm unter
 # dist/ ab, das Archiv für Releases unter dist/packages/:
 #   dist/hakobo   App (macOS: eigenes Fenster, Linux: im Browser), Server und Kommandozeile
@@ -22,6 +26,7 @@ fi
 echo "[3/3] Programm bauen (Release) …"
 cargo build --locked --release --bin hakobo
 mkdir -p dist/packages
+cp LICENSE dist/LICENSE.txt
 node scripts/third-party-licenses.mjs dist/THIRD-PARTY-LICENSES.txt
 
 # Unter Windows (Git Bash) wie build.cmd: dist/Hakobo.exe, ohne Archiv.
@@ -43,6 +48,6 @@ case "$(uname -m)" in
   *) arch=$(uname -m) ;;
 esac
 # Nur ausdrücklich genannte Dateien verpacken, nie alte Pakete oder Arbeitsdaten.
-tar -czf "dist/packages/Hakobo-$version-$platform-$arch.tar.gz" -C dist hakobo THIRD-PARTY-LICENSES.txt
+tar -czf "dist/packages/Hakobo-$version-$platform-$arch.tar.gz" -C dist hakobo LICENSE.txt THIRD-PARTY-LICENSES.txt
 echo
 echo "Fertig: dist/hakobo und dist/packages/Hakobo-$version-$platform-$arch.tar.gz"

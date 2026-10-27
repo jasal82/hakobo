@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 //! Datum, Wiederholung und Erinnerung: kanonische Feldwerte (`date::`,
 //! `repeat::`, `remind::`), natürlichsprachliche Eingabe auf Deutsch und
 //! Englisch, Vorkommen von Serien und Zeitpunkte von Erinnerungen.

@@ -149,6 +149,8 @@ npm run dev                        # Vite mit Hot-Reload auf Port 5174 (spricht 
 node scripts/smoke-test.mjs dist/Hakobo.exe   # fertiges Programm von außen prüfen
 ```
 
+Aufbau: `src/vault` (Datenmodell, Markdown-Parser/-Writer, Typen), `src/dates.rs` (natürlichsprachliche Daten, Wiederholungen, Erinnerungen), `src/search.rs` (Fuzzy-Suche), `src/capture.rs` (Slash-Befehle), `src/git.rs` (Versionen, Sync), `src/app.rs` (Hintergrundaufgaben), `src/server` (REST-API, Ereignisstrom), `src/desktop.rs` (Fenster, Tray, globaler Hotkey), `src/update.rs` (Selbst-Update aus den GitHub-Releases), `web/` (React-Oberfläche), `installer/` und `scripts/` (Windows-Setup, Versionen, Lizenzen, Tests der Pakete).
+
 ### Neue Version veröffentlichen
 
 ```bash
@@ -160,4 +162,12 @@ git push origin main v0.2.0
 
 Der Workflow `.github/workflows/build.yml` testet und baut jeden Push für Windows, Linux und macOS. Bei einem Tag `vX.Y.Z` (muss zur Version passen) veröffentlicht er das Release mit Setup, portablem ZIP, den Archiven und `SHA256SUMS.txt` – daraus holen sich laufende Installationen das Update. Unter Windows prüft `scripts/test-installer.ps1` dabei Installation, Update, Neustart nach dem Selbst-Update und Deinstallation.
 
-Aufbau: `src/vault` (Datenmodell, Markdown-Parser/-Writer, Typen), `src/dates.rs` (natürlichsprachliche Daten, Wiederholungen, Erinnerungen), `src/search.rs` (Fuzzy-Suche), `src/capture.rs` (Slash-Befehle), `src/git.rs` (Versionen, Sync), `src/app.rs` (Hintergrundaufgaben), `src/server` (REST-API, Ereignisstrom), `src/desktop.rs` (Fenster, Tray, globaler Hotkey), `src/update.rs` (Selbst-Update aus den GitHub-Releases), `web/` (React-Oberfläche), `installer/` und `scripts/` (Windows-Setup, Versionen, Lizenzen, Tests der Pakete).
+## Lizenz
+
+Copyright © 2026 Johannes Asal
+
+Hakobo ist freie Software unter der [GNU Affero General Public License, Version 3 oder später](LICENSE) (AGPL-3.0-or-later). Du darfst Hakobo nutzen, untersuchen, verändern und weitergeben – auch kommerziell. Wer Hakobo weitergibt oder eine veränderte Fassung als Dienst über ein Netzwerk anbietet (etwa mit `hakobo serve`), muss den Quellcode dieser Fassung unter derselben Lizenz zugänglich machen.
+
+Deine Notizen, Todos und Termine gehören dir und unterliegen nicht der AGPL.
+
+Hakobo enthält Bibliotheken, Schriften und Icons anderer Projekte unter deren eigenen freien Lizenzen (u. a. MIT, Apache-2.0, BSD, MPL-2.0, SIL Open Font License). Die vollständige Übersicht erzeugt der Build als `dist/THIRD-PARTY-LICENSES.txt` (`node scripts/third-party-licenses.mjs`); sie liegt jedem Paket bei.

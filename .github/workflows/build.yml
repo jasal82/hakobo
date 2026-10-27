@@ -83,7 +83,7 @@ jobs:
         shell: pwsh
         run: |
           $version = node scripts/version.mjs
-          Compress-Archive -Path dist/Hakobo.exe, dist/THIRD-PARTY-LICENSES.txt -DestinationPath "dist/packages/Hakobo-$version-windows-x64-portable.zip"
+          Compress-Archive -Path dist/Hakobo.exe, dist/LICENSE.txt, dist/THIRD-PARTY-LICENSES.txt -DestinationPath "dist/packages/Hakobo-$version-windows-x64-portable.zip"
       - name: Build and package Unix program
         if: runner.os != 'Windows'
         env:

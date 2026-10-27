@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 // Zentraler Zustand: Knoten des Notizbuchs, Ansicht, Fokus, Dialoge.
 //
 // Änderungen wirken sofort lokal (optimistisch) und gehen als Operationen

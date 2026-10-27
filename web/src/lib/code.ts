@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 // Codeblöcke: Zaun lesen/schreiben, Sprachen, Erkennung, Einrückung.
 
 import type { LanguageDescription } from '@codemirror/language';

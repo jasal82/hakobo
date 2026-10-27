@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 //! Liest und schreibt Seiten im Outline-Format (siehe `docs/format.md`).
 //!
 //! Eine Seite besteht aus optionalem Frontmatter, einer freien Notiz und einer

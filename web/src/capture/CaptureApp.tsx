@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 // Erfassungsfenster für den globalen Hotkey: rahmenlos, transparent, oben
 // eine Karte mit dem Eingabefeld. Die Desktop-Hülle ruft bei jedem Öffnen
 // `window.__hakoboCapture.show()` auf.

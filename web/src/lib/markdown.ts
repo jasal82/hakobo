@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 // Markdown der Notizen → sicheres HTML; Wiki-Links, Tags und
 // Syntax-Hervorhebung von Codeblöcken werden danach im DOM ergänzt.
 

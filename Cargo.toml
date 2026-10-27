@@ -1,3 +1,7 @@
+# Copyright (C) 2026 Johannes Asal
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 [package]
 name = "hakobo"
 version = "0.1.0"
@@ -5,6 +9,9 @@ edition = "2024"
 rust-version = "1.92"
 description = "Hakobo – lokale Notizen als Outline mit Todos, Terminen und automatischer Git-Versionierung"
 default-run = "hakobo"
+license = "AGPL-3.0-or-later"
+authors = ["Johannes Asal"]
+repository = "https://github.com/jasal82/hakobo"
 
 [[bin]]
 name = "hakobo"

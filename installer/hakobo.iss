@@ -1,4 +1,8 @@
-﻿; Windows-Installer für Hakobo (Inno Setup 6).
+﻿; Copyright (C) 2026 Johannes Asal
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
+; Windows-Installer für Hakobo (Inno Setup 6).
 ; Erzeugen über scripts/build-installer.ps1 bzw. build.cmd nach dem Release-Build.
 #ifndef AppVersion
   #error AppVersion muss vom Build-Skript übergeben werden
@@ -22,6 +26,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
+LicenseFile=..\LICENSE
 SetupIconFile=..\assets\icon\hakobo.ico
 UninstallDisplayIcon={app}\Hakobo.exe
 UninstallDisplayName=Hakobo
@@ -44,6 +49,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 ; Ausdrückliche Liste: Notizen liegen im Notizbuch (Dokumente\Hakobo), nie im Programmordner.
 Source: "..\dist\Hakobo.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\dist\LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\dist\THIRD-PARTY-LICENSES.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]

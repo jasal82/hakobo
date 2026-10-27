@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 //! Update-Prüfung und Selbstaktualisierung aus den GitHub-Releases (nur lokale App).
 //!
 //! Die Prüfung fragt GitHub nur nach dem neuesten Release. Ein Update lädt das Paket für diese
@@ -35,8 +39,8 @@ const RESTART_TOKEN_ENV: &str = "HAKOBO_RESTART_TOKEN";
 const PROGRAM: &str = "Hakobo.exe";
 #[cfg(not(windows))]
 const PROGRAM: &str = "hakobo";
-/// Liegt in jedem Paket neben dem Programm, in einem Build unter target/ nicht.
-const DOCS: [&str; 1] = ["THIRD-PARTY-LICENSES.txt"];
+/// Lizenztexte, die jedes Paket neben dem Programm ausliefert (ein Build unter target/ nicht).
+const DOCS: [&str; 2] = ["LICENSE.txt", "THIRD-PARTY-LICENSES.txt"];
 
 // ---------------------------------------------------------------------------
 // Neustart nach einem Update

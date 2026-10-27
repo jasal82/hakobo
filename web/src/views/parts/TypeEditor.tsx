@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 // Dialog zum Anlegen und Bearbeiten eines Typs (Tag mit Feldern).
 
 import { useMemo, useState } from 'react';

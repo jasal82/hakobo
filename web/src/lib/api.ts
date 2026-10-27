@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 import type { Agenda, CommandResult, CommitInfo, Field, Hit, Node, Op, ParseResult, Patch, Settings, Snapshot, SyncStatus, TagHit, Task, Types, UpdateStatus } from './types';
 
 export class ApiError extends Error {

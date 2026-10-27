@@ -1,4 +1,8 @@
-﻿# Erzeugt den Windows-Installer (Inno Setup 6) aus dist\Hakobo.exe.
+﻿# Copyright (C) 2026 Johannes Asal
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
+# Erzeugt den Windows-Installer (Inno Setup 6) aus dist\Hakobo.exe.
 # Wird von build.cmd aufgerufen; ISCC.exe aus dem PATH, der Variable ISCC
 # oder dem Standard-Installationsordner. -Optional: ohne Inno Setup nur
 # einen Hinweis ausgeben (lokaler Build), sonst abbrechen (Release-Build).
@@ -31,7 +35,7 @@ try {
         }
         throw 'Inno Setup 6 installieren (https://jrsoftware.org/isdl.php), ISCC.exe in den PATH aufnehmen oder ISCC auf den vollständigen Pfad setzen. Nur das Programm ohne Installer: build.cmd --no-installer'
     }
-    foreach ($file in 'Hakobo.exe', 'THIRD-PARTY-LICENSES.txt') {
+    foreach ($file in 'Hakobo.exe', 'LICENSE.txt', 'THIRD-PARTY-LICENSES.txt') {
         if (!(Test-Path -LiteralPath "dist/$file")) { throw "dist/$file fehlt. Zuerst build.cmd ausführen." }
     }
     & $Iscc /Q "/DAppVersion=$version" 'installer/hakobo.iss'

@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 // Felder eines Knotens: Chips in der Zeile, Formular in der Kopfzeile, Editoren.
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';

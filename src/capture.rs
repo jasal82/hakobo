@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 //! Schnellerfassung: Text mit Slash-Befehlen in einen Knoten verwandeln.
 //!
 //! `Zahnarzt /morgen 14 uhr /erinnerung 1h` → Termin morgen 14:00 mit

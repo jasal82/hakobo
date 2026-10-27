@@ -1,4 +1,8 @@
-﻿# Prüft den erzeugten Windows-Installer wie ein Anwender: stille Installation,
+﻿# Copyright (C) 2026 Johannes Asal
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
+# Prüft den erzeugten Windows-Installer wie ein Anwender: stille Installation,
 # Rauchtest des installierten Programms (Kommandozeile und Server), Update über
 # eine bestehende Installation, Neustart nach dem Selbst-Update und Deinstallation.
 $ErrorActionPreference = 'Stop'
@@ -26,7 +30,7 @@ function Install([string]$label) {
     $setup = Start-Process -FilePath $installer -ArgumentList $arguments -WindowStyle Hidden -PassThru
     $exitCode = Wait-Exit $setup $label
     if ($exitCode -ne 0) { throw "$label fehlgeschlagen (Exitcode $exitCode)." }
-    foreach ($name in 'Hakobo.exe', 'THIRD-PARTY-LICENSES.txt', 'unins000.exe') {
+    foreach ($name in 'Hakobo.exe', 'LICENSE.txt', 'THIRD-PARTY-LICENSES.txt', 'unins000.exe') {
         if (!(Test-Path -LiteralPath "$installDir/$name")) { throw "$label`: $name fehlt im Programmordner." }
     }
     $entry = Get-ItemProperty -LiteralPath $uninstallKey

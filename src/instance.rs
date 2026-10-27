@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 //! Einzelinstanz: Läuft Hakobo bereits, holt ein erneuter Start das Fenster
 //! nach vorne. Die Kommandozeile spricht über die API mit der laufenden App,
 //! damit Fenster und Dateien nie auseinanderlaufen.

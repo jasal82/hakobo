@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 // Inline-Syntax in Knotentexten: Tags, Links, Formatierung (wie src/vault/inline.rs).
 
 /** `s`/`e`: Bereich im Originaltext (für die Cursorposition beim Klicken). */

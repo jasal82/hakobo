@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 //! Die laufende App: Notizbuch plus Hintergrundaufgaben (Speichern,
 //! Versionen, Synchronisation, Beobachtung der Dateien, Erinnerungen) und
 //! Ereignisse für die Oberfläche.

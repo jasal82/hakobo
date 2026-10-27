@@ -1,12 +1,16 @@
 @echo off
+rem Copyright (C) 2026 Johannes Asal
+rem SPDX-License-Identifier: AGPL-3.0-or-later
+rem Lizenz und Gewaehrleistungsausschluss: siehe LICENSE im Projektordner.
 rem Baut Hakobo (Oberflaeche und Programm) und legt das Ergebnis unter dist\ ab:
 rem   dist\Hakobo.exe                 App, Server und Kommandozeile in einem Programm
+rem   dist\LICENSE.txt                Lizenz von Hakobo (GNU AGPL 3.0 oder spaeter)
 rem   dist\THIRD-PARTY-LICENSES.txt   Lizenzen der enthaltenen Komponenten Dritter
 rem   dist\packages\Hakobo-X.Y.Z-windows-x64-setup.exe   Installer (Inno Setup 6)
 rem
 rem   build.cmd                  Installer, sofern Inno Setup 6 installiert ist
 rem   build.cmd --installer      Installer ist Pflicht (Release-Build)
-rem   build.cmd --no-installer   nur Programm und Lizenzdatei
+rem   build.cmd --no-installer   nur Programm und Lizenzdateien
 setlocal
 cd /d "%~dp0"
 set "INSTALLER=optional"
@@ -36,6 +40,7 @@ cargo build --locked --release --bin hakobo || goto :error
 
 if not exist dist\packages mkdir dist\packages
 copy /y target\release\hakobo.exe dist\Hakobo.exe >nul || goto :error
+copy /y LICENSE dist\LICENSE.txt >nul || goto :error
 node scripts\third-party-licenses.mjs dist\THIRD-PARTY-LICENSES.txt || goto :error
 if "%INSTALLER%"=="required" (
   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build-installer.ps1 || goto :error

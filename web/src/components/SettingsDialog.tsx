@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 // Einstellungen: Allgemein, Schnellerfassung, Erinnerungen, Versionen & Sync, Notizbuch, Über.
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -48,6 +52,9 @@ const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
 ];
 
 const DEFAULT_HOTKEY = 'Ctrl+Shift+Space';
+
+/** Öffentlicher Quellcode (AGPL: auch für Nutzer von `hakobo serve` erreichbar). */
+const SOURCE_URL = 'https://github.com/jasal82/hakobo';
 
 /** Einstellungszeile: Beschriftung links, Steuerelement rechts. `note` steht
  *  als eigene Zeile darunter über die ganze Breite (für längere Erklärungen). */
@@ -815,16 +822,32 @@ function AboutTab() {
           <div className="set-row-hint">Notizen, Todos und Termine als Outline – lokal als Markdown, versioniert mit Git.</div>
         </div>
       </div>
-      {info && (
-        <dl className="set-facts">
-          <dt>Rechner</dt>
-          <dd>{info.host}</dd>
-          <dt>Notizbuch</dt>
-          <dd className="mono">{info.vault}</dd>
-          <dt>Git</dt>
-          <dd>{info.gitCli ? 'installiert – Synchronisation möglich' : 'nicht gefunden – nur lokale Versionen'}</dd>
-        </dl>
-      )}
+      <dl className="set-facts">
+        {info && (
+          <>
+            <dt>Rechner</dt>
+            <dd>{info.host}</dd>
+            <dt>Notizbuch</dt>
+            <dd className="mono">{info.vault}</dd>
+            <dt>Git</dt>
+            <dd>{info.gitCli ? 'installiert – Synchronisation möglich' : 'nicht gefunden – nur lokale Versionen'}</dd>
+          </>
+        )}
+        <dt>Lizenz</dt>
+        <dd>Freie Software unter der GNU Affero General Public License, Version 3 oder später</dd>
+        <dt>Quellcode</dt>
+        <dd>
+          <a
+            href={SOURCE_URL}
+            onClick={(e) => {
+              e.preventDefault();
+              openExternal(SOURCE_URL);
+            }}
+          >
+            {SOURCE_URL.replace('https://', '')}
+          </a>
+        </dd>
+      </dl>
       <h3>Tastenkürzel</h3>
       <table className="set-table">
         <tbody>

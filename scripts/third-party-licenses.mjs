@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 // Sammelt die Lizenztexte aller Bestandteile Dritter, die im Programm landen
 // (Rust-Crates, npm-Pakete der Oberfläche samt Schriften und Icons), in einer
 // Datei für Binärpakete. Die Datei liegt in jedem Paket neben dem Programm;
@@ -114,10 +118,11 @@ const npm = npmPackages();
 let text = `${PRODUCT} – Lizenzen von Drittanbieter-Komponenten
 ${'='.repeat(PRODUCT.length + 41)}
 
-Das Programm enthält die folgenden Komponenten Dritter, die jeweils unter ihren
-eigenen Lizenzen stehen. Die Schriften der Oberfläche (Inter, JetBrains Mono) sind
-bei ihren Paketen @fontsource-variable/inter und @fontsource/jetbrains-mono
-aufgeführt, die Icons beim Paket lucide-react.
+${PRODUCT} steht unter der GNU Affero General Public License, Version 3 oder später
+(siehe LICENSE.txt). Das Programm enthält die folgenden Komponenten Dritter, die
+jeweils unter ihren eigenen Lizenzen stehen. Die Schriften der Oberfläche (Inter,
+JetBrains Mono) sind bei ihren Paketen @fontsource-variable/inter und
+@fontsource/jetbrains-mono aufgeführt, die Icons beim Paket lucide-react.
 `;
 text += render('Rust-Bibliotheken (Programm, Server, Git, Fenster)', rust);
 text += render('JavaScript-Bibliotheken (Oberfläche)', npm);

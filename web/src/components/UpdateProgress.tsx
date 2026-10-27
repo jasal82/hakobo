@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 // Updates der lokalen App außerhalb der Einstellungen: Fortschritt während der
 // Installation bis zum Neustart und Hinweis auf eine neue Version (siehe lib/update.ts).
 

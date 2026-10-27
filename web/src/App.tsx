@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 import { useEffect } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { CircleCheck, CircleAlert, X } from 'lucide-react';

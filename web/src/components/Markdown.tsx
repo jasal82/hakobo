@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 // Gerenderte Markdown-Notiz mit Wiki-Links, Tags und hervorgehobenem Code.
 
 import { memo, useLayoutEffect, useMemo, useRef } from 'react';

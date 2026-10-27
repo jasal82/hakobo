@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 //! Hakobo – Notizen, Todos und Termine als Outline; lokal gespeichert als
 //! Markdown, automatisch versioniert mit Git, optional synchronisiert.
 //!

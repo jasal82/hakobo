@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 // Prüft ein fertig gebautes Hakobo-Programm von außen:
 //   1. `hakobo add` schreibt ohne laufende App direkt ins Notizbuch und legt eine Version an.
 //   2. `hakobo serve` liefert Oberfläche und API aus, verlangt das Zugangstoken, findet den

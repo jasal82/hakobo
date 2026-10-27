@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 // Schnellerfassung: gemeinsames Eingabefeld für das Modal (Strg+N) und das
 // Hotkey-Fenster. Slash-Befehle werden live erkannt und als Chips angezeigt;
 // gespeichert wird über den Server, der die Befehle auswertet.

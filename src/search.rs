@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 //! Suche über alle Knoten: Fuzzy-Treffer (nucleo) in Titel, Pfad und Tags,
 //! Teilstring-Treffer in Notiz und Feldern, Tippfehler-Toleranz und Filter
 //! (`#tag`, `is:todo`, `in:Seite`, `date:heute`, …).

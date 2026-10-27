@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 // Suche (Strg+K): Fuzzy-Treffer links, Vorschau des aktiven Treffers rechts.
 
 import { isCodeNode } from '../lib/code';

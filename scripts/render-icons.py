@@ -1,3 +1,7 @@
+# Copyright (C) 2026 Johannes Asal
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 """Erzeugt aus assets/icon/icon-256.png (gerendert aus hakobo.svg) alle Symbolgrößen."""
 from pathlib import Path
 from PIL import Image

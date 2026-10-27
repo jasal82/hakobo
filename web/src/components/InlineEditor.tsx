@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 // Einzeiliger (bzw. kurzer mehrzeiliger) Editor auf CodeMirror-Basis.
 // Links und Erwähnungen erscheinen als Chips, die der Cursor als Ganzes
 // überspringt; Tags, URLs, Inline-Code und Hervorhebungen werden markiert.

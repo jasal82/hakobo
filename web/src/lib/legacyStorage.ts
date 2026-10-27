@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 // Hakobo hieß früher Sqizzo: Ansichtseinstellungen unter den alten Schlüsseln übernehmen.
 // Erster Import in main.tsx, damit Module, die schon beim Laden lesen (z. B. das Theme),
 // die neuen Schlüssel vorfinden.

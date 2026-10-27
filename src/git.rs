@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
 //! Versionierung des Notizbuchs. Lokale Operationen (Commit, Verlauf) laufen
 //! über libgit2, Netzwerk-Operationen über die installierte `git`-CLI, damit
 //! vorhandene Anmeldedaten (Credential Manager, SSH-Agent) greifen.
