@@ -155,7 +155,7 @@ impl Desktop {
         // -- Erfassungsfenster (versteckt, erscheint per Hotkey) -----------
         let mut cbuilder = WindowBuilder::new()
             .with_title("Sqizzo – Erfassen")
-            .with_inner_size(LogicalSize::new(720.0, 460.0))
+            .with_inner_size(LogicalSize::new(CAPTURE_SIZE.0, CAPTURE_SIZE.1))
             .with_decorations(false)
             .with_resizable(false)
             .with_always_on_top(true)
@@ -358,13 +358,18 @@ impl Desktop {
 }
 
 /// Schriftgröße (Zoom) beider Fenster; das Erfassungsfenster wächst mit.
+/// Größe des Erfassungsfensters bei 100 % (logische Pixel). Die Karte darin
+/// ist 688 px breit; der Rest ist transparenter Rand für ihren Schatten
+/// (siehe `.capture-app` in capture.css).
+const CAPTURE_SIZE: (f64, f64) = (744.0, 460.0);
+
 fn apply_zoom(main: &WebView, capture_view: &WebView, capture: &Window, z: f64) {
     let z = crate::settings::clamp_ui_scale(z);
     if let Err(e) = main.zoom(z) {
         tracing::warn!("Zoom nicht möglich: {e}");
     }
     let _ = capture_view.zoom(z);
-    capture.set_inner_size(LogicalSize::new(720.0 * z, 460.0 * z));
+    capture.set_inner_size(LogicalSize::new(CAPTURE_SIZE.0 * z, CAPTURE_SIZE.1 * z));
 }
 
 fn show_main(window: &Window) {

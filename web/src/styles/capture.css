@@ -101,7 +101,9 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: 10px 16px 16px;
+  /* Der transparente Rand muss den ganzen Schatten der Karte fassen,
+     sonst schneidet ihn die Fensterkante sichtbar ab. */
+  padding: 12px 28px 44px;
 }
 .capture-card {
   width: 100%;
@@ -109,7 +111,7 @@
   border: 1px solid var(--border);
   border-radius: 14px;
   background: var(--bg);
-  box-shadow: var(--shadow-xl);
+  box-shadow: var(--shadow-capture);
   animation: pop-in var(--dur) var(--ease-out);
 }
 .capture-grip {
