@@ -23,6 +23,7 @@ mod proc;
 mod search;
 mod server;
 mod settings;
+mod update;
 mod vault;
 
 use std::io::Read;
@@ -144,6 +145,8 @@ fn init_logging(log_file: Option<PathBuf>) {
 }
 
 fn main() -> Result<()> {
+    // Vor allem anderen: entfernt die Angaben aus der Umgebung, solange kein weiterer Thread läuft.
+    let restart = update::take_restart();
     let has_console = attach_console();
     let cli = Cli::parse();
     let is_app = cli.command.is_none();
@@ -169,7 +172,7 @@ fn main() -> Result<()> {
     init_logging((!has_console && is_app).then(|| config.join("hakobo.log")));
 
     let result = match cli.command {
-        None => run_app(&cli, &vault_dir, config, settings),
+        None => run_app(&cli, &vault_dir, config, settings, restart),
         Some(Command::Serve { ref host, port, ref token }) => serve(&vault_dir, config, settings, host, port, token.clone()),
         Some(Command::Add { ref to, ref text }) => cmd_add(&vault_dir, &config, settings, to.as_deref(), text),
         Some(Command::Agenda { days }) => cmd_agenda(&vault_dir, days),
@@ -199,11 +202,23 @@ fn running_instance(config: &Path, vault: &Path) -> Option<instance::Instance> {
 // App
 // ---------------------------------------------------------------------------
 
-fn run_app(cli: &Cli, vault_dir: &Path, config: PathBuf, settings: Settings) -> Result<()> {
-    if !cli.no_open && instance::activate_existing(&config) {
+/// `restart`: gestartet von der vorigen Version nach einem Update.
+fn run_app(cli: &Cli, vault_dir: &Path, config: PathBuf, settings: Settings, restart: Option<update::Restart>) -> Result<()> {
+    // Läuft Hakobo schon? Dann nur dessen Fenster nach vorne holen. Nach einem
+    // Update ist die laufende Instanz die alte Version, die sich gerade beendet.
+    if restart.is_none() && !cli.no_open && instance::activate_existing(&config) {
         return Ok(());
     }
-    let token = cli.token.clone().filter(|t| !t.is_empty()).unwrap_or_else(random_token);
+    // Nach einem Update dieselbe Adresse und dasselbe Token wie zuvor: Offene
+    // Browser-Tabs bleiben angemeldet, die Kommandozeile findet die App wieder.
+    // Für Entwicklung/Tests kann das Token fest vorgegeben werden.
+    let token = match &restart {
+        Some(r) => r.token.clone(),
+        None => cli.token.clone().filter(|t| !t.is_empty()).unwrap_or_else(random_token),
+    };
+    if let Some(r) = &restart {
+        update::wait_for_previous(r.port);
+    }
     let theme = settings.theme.clone();
     legacy::take_over_windows(settings.autostart);
     let app = App::open(vault_dir, config.clone(), settings)?;
@@ -217,11 +232,35 @@ fn run_app(cli: &Cli, vault_dir: &Path, config: PathBuf, settings: Settings) -> 
         *app.shell.lock() = d.shell();
     }
 
-    let cfg = server::ServerConfig { app: app.clone(), local: true, host: "127.0.0.1".into(), port: cli.port, token: Some(token.clone()) };
+    let cfg = server::ServerConfig {
+        app: app.clone(),
+        local: true,
+        host: "127.0.0.1".into(),
+        port: restart.as_ref().map_or(cli.port, |r| r.port),
+        token: Some(token.clone()),
+        wait_for_port: restart.is_some(),
+    };
     let (listener, addr) = rt.block_on(server::bind(&cfg))?;
     let base = format!("http://127.0.0.1:{}", addr.port());
-    tracing::info!("Hakobo läuft unter {base} (Notizbuch {})", app.vault_dir().display());
+    tracing::info!("Hakobo {} läuft unter {base} (Notizbuch {})", update::VERSION, app.vault_dir().display());
     app.spawn_background(rt.handle());
+    update::enable(addr.port(), &token, &update_dir(cli, &config), &config);
+    update::spawn_checks(rt.handle());
+    {
+        // Für ein Update beenden wie über „Beenden“ im Infobereich: speichern, abmelden, Fenster zu.
+        let (app, config) = (app.clone(), config.clone());
+        update::set_quit_handler(move || {
+            let quit = app.shell.lock().quit.clone();
+            match quit {
+                Some(q) => q(),
+                None => {
+                    app.shutdown();
+                    instance::unregister(&config);
+                    std::process::exit(0);
+                }
+            }
+        });
+    }
 
     if cli.no_open {
         println!("Hakobo läuft unter {base}/?token={token} – Strg+C zum Beenden.");
@@ -241,7 +280,8 @@ fn run_app(cli: &Cli, vault_dir: &Path, config: PathBuf, settings: Settings) -> 
             config_dir: config.clone(),
             data_dir: config.join("webview"),
             dark: prefers_dark(&theme),
-            start_hidden: cli.tray,
+            // Nach einem Update aus dem Fenster heraus kommt das Fenster wieder.
+            start_hidden: cli.tray && restart.is_none(),
             on_exit: Box::new(move || {
                 app_exit.shutdown();
                 instance::unregister(&config_exit);
@@ -271,10 +311,22 @@ fn run_app(cli: &Cli, vault_dir: &Path, config: PathBuf, settings: Settings) -> 
             std::process::exit(0);
         }));
     }
-    open_in_browser(&url);
+    // Nach einem Update lädt sich die offene Seite selbst neu – kein zweiter Tab.
+    if restart.is_none() {
+        open_in_browser(&url);
+    }
     let result = rt.block_on(serve_until_ctrl_c(cfg, listener, app));
     instance::unregister(&config);
     result
+}
+
+/// Ordner für Update-Downloads: im Cache (unter Windows lokal, nicht im Roaming-Profil), mit
+/// eigenem Einstellungsordner (Tests, Entwicklung) darin.
+fn update_dir(cli: &Cli, config: &Path) -> PathBuf {
+    match (&cli.config_dir, dirs::cache_dir()) {
+        (None, Some(cache)) => cache.join("hakobo").join("update"),
+        _ => config.join("update"),
+    }
 }
 
 async fn serve_until_ctrl_c(cfg: server::ServerConfig, listener: tokio::net::TcpListener, app: Arc<App>) -> Result<()> {
@@ -291,7 +343,7 @@ fn serve(vault_dir: &Path, config: PathBuf, settings: Settings, host: &str, port
     let token = token.filter(|t| !t.is_empty()).unwrap_or_else(random_token);
     let app = App::open(vault_dir, config, settings)?;
     let rt = tokio::runtime::Runtime::new()?;
-    let cfg = server::ServerConfig { app: app.clone(), local: false, host: host.to_string(), port, token: Some(token.clone()) };
+    let cfg = server::ServerConfig { app: app.clone(), local: false, host: host.to_string(), port, token: Some(token.clone()), wait_for_port: false };
     let (listener, addr) = rt.block_on(server::bind(&cfg))?;
     app.spawn_background(rt.handle());
     let shown = if host == "0.0.0.0" { format!("http://<rechnername>:{}", addr.port()) } else { format!("http://{addr}") };

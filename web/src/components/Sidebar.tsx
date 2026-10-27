@@ -7,6 +7,8 @@ import { relativeTime } from '../lib/dates';
 import { createSubpage } from '../lib/outline';
 import { store, useStore } from '../lib/store';
 import type { Node } from '../lib/types';
+import { pendingVersion, useUpdate } from '../lib/update';
+import { openUpdates } from './UpdateProgress';
 
 function useInboxCount(): number {
   return useStore((s) => s.nodes[s.inbox]?.children.length ?? 0);
@@ -141,6 +143,20 @@ function Section({ title, children, action, id }: { title: string; children: Rea
   );
 }
 
+/** Zahnrad; mit Punkt und direkt zu den Updates, wenn es eine neue Version gibt. */
+function SettingsButton() {
+  const pending = useUpdate(pendingVersion);
+  return (
+    <button
+      className={`btn btn-ghost btn-icon btn-sm${pending ? ' has-dot' : ''}`}
+      onClick={() => (pending ? openUpdates() : store().set({ settingsOpen: true }))}
+      title={pending ? `Einstellungen · Hakobo ${pending} ist verfügbar` : 'Einstellungen (Strg+,)'}
+    >
+      <Settings size={15} />
+    </button>
+  );
+}
+
 function SyncStatusLine() {
   const sync = useStore((s) => s.sync);
   const [, tick] = useState(0);
@@ -247,9 +263,7 @@ export function Sidebar() {
       </div>
       <div className="nav-footer">
         <SyncStatusLine />
-        <button className="btn btn-ghost btn-icon btn-sm" onClick={() => store().set({ settingsOpen: true })} title="Einstellungen (Strg+,)">
-          <Settings size={15} />
-        </button>
+        <SettingsButton />
       </div>
     </aside>
   );

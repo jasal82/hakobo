@@ -42,7 +42,16 @@ rand = "0.9"
 walkdir = "2"
 notify = "8"
 regex = "1"
-ureq = { version = "2", default-features = false, features = ["json"] }
+
+# HTTP: Kommandozeile → laufende App, Selbst-Update aus den GitHub-Releases
+# (System-TLS, Proxy aus der Umgebung) wie bei Sorobo und Sqritto
+ureq = { version = "2", default-features = false, features = ["native-tls", "gzip", "json"] }
+native-tls = "0.2"
+env_proxy = "0.4"
+sha2 = "0.10"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+tar = "0.4"
+flate2 = "1"
 
 # Natives App-Fenster, Tray, globaler Hotkey (WebView2 unter Windows, WKWebView unter macOS)
 [target.'cfg(any(windows, target_os = "macos"))'.dependencies]
@@ -57,6 +66,11 @@ tauri-winrt-notification = "0.8"
 
 [target.'cfg(not(windows))'.dependencies]
 notify-rust = "4"
+
+# Linux: OpenSSL statisch eingebunden, damit das Programm nicht von der
+# OpenSSL-Version der Distribution abhängt.
+[target.'cfg(target_os = "linux")'.dependencies]
+openssl = { version = "0.10", features = ["vendored"] }
 
 [target.'cfg(windows)'.build-dependencies]
 winresource = "0.1"

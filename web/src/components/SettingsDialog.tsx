@@ -1,8 +1,32 @@
 // Einstellungen: Allgemein, Schnellerfassung, Erinnerungen, Versionen & Sync, Notizbuch, Über.
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Bell, Cloud, CloudOff, FolderOpen, GitBranch, Info, Keyboard, Minus, Monitor, Moon, Notebook, Plus, RefreshCw, RotateCcw, Sun, TriangleAlert } from 'lucide-react';
+import {
+  ArrowDownToLine,
+  Bell,
+  CircleCheck,
+  Cloud,
+  CloudOff,
+  ExternalLink,
+  FolderOpen,
+  GitBranch,
+  Info,
+  Keyboard,
+  Minus,
+  Monitor,
+  Moon,
+  Notebook,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Sun,
+  TriangleAlert,
+} from 'lucide-react';
 import { getZoom, setZoom, stepZoom, useZoom, ZOOM_STEPS } from '../lib/zoom';
+import { renderMarkdown } from '../lib/markdown';
+import { isBusy, pendingVersion, useUpdate } from '../lib/update';
+import { fileSize } from './UpdateProgress';
+import { openExternal } from './RichText';
 import { api, type Info as AppInfo } from '../lib/api';
 import { formatDateTime, relativeTime } from '../lib/dates';
 import { store, useStore } from '../lib/store';
@@ -11,7 +35,7 @@ import { Dialog } from './ui';
 import { HotkeyInput } from './settings/HotkeyInput';
 import { applyTheme, type Theme } from './settings/theme';
 
-type Tab = 'general' | 'capture' | 'reminders' | 'sync' | 'vault' | 'about';
+type Tab = 'general' | 'capture' | 'reminders' | 'sync' | 'vault' | 'updates' | 'about';
 
 const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
   { id: 'general', label: 'Allgemein', icon: <Monitor size={15} /> },
@@ -19,6 +43,7 @@ const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
   { id: 'reminders', label: 'Erinnerungen', icon: <Bell size={15} /> },
   { id: 'sync', label: 'Versionen & Sync', icon: <GitBranch size={15} /> },
   { id: 'vault', label: 'Notizbuch', icon: <Notebook size={15} /> },
+  { id: 'updates', label: 'Updates', icon: <ArrowDownToLine size={15} /> },
   { id: 'about', label: 'Über Hakobo', icon: <Info size={15} /> },
 ];
 
@@ -80,6 +105,17 @@ export function SettingsDialog() {
   const saved = useRef<Settings | null>(null);
   const timer = useRef<number | undefined>(undefined);
   const close = useCallback(() => store().set({ settingsOpen: false }), []);
+  // Updates gibt es nur in der lokalen App; ein Punkt zeigt eine neue Version an.
+  const updatesEnabled = useUpdate((s) => !!s.status?.enabled);
+  const updatePending = useUpdate((s) => !!pendingVersion(s));
+  const tabs = TABS.filter((t) => t.id !== 'updates' || updatesEnabled);
+  const active: Tab = tab === 'updates' && !updatesEnabled ? 'general' : tab;
+  const wanted = useStore((s) => s.settingsTab);
+  useEffect(() => {
+    if (!wanted) return;
+    setTab(wanted as Tab);
+    store().set({ settingsTab: null });
+  }, [wanted]);
 
   const load = useCallback(async () => {
     try {
@@ -178,10 +214,11 @@ export function SettingsDialog() {
     <Dialog title="Einstellungen" onClose={close} width={760} className="settings-dialog">
       <div className="set-layout">
         <nav className="set-nav">
-          {TABS.map((t) => (
-            <button key={t.id} className={`set-nav-item${tab === t.id ? ' is-active' : ''}`} onClick={() => setTab(t.id)}>
+          {tabs.map((t) => (
+            <button key={t.id} className={`set-nav-item${active === t.id ? ' is-active' : ''}`} onClick={() => setTab(t.id)}>
               {t.icon}
               <span>{t.label}</span>
+              {t.id === 'updates' && updatePending && <i className="nav-dot" aria-label="Neue Version verfügbar" />}
             </button>
           ))}
           <div className="set-status">{saving ? 'Speichert …' : settings ? 'Änderungen werden sofort gespeichert' : ''}</div>
@@ -205,12 +242,13 @@ export function SettingsDialog() {
             )
           ) : (
             <>
-              {tab === 'general' && <GeneralTab settings={settings} update={update} />}
-              {tab === 'capture' && <CaptureTab settings={settings} setHotkey={setHotkey} />}
-              {tab === 'reminders' && <RemindersTab settings={settings} update={update} />}
-              {tab === 'sync' && <SyncTab settings={settings} update={update} />}
-              {tab === 'vault' && <VaultTab settings={settings} vaultPath={vaultPath} defaultVault={defaultVault} restart={restart} update={update} />}
-              {tab === 'about' && <AboutTab />}
+              {active === 'general' && <GeneralTab settings={settings} update={update} />}
+              {active === 'capture' && <CaptureTab settings={settings} setHotkey={setHotkey} />}
+              {active === 'reminders' && <RemindersTab settings={settings} update={update} />}
+              {active === 'sync' && <SyncTab settings={settings} update={update} />}
+              {active === 'vault' && <VaultTab settings={settings} vaultPath={vaultPath} defaultVault={defaultVault} restart={restart} update={update} />}
+              {active === 'updates' && <UpdatesTab settings={settings} update={update} />}
+              {active === 'about' && <AboutTab />}
             </>
           )}
         </div>
@@ -639,6 +677,129 @@ const CLI: [string, string][] = [
   ['hakobo clone <url>', 'Notizbuch auf ein weiteres Gerät holen'],
   ['hakobo serve', 'Als Server für den Browser starten'],
 ];
+
+/** Versionshinweise von GitHub (Markdown); Links öffnen im Browser. */
+function ReleaseNotes({ text }: { text: string }) {
+  return (
+    <div
+      className="md update-notes"
+      dangerouslySetInnerHTML={{ __html: renderMarkdown(text) }}
+      onClick={(e) => {
+        const a = (e.target as HTMLElement).closest('a');
+        if (!a) return;
+        e.preventDefault();
+        if (a.href) openExternal(a.href);
+      }}
+    />
+  );
+}
+
+const unix = (iso: string | null) => (iso ? Date.parse(iso) / 1000 : null);
+
+function UpdatesTab({ settings, update }: TabProps) {
+  const { status: u, checking, check, install } = useUpdate();
+  const [actionError, setActionError] = useState<string | null>(null);
+  if (!u) return null;
+  const busy = isBusy(u);
+  const skipped = !!u.latest && settings.skippedVersion === u.latest;
+  const published = unix(u.publishedAt);
+
+  const runCheck = async () => {
+    setActionError(null);
+    try {
+      await check();
+    } catch (e) {
+      setActionError(`Prüfung fehlgeschlagen: ${(e as Error).message}`);
+    }
+  };
+  const startInstall = async () => {
+    if (!confirm(`Hakobo ${u.latest} installieren?\n\nHakobo wird für das Update beendet und startet danach von selbst neu. Deine Notizen bleiben, wie sie sind.`)) return;
+    setActionError(null);
+    try {
+      await install();
+    } catch (e) {
+      setActionError(`Update nicht möglich: ${(e as Error).message}`);
+    }
+  };
+
+  return (
+    <section className="set-section">
+      <h3>Version</h3>
+      <Row
+        label={`Hakobo ${u.current}`}
+        hint={u.checkedAt ? `Zuletzt geprüft ${relativeTime(unix(u.checkedAt))}` : 'Noch nicht nach Updates gesucht'}
+      >
+        <button className="btn btn-sm" onClick={() => void runCheck()} disabled={checking || busy}>
+          <RefreshCw size={14} className={checking ? 'spin' : undefined} /> Jetzt prüfen
+        </button>
+      </Row>
+      {actionError && (
+        <Notice kind="error">
+          <TriangleAlert size={15} /> {actionError}
+        </Notice>
+      )}
+      {u.checkError && (
+        <Notice kind="warning">
+          <TriangleAlert size={15} /> {u.checkError}
+        </Notice>
+      )}
+      {!u.checkError && u.latest && !u.available && (
+        <Notice kind="success">
+          <CircleCheck size={15} /> Hakobo ist auf dem neuesten Stand.
+        </Notice>
+      )}
+      {u.available && u.latest && (
+        <div className="update-card">
+          <div className="update-head">
+            <span className="update-badge">
+              <ArrowDownToLine size={14} /> Neue Version {u.latest}
+            </span>
+            {published && <span className="subtle">veröffentlicht am {formatDateTime(published).split(' ')[0]}</span>}
+          </div>
+          {u.notes && <ReleaseNotes text={u.notes} />}
+          {u.phase === 'failed' && (
+            <Notice kind="error">
+              <TriangleAlert size={15} /> Das Update ist fehlgeschlagen: {u.error} Die bisherige Version ist unverändert.
+            </Notice>
+          )}
+          <p className="update-how">{u.canInstall ? `${u.installNote} Download: ${fileSize(u.downloadSize)}.` : u.installNote}</p>
+          <div className="update-actions">
+            {u.canInstall && (
+              <button className="btn btn-accent" onClick={() => void startInstall()} disabled={busy}>
+                <ArrowDownToLine size={15} /> {u.phase === 'failed' ? 'Erneut versuchen' : 'Jetzt aktualisieren'}
+              </button>
+            )}
+            {u.releaseUrl && (
+              <button className={u.canInstall ? 'btn' : 'btn btn-accent'} onClick={() => openExternal(u.releaseUrl)}>
+                <ExternalLink size={14} /> {u.canInstall ? 'Auf GitHub ansehen' : 'Zum Download auf GitHub'}
+              </button>
+            )}
+            {!skipped && (
+              <button className="btn btn-ghost" onClick={() => update({ skippedVersion: u.latest ?? '' }, true)} disabled={busy}>
+                Diese Version überspringen
+              </button>
+            )}
+          </div>
+          {skipped && (
+            <p className="update-how">
+              An diese Version wird nicht mehr erinnert.{' '}
+              <button className="link-btn" onClick={() => update({ skippedVersion: '' }, true)}>
+                Wieder erinnern
+              </button>
+            </p>
+          )}
+        </div>
+      )}
+      <h3>Automatisch</h3>
+      <Row
+        label="Automatisch nach Updates suchen"
+        hint="Hakobo fragt beim Start und danach täglich bei GitHub nach der neuesten Version. Dabei werden keine Daten aus deinen Notizen übertragen."
+      >
+        <Toggle checked={settings.updateCheck} onChange={(v) => update({ updateCheck: v })} />
+      </Row>
+    </section>
+  );
+}
 
 function AboutTab() {
   const [info, setInfo] = useState<AppInfo | null>(null);

@@ -1,4 +1,4 @@
-import type { Agenda, CommandResult, CommitInfo, Field, Hit, Node, Op, ParseResult, Patch, Settings, Snapshot, SyncStatus, TagHit, Task, Types } from './types';
+import type { Agenda, CommandResult, CommitInfo, Field, Hit, Node, Op, ParseResult, Patch, Settings, Snapshot, SyncStatus, TagHit, Task, Types, UpdateStatus } from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -87,4 +87,9 @@ export const api = {
   openFolder: () => post('/api/system/open-folder'),
   openUrl: (url: string) => post('/api/system/open-url', { url }),
   quit: () => post('/api/system/quit'),
+  update: {
+    status: () => get<UpdateStatus>('/api/update'),
+    check: () => post<UpdateStatus>('/api/update/check'),
+    install: () => post<UpdateStatus>('/api/update/install'),
+  },
 };

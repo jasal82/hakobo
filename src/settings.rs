@@ -30,6 +30,10 @@ pub struct Settings {
     pub theme: String,
     /// Schriftgröße bzw. Zoom der ganzen Oberfläche (1.0 = 100 %).
     pub ui_scale: f64,
+    /// Beim Start und täglich nach Updates suchen (lokale App).
+    pub update_check: bool,
+    /// Version, an die nicht mehr erinnert wird.
+    pub skipped_version: String,
 }
 
 impl Default for Settings {
@@ -47,6 +51,8 @@ impl Default for Settings {
             all_day_time: "09:00".into(),
             theme: "system".into(),
             ui_scale: 1.0,
+            update_check: true,
+            skipped_version: String::new(),
         }
     }
 }

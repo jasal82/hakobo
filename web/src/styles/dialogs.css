@@ -626,3 +626,119 @@
   padding: 0 8px;
   font-size: 13px;
 }
+
+/* -- Updates -------------------------------------------------------------- */
+/* Punkt für „neue Version verfügbar“ (Einstellungen, Zahnrad in der Seitenleiste). */
+.nav-dot {
+  width: 7px;
+  height: 7px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+}
+.has-dot {
+  position: relative;
+}
+.has-dot::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid var(--bg-app);
+  border-radius: 50%;
+  background: var(--accent);
+}
+.update-card {
+  margin: 12px 0 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+}
+.update-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  font-size: 12.5px;
+}
+.update-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-soft-fg);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.update-notes {
+  max-height: 220px;
+  margin: 10px 0 0;
+  overflow: auto;
+  font-size: 13px;
+}
+.update-notes h1,
+.update-notes h2,
+.update-notes h3 {
+  margin: 8px 0 4px;
+  font-size: 13px;
+}
+.update-how {
+  margin: 10px 0 0;
+  color: var(--fg-subtle);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.update-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+.link-btn:hover {
+  text-decoration: underline;
+}
+.update-progress {
+  width: min(440px, 100%);
+}
+.update-progress .dialog-body {
+  padding-bottom: 20px;
+}
+.update-progress p {
+  margin: 0 0 12px;
+}
+.update-bar {
+  height: 6px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--bg-hover);
+}
+.update-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width var(--dur-fast);
+}
+.update-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.update-step .spinner {
+  flex: none;
+}

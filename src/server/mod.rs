@@ -61,11 +61,24 @@ pub struct ServerConfig {
     pub host: String,
     pub port: u16,
     pub token: Option<String>,
+    /// Nach einem Update: warten, bis die vorige Version den Port freigibt.
+    pub wait_for_port: bool,
 }
 
 pub async fn bind(cfg: &ServerConfig) -> anyhow::Result<(tokio::net::TcpListener, SocketAddr)> {
     let addr = format!("{}:{}", cfg.host, cfg.port);
-    let listener = match tokio::net::TcpListener::bind(&addr).await {
+    // Die vorige Version beendet sich gerade; ihr Port wird gleich frei (höchstens 30 s warten).
+    let mut attempts = if cfg.wait_for_port { 120 } else { 0 };
+    let bound = loop {
+        match tokio::net::TcpListener::bind(&addr).await {
+            Err(e) if e.kind() == std::io::ErrorKind::AddrInUse && attempts > 0 => {
+                attempts -= 1;
+                tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+            }
+            result => break result,
+        }
+    };
+    let listener = match bound {
         Ok(l) => l,
         Err(e) if cfg.local => {
             tracing::warn!("Port {} belegt ({e}), wähle freien Port", cfg.port);

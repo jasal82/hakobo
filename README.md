@@ -12,16 +12,34 @@ Hakobo verbindet den Drill-down von Workflowy (in jeden Punkt hineinzoomen) mit 
 4. **Tags** (`#projekte/sorobo/milestone1`) ordnen zu, ohne zu verschieben; ein Tag mit Feldern ist ein **Typ** (Meeting, Projekt, Person, Snippet oder eigene).
 5. **Die Inbox** nimmt alles Neue auf – per globalem Tastenkürzel, Kommandozeile oder `Strg+N`. Einsortiert (`Strg+M`) oder zugeordnet (`#`, `@`) wird später.
 
-## Starten und bauen
+## Installieren
+
+Fertige Pakete gibt es unter [Releases](https://github.com/jasal82/hakobo/releases):
+
+- **Windows**: `Hakobo-X.Y.Z-windows-x64-setup.exe` (Installation pro Benutzer, ohne Administratorrechte) oder `…-portable.zip` zum Entpacken an einen beliebigen Ort.
+- **macOS** (Apple Silicon) und **Linux** (x64): `Hakobo-X.Y.Z-macos-arm64.tar.gz` bzw. `…-linux-x64.tar.gz`. Unter Linux öffnet sich die Oberfläche im Browser.
+
+Das Notizbuch liegt standardmäßig in `Dokumente/Hakobo` (in den Einstellungen änderbar). Hakobo läuft beim Schließen im Infobereich weiter, damit Schnellerfassung und Erinnerungen funktionieren; „Beenden“ im Tray-Menü beendet es ganz.
+
+### Updates
+
+Hakobo fragt beim Start und danach täglich bei GitHub nach der neuesten Version (abschaltbar unter Einstellungen → Updates; dabei werden keine Daten aus den Notizen übertragen). Eine neue Version meldet ein Hinweis, das Zahnrad in der Seitenleiste bekommt einen Punkt. „Jetzt aktualisieren“ lädt das passende Paket, prüft seine SHA-256-Prüfsumme und
+
+- führt bei einer Installation per Setup das neue Setup aus, das Hakobo ersetzt und wieder startet,
+- ersetzt bei der portablen Version und unter macOS/Linux die Programmdatei und startet sie neu.
+
+Die neue Version übernimmt Port und Zugangstoken der alten: Offene Browser-Tabs laden sich nur neu, die Kommandozeile findet die App unter derselben Adresse. Eine Version lässt sich überspringen; im Server-Modus (`hakobo serve`) und bei selbst gebauten Entwicklungsversionen gibt es keine Selbst-Updates.
+
+## Selbst bauen
 
 Voraussetzungen: Node.js 24, Rust (stable), unter Windows die WebView2-Laufzeit (in Windows 11 enthalten). Für die Synchronisation die Git-Kommandozeile; lokale Versionen funktionieren auch ohne.
 
 ```powershell
-build.cmd        # baut Oberfläche und Programm → dist\Hakobo.exe
+build.cmd        # baut Oberfläche und Programm → dist\Hakobo.exe (mit Inno Setup 6 auch den Installer)
 start.cmd        # startet Hakobo (baut beim ersten Mal)
 ```
 
-Unter Linux und macOS `./build.sh`. Das Notizbuch liegt standardmäßig in `Dokumente/Hakobo` (in den Einstellungen änderbar). Hakobo läuft beim Schließen im Infobereich weiter, damit Schnellerfassung und Erinnerungen funktionieren; „Beenden“ im Tray-Menü beendet es ganz.
+Unter Linux und macOS `./build.sh` (→ `dist/hakobo` und das Archiv unter `dist/packages/`). `build.cmd --no-installer` überspringt den Installer, `build.cmd --installer` verlangt ihn.
 
 ## Bedienung
 
@@ -128,6 +146,18 @@ npm run build                      # Oberfläche nach web/dist (wird in die EXE 
 cargo test                         # Parser, Notizbuch, Git-Sync, Datum, Suche, Agenda
 bash scripts/dev-server.sh         # Backend mit Demo-Notizbuch, Token "dev", Port 4590
 npm run dev                        # Vite mit Hot-Reload auf Port 5174 (spricht mit dem Backend)
+node scripts/smoke-test.mjs dist/Hakobo.exe   # fertiges Programm von außen prüfen
 ```
 
-Aufbau: `src/vault` (Datenmodell, Markdown-Parser/-Writer, Typen), `src/dates.rs` (natürlichsprachliche Daten, Wiederholungen, Erinnerungen), `src/search.rs` (Fuzzy-Suche), `src/capture.rs` (Slash-Befehle), `src/git.rs` (Versionen, Sync), `src/app.rs` (Hintergrundaufgaben), `src/server` (REST-API, Ereignisstrom), `src/desktop.rs` (Fenster, Tray, globaler Hotkey), `web/` (React-Oberfläche).
+### Neue Version veröffentlichen
+
+```bash
+node scripts/version.mjs set 0.2.0   # Cargo.toml, web/package.json und Lockdateien
+git commit -am "Release 0.2.0"
+git tag v0.2.0
+git push origin main v0.2.0
+```
+
+Der Workflow `.github/workflows/build.yml` testet und baut jeden Push für Windows, Linux und macOS. Bei einem Tag `vX.Y.Z` (muss zur Version passen) veröffentlicht er das Release mit Setup, portablem ZIP, den Archiven und `SHA256SUMS.txt` – daraus holen sich laufende Installationen das Update. Unter Windows prüft `scripts/test-installer.ps1` dabei Installation, Update, Neustart nach dem Selbst-Update und Deinstallation.
+
+Aufbau: `src/vault` (Datenmodell, Markdown-Parser/-Writer, Typen), `src/dates.rs` (natürlichsprachliche Daten, Wiederholungen, Erinnerungen), `src/search.rs` (Fuzzy-Suche), `src/capture.rs` (Slash-Befehle), `src/git.rs` (Versionen, Sync), `src/app.rs` (Hintergrundaufgaben), `src/server` (REST-API, Ereignisstrom), `src/desktop.rs` (Fenster, Tray, globaler Hotkey), `src/update.rs` (Selbst-Update aus den GitHub-Releases), `web/` (React-Oberfläche), `installer/` und `scripts/` (Windows-Setup, Versionen, Lizenzen, Tests der Pakete).

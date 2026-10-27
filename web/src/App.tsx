@@ -4,6 +4,8 @@ import { CircleCheck, CircleAlert, X } from 'lucide-react';
 import { store, useStore } from './lib/store';
 import { visibleList } from './lib/outline';
 import { loadZoom, setZoom, stepZoom } from './lib/zoom';
+import { startUpdatePolling } from './lib/update';
+import { UpdateProgress, useUpdateNotice } from './components/UpdateProgress';
 import { TitleBar } from './components/TitleBar';
 import { Sidebar } from './components/Sidebar';
 import { SearchPalette } from './components/SearchPalette';
@@ -77,8 +79,12 @@ export function App() {
   const sidebar = useStore((s) => s.sidebar);
   const overlays = useStore(useShallow((s) => ({ search: s.searchOpen, move: !!s.move, assign: !!s.assign, capture: s.captureOpen, settings: s.settingsOpen, history: !!s.history })));
 
+  useUpdateNotice();
+
   useEffect(() => {
     void store().init();
+    // Updates (nur lokale App; im Server-Modus endet die Abfrage nach der ersten Antwort).
+    startUpdatePolling();
     // Schriftgröße: gespeicherten Wert übernehmen, auch nach Änderungen in anderen Fenstern.
     void loadZoom();
     const onSettings = () => void loadZoom();
@@ -176,6 +182,7 @@ export function App() {
       {overlays.capture && <CaptureModal />}
       {overlays.settings && <SettingsDialog />}
       {overlays.history && <HistoryDialog />}
+      <UpdateProgress />
       <Toasts />
     </div>
   );

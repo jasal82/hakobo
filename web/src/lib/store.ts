@@ -68,6 +68,8 @@ interface State {
   assign: { id: string } | null;
   captureOpen: boolean;
   settingsOpen: boolean;
+  /** Bereich, den die Einstellungen beim nächsten Öffnen zeigen (z. B. `updates`). */
+  settingsTab: string | null;
   history: string | null;
   sidebar: boolean;
   toasts: Toast[];
@@ -398,7 +400,8 @@ interface Actions {
   reveal: (id: string, opts?: { edit?: boolean }) => void;
   setFocus: (f: Omit<Focus, 'nonce'> | null) => void;
   setCollapsed: (id: string, value: boolean) => void;
-  toast: (text: string, kind?: Toast['kind'], action?: Toast['action']) => void;
+  /** `sticky`: bleibt stehen, bis sie geschlossen oder ihre Aktion gewählt wird. */
+  toast: (text: string, kind?: Toast['kind'], action?: Toast['action'], opts?: { sticky?: boolean }) => void;
   dismissToast: (id: number) => void;
   set: (p: Partial<State>) => void;
   handleEvent: (e: ServerEvent) => void;
@@ -477,6 +480,7 @@ export const useStore = create<Store>()((set, get) => {
     assign: null,
     captureOpen: false,
     settingsOpen: false,
+    settingsTab: null,
     history: null,
     sidebar: window.innerWidth > 760 && localStorage.getItem('hakobo-sidebar') !== '0',
     toasts: [],
@@ -734,10 +738,10 @@ export const useStore = create<Store>()((set, get) => {
       set({ collapsed });
     },
 
-    toast: (text, kind = 'info', action) => {
+    toast: (text, kind = 'info', action, opts) => {
       const id = ++toastId;
       set({ toasts: [...get().toasts, { id, text, kind, action }] });
-      window.setTimeout(() => get().dismissToast(id), kind === 'error' ? 7000 : action ? 6000 : 3500);
+      if (!opts?.sticky) window.setTimeout(() => get().dismissToast(id), kind === 'error' ? 7000 : action ? 6000 : 3500);
     },
 
     dismissToast: (id) => set({ toasts: get().toasts.filter((t) => t.id !== id) }),

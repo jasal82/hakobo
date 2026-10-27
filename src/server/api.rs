@@ -21,7 +21,7 @@ use crate::dates::{Remind, Repeat, parse_natural_prefix};
 use crate::settings::Settings;
 use crate::vault::types::TypesFile;
 use crate::vault::{Kind, Op};
-use crate::{agenda, capture, git, search};
+use crate::{agenda, capture, git, search, update};
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -49,6 +49,9 @@ pub fn router() -> Router<AppState> {
         .route("/system/open-folder", post(open_folder))
         .route("/system/open-url", post(open_url))
         .route("/system/quit", post(quit))
+        .route("/update", get(update_status))
+        .route("/update/check", post(update_check))
+        .route("/update/install", post(update_install))
 }
 
 fn today() -> NaiveDate {
@@ -385,4 +388,29 @@ async fn quit(State(s): State<AppState>) -> Json<Value> {
         f();
     }
     Json(json!({ "ok": true }))
+}
+
+// ---------------------------------------------------------------------------
+// Updates (nur lokale App, siehe crate::update)
+// ---------------------------------------------------------------------------
+
+async fn update_status() -> Json<update::UpdateStatus> {
+    Json(update::status())
+}
+
+fn local_app_only() -> ApiResult<()> {
+    if update::enabled() { Ok(()) } else { Err(ApiError(StatusCode::FORBIDDEN, "Nur in der lokalen App verfügbar.".into())) }
+}
+
+async fn update_check() -> ApiResult<Json<update::UpdateStatus>> {
+    local_app_only()?;
+    let status = tokio::task::spawn_blocking(update::check).await.map_err(|e| bad(e.to_string()))?;
+    Ok(Json(status))
+}
+
+/// Startet die Installation im Hintergrund; die Oberfläche verfolgt sie über `GET /api/update`.
+async fn update_install() -> ApiResult<Json<update::UpdateStatus>> {
+    local_app_only()?;
+    update::start_install().map_err(bad)?;
+    Ok(Json(update::status()))
 }

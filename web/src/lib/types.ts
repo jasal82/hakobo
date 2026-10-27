@@ -161,6 +161,32 @@ export interface Settings {
   allDayTime: string;
   theme: 'system' | 'light' | 'dark';
   uiScale: number;
+  /** Beim Start und täglich nach Updates suchen (lokale App). */
+  updateCheck: boolean;
+  /** Version, an die nicht mehr erinnert wird. */
+  skippedVersion: string;
+}
+
+/** Stand der Update-Prüfung der lokalen App (`GET /api/update`, siehe src/update.rs). */
+export interface UpdateStatus {
+  /** Nur die lokale App aktualisiert sich selbst, nicht der Server-Modus. */
+  enabled: boolean;
+  current: string;
+  latest: string | null;
+  available: boolean;
+  publishedAt: string | null;
+  /** Versionshinweise (Markdown von GitHub). */
+  notes: string;
+  releaseUrl: string;
+  checkedAt: string | null;
+  checkError: string;
+  canInstall: boolean;
+  installNote: string;
+  downloadSize: number;
+  phase: 'idle' | 'downloading' | 'installing' | 'restarting' | 'failed';
+  /** Fortschritt des Downloads 0…1. */
+  progress: number;
+  error: string;
 }
 
 export interface CommitInfo {
