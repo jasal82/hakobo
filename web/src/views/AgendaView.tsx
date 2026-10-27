@@ -149,10 +149,10 @@ function EntryRow({ e, today, showDate }: { e: AgendaEntry; today: Date; showDat
 }
 
 export function AgendaView() {
-  const [days, setDays] = useState(() => readNum('sqizzo-agenda-days', 14));
+  const [days, setDays] = useState(() => readNum('hakobo-agenda-days', 14));
   const [showDone, setShowDone] = useState(() => {
     try {
-      return localStorage.getItem('sqizzo-agenda-done') === '1';
+      return localStorage.getItem('hakobo-agenda-done') === '1';
     } catch {
       return false;
     }
@@ -207,7 +207,7 @@ export function AgendaView() {
                 className={days === n ? 'is-active' : ''}
                 onClick={() => {
                   setDays(n);
-                  writeLocal('sqizzo-agenda-days', String(n));
+                  writeLocal('hakobo-agenda-days', String(n));
                 }}
               >
                 {n} Tage
@@ -220,7 +220,7 @@ export function AgendaView() {
               checked={showDone}
               onChange={(e) => {
                 setShowDone(e.target.checked);
-                writeLocal('sqizzo-agenda-done', e.target.checked ? '1' : '0');
+                writeLocal('hakobo-agenda-done', e.target.checked ? '1' : '0');
               }}
             />
             Erledigte

@@ -1,6 +1,6 @@
-# Sqizzo – Datenmodell und Dateiformat
+# Hakobo – Datenmodell und Dateiformat
 
-Sqizzo speichert alles als lesbare Markdown-Dateien in einem Ordner, dem
+Hakobo speichert alles als lesbare Markdown-Dateien in einem Ordner, dem
 **Notizbuch** (Vault). Der Ordner ist zugleich ein Git-Arbeitsverzeichnis: Jede
 Änderung wird automatisch als Version festgehalten und auf Wunsch mit anderen
 Rechnern synchronisiert. Die Dateien lassen sich jederzeit mit einem normalen
@@ -14,7 +14,7 @@ Editor, mit Obsidian oder auf GitHub lesen und bearbeiten.
 | **Seite** | Eine Datei `*.md`. Auch ein Knoten: ihre Kinder sind die Knoten der Datei und ihre Unterseiten. |
 | **Todo** | Ein Knoten mit Kästchen (`- [ ]`). |
 | **Datum** | Feld `date::`. Bei einem Todo die Fälligkeit, sonst ein Termin. |
-| **Tag** | `#wort` im Text, verschachtelt mit `/`: `#projekte/sqonto/milestone1`. |
+| **Tag** | `#wort` im Text, verschachtelt mit `/`: `#projekte/sorobo/milestone1`. |
 | **Typ** | Ein Tag mit Feldern (z. B. `#meeting` mit Datum, Teilnehmern, Projekt). |
 | **Link / Erwähnung** | `[[Seite]]`, `[[Seite#^id\|Text]]`. Erwähnungen (`@` in der Oberfläche) sind Links auf Personen. |
 | **Inbox** | Die Seite `Inbox.md`. Schnellerfassung landet hier; einsortiert wird später. |
@@ -29,11 +29,11 @@ Notizbuch/
   Inbox.md                 Schnellerfassung (wird bei Bedarf angelegt)
   Projekte.md              Seite „Projekte“
   Projekte/                Unterseiten von „Projekte“
-    Sqonto.md
+    Sorobo.md
   Personen/                Ordner ohne eigene Datei = leere Seite
     Anna Schmidt.md
   assets/                  Bilder und Anhänge (keine Seiten)
-  .sqizzo/types.toml       Typdefinitionen (werden mitsynchronisiert)
+  .hakobo/types.toml       Typdefinitionen (werden mitsynchronisiert)
   .gitattributes           *.md merge=union (konfliktfreies Zusammenführen)
 ```
 
@@ -42,8 +42,11 @@ Notizbuch/
   gleichnamige Datei ist eine Seite ohne Inhalt; sobald sie Inhalt bekommt,
   entsteht die Datei.
 - Unterseiten erscheinen nach den Knoten der Seite, alphabetisch sortiert.
-- Ignoriert werden versteckte Dateien und Ordner (`.git`, `.sqizzo`, …), der
+- Ignoriert werden versteckte Dateien und Ordner (`.git`, `.hakobo`, …), der
   Ordner `assets/` und alle Dateien, die nicht auf `.md` enden.
+- Notizbücher aus der Zeit, als Hakobo noch Sqizzo hieß, haben `.sqizzo/`
+  statt `.hakobo/`. Hakobo benennt den Ordner beim Öffnen um und committet
+  das zusammen mit der angepassten `.gitignore`.
 
 ## Aufbau einer Seite
 
@@ -56,7 +59,7 @@ email: anna@example.com
 Freier Markdown-Text der Seite (die „Notiz“ der Seite).
 
 - Erster Knoten
-- [ ] Ein Todo #projekte/sqonto ^k3j9a2
+- [ ] Ein Todo #projekte/sorobo ^k3j9a2
   date:: 2026-10-30
   remind:: 1h
   Notiz zum Todo, beliebiger Markdown-Text,
@@ -110,7 +113,7 @@ Freier Markdown-Text der Seite (die „Notiz“ der Seite).
 
 Toleranz beim Lesen fremder Dateien: Text in Spalte 0 nach dem ersten
 Aufzählungspunkt (Absätze, Überschriften, Codeblöcke) wird zu eigenen Knoten.
-Sqizzo schreibt eine Datei nur neu, wenn sie in der App geändert wurde.
+Hakobo schreibt eine Datei nur neu, wenn sie in der App geändert wurde.
 
 ## Eingebaute Felder
 
@@ -119,17 +122,17 @@ Sqizzo schreibt eine Datei nur neu, wenn sie in der App geändert wurde.
 | `date` | `2026-10-27`, `2026-10-27 14:00`, `2026-10-27 14:00-15:30`, `2026-10-27 - 2026-10-29`, `2026-10-27 22:00 - 2026-10-28 02:00` | Fälligkeit (Todo) oder Termin (sonst). Erscheint in der Agenda. Gelesen wird auch `due::`. |
 | `repeat` | `daily`, `weekdays`, `weekly`, `every 2 weeks`, `weekly on mon,thu`, `monthly`, `yearly`, `every 3 days`, jeweils optional `until 2026-12-31` | Wiederholung. Erledigen eines wiederkehrenden Todos verschiebt `date` auf den nächsten Termin. |
 | `remind` | `15m`, `1h`, `1d`, `1h30m`, `0`, `2026-10-27 08:00`, mehrere mit Komma | Erinnerung vor Beginn bzw. zu einem festen Zeitpunkt. Ganztägige Einträge rechnen ab der eingestellten Morgenzeit (Standard 09:00). |
-| `done` | `2026-10-26 18:04` | Wann das Todo erledigt wurde (setzt Sqizzo). |
+| `done` | `2026-10-26 18:04` | Wann das Todo erledigt wurde (setzt Hakobo). |
 
 ## Tags und Typen
 
 - Tag: `#` am Wortanfang, gefolgt von Buchstaben, Ziffern, `_`, `-`, `/`.
   Mindestens ein Zeichen ist keine Ziffer (`#1` ist kein Tag). Groß-/Kleinschreibung
   spielt beim Suchen keine Rolle.
-- Verschachtelte Tags: `#projekte/sqonto/milestone1` gehört auch zu
-  `#projekte/sqonto` und `#projekte`.
+- Verschachtelte Tags: `#projekte/sorobo/milestone1` gehört auch zu
+  `#projekte/sorobo` und `#projekte`.
 - Tags zählen in Text und Notiz eines Knotens sowie im Frontmatter einer Seite.
-- Ein **Typ** ist ein Tag mit Definition in `.sqizzo/types.toml`:
+- Ein **Typ** ist ein Tag mit Definition in `.hakobo/types.toml`:
 
 ```toml
 [types.meeting]
@@ -154,13 +157,13 @@ Feldarten (`kind`): `text`, `number`, `date`, `select` (mit `options = [..]`),
   Die App zeigt immer den aktuellen Text des Ziels; der Anzeigetext in der Datei
   wird beim nächsten Speichern der Seite aufgefrischt.
 - Erwähnungen sind Links auf Knoten oder Seiten mit dem Typ `person`.
-- Wird eine Seite umbenannt oder verschoben, passt Sqizzo alle Links an.
+- Wird eine Seite umbenannt oder verschoben, passt Hakobo alle Links an.
 
 ## Versionierung und Synchronisation
 
 - Das Notizbuch ist ein Git-Repository (wird bei Bedarf angelegt).
 - Änderungen werden nach kurzer Ruhepause automatisch committet.
-- Mit einem Remote (`origin`) holt und überträgt Sqizzo Änderungen regelmäßig
+- Mit einem Remote (`origin`) holt und überträgt Hakobo Änderungen regelmäßig
   (`git fetch`, `merge`, `push` über die installierte Git-Kommandozeile, damit
   vorhandene Anmeldedaten greifen).
 - `.gitattributes` setzt `*.md merge=union`: Gleichzeitige Änderungen an

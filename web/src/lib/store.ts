@@ -317,7 +317,7 @@ function protectedIds(): Set<string> {
 
 function loadCollapsed(): Record<string, boolean> {
   try {
-    return JSON.parse(localStorage.getItem('sqizzo-collapsed') ?? '{}');
+    return JSON.parse(localStorage.getItem('hakobo-collapsed') ?? '{}');
   } catch {
     return {};
   }
@@ -328,7 +328,7 @@ function saveCollapsed(c: Record<string, boolean>) {
   clearTimeout(collapseTimer);
   collapseTimer = window.setTimeout(() => {
     try {
-      localStorage.setItem('sqizzo-collapsed', JSON.stringify(c));
+      localStorage.setItem('hakobo-collapsed', JSON.stringify(c));
     } catch {
       /* Speicher voll oder gesperrt */
     }
@@ -478,7 +478,7 @@ export const useStore = create<Store>()((set, get) => {
     captureOpen: false,
     settingsOpen: false,
     history: null,
-    sidebar: window.innerWidth > 760 && localStorage.getItem('sqizzo-sidebar') !== '0',
+    sidebar: window.innerWidth > 760 && localStorage.getItem('hakobo-sidebar') !== '0',
     toasts: [],
 
     init: async () => {
@@ -566,7 +566,7 @@ export const useStore = create<Store>()((set, get) => {
           get().reveal(e.id, { edit: true });
           break;
         case 'settings':
-          window.dispatchEvent(new Event('sqizzo-settings'));
+          window.dispatchEvent(new Event('hakobo-settings'));
           break;
       }
     },

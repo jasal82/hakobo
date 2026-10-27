@@ -119,7 +119,7 @@ impl Desktop {
 
         // -- Hauptfenster -------------------------------------------------
         let mut builder = WindowBuilder::new()
-            .with_title("Sqizzo")
+            .with_title("Hakobo")
             .with_inner_size(LogicalSize::new(1280.0, 860.0))
             .with_min_inner_size(LogicalSize::new(560.0, 420.0))
             .with_window_icon(icon())
@@ -154,7 +154,7 @@ impl Desktop {
 
         // -- Erfassungsfenster (versteckt, erscheint per Hotkey) -----------
         let mut cbuilder = WindowBuilder::new()
-            .with_title("Sqizzo – Erfassen")
+            .with_title("Hakobo – Erfassen")
             .with_inner_size(LogicalSize::new(CAPTURE_SIZE.0, CAPTURE_SIZE.1))
             .with_decorations(false)
             .with_resizable(false)
@@ -176,13 +176,13 @@ impl Desktop {
         let hotkey_label = |hk: &str| format!("Schnell erfassen\t{}", hk.replace("Ctrl", "Strg").replace("Shift", "Umschalt").replace("Space", "Leertaste"));
         let hotkey_now = opts.app.settings.lock().hotkey.clone();
         let menu = Menu::new();
-        let item_open = MenuItem::with_id("open", "Sqizzo öffnen", true, None);
+        let item_open = MenuItem::with_id("open", "Hakobo öffnen", true, None);
         let item_capture = MenuItem::with_id("capture", hotkey_label(&hotkey_now), true, None);
         let item_sync = MenuItem::with_id("sync", "Jetzt synchronisieren", true, None);
         let item_quit = MenuItem::with_id("quit", "Beenden", true, None);
         let _ = menu.append_items(&[&item_open, &item_capture, &item_sync, &PredefinedMenuItem::separator(), &item_quit]);
         let tray_icon = tray_icon::Icon::from_rgba(crate::assets::TRAY_RGBA.to_vec(), 32, 32).ok();
-        let mut tray_builder = TrayIconBuilder::new().with_tooltip("Sqizzo").with_menu(Box::new(menu)).with_menu_on_left_click(false);
+        let mut tray_builder = TrayIconBuilder::new().with_tooltip("Hakobo").with_menu(Box::new(menu)).with_menu_on_left_click(false);
         if let Some(i) = tray_icon {
             tray_builder = tray_builder.with_icon(i);
         }
@@ -391,13 +391,13 @@ fn show_capture(capture: &Window, view: &WebView, main: &Window) {
     capture.set_visible(true);
     capture.set_focus();
     let _ = view.focus();
-    let _ = view.evaluate_script("window.__sqizzoCapture && window.__sqizzoCapture.show()");
+    let _ = view.evaluate_script("window.__hakoboCapture && window.__hakoboCapture.show()");
 }
 
 fn init_script(kind: &str) -> String {
     // Läuft vor dem Parsen des Dokuments: `documentElement` gibt es dann noch nicht.
     format!(
-        "window.__SQIZZO_DESKTOP__ = {{ platform: '{p}', window: '{kind}' }}; \
+        "window.__HAKOBO_DESKTOP__ = {{ platform: '{p}', window: '{kind}' }}; \
          (function mark() {{ var d = document.documentElement; if (d) d.classList.add('is-desktop', 'is-desktop-{p}'); else document.addEventListener('readystatechange', mark, {{ once: true }}); }})();",
         p = platform()
     )
@@ -415,7 +415,7 @@ fn build_main_webview(window: &Window, context: &mut WebContext, proxy: &Proxy, 
         .with_background_color(background)
         .with_devtools(cfg!(debug_assertions))
         .with_clipboard(true)
-        // Zoom steuert Sqizzo selbst (Einstellung Schriftgröße).
+        // Zoom steuert Hakobo selbst (Einstellung Schriftgröße).
         .with_hotkeys_zoom(false)
         .with_ipc_handler(move |req| send(&ipc, UserEvent::MainIpc(req.body().clone())))
         .with_document_title_changed_handler(move |t| send(&title, UserEvent::Title(t)))
@@ -442,7 +442,7 @@ fn build_capture_webview(window: &Window, context: &mut WebContext, proxy: &Prox
         .with_background_color((0, 0, 0, 0))
         .with_devtools(cfg!(debug_assertions))
         .with_clipboard(true)
-        // Zoom steuert Sqizzo selbst (Einstellung Schriftgröße).
+        // Zoom steuert Hakobo selbst (Einstellung Schriftgröße).
         .with_hotkeys_zoom(false)
         .with_ipc_handler(move |req| send(&ipc, UserEvent::CaptureIpc(req.body().clone())))
         .with_new_window_req_handler(move |url, _features| {
@@ -471,7 +471,7 @@ fn open_external(url: &str, base: &str, token: &str) {
 }
 
 fn notify_state(window: &Window, webview: &WebView) {
-    let js = format!("window.__sqizzoWindow && window.__sqizzoWindow({{ maximized: {} }})", window.is_maximized());
+    let js = format!("window.__hakoboWindow && window.__hakoboWindow({{ maximized: {} }})", window.is_maximized());
     let _ = webview.evaluate_script(&js);
 }
 

@@ -171,7 +171,7 @@ export function TagView({ tag }: { tag: string }) {
           <div className="empty">
             <Hash size={28} />
             <h3>Noch nichts mit #{t}</h3>
-            <p>Tags schreibst du direkt in den Text, z. B. „Idee #{t}“ – nach dem # schlägt Sqizzo vorhandene Tags vor. Verschachteln mit „/“: #{t}/unterthema.</p>
+            <p>Tags schreibst du direkt in den Text, z. B. „Idee #{t}“ – nach dem # schlägt Hakobo vorhandene Tags vor. Verschachteln mit „/“: #{t}/unterthema.</p>
           </div>
         ) : shown === 0 ? (
           <div className="empty">

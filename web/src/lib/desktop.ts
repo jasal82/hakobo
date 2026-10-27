@@ -2,14 +2,14 @@
 
 declare global {
   interface Window {
-    __SQIZZO_DESKTOP__?: { platform: string; window: 'main' | 'capture' };
-    __sqizzoWindow?: (s: { maximized: boolean }) => void;
-    __sqizzoCapture?: { show: () => void };
+    __HAKOBO_DESKTOP__?: { platform: string; window: 'main' | 'capture' };
+    __hakoboWindow?: (s: { maximized: boolean }) => void;
+    __hakoboCapture?: { show: () => void };
     ipc?: { postMessage: (msg: string) => void };
   }
 }
 
-export const desktop = window.__SQIZZO_DESKTOP__ ?? null;
+export const desktop = window.__HAKOBO_DESKTOP__ ?? null;
 
 export function ipc(msg: string): boolean {
   if (window.ipc) {

@@ -2,7 +2,7 @@
 
 export type Theme = 'system' | 'light' | 'dark';
 
-const KEY = 'sqizzo-theme';
+const KEY = 'hakobo-theme';
 const media = typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null;
 
 export function storedTheme(): Theme {

@@ -59,7 +59,7 @@ export function PathLine({ parts, ranges }: { parts: string[]; ranges?: [number,
 // Zuletzt geöffnete Knoten
 // ---------------------------------------------------------------------------
 
-const RECENT = 'sqizzo-recent';
+const RECENT = 'hakobo-recent';
 
 export function readList(key: string): string[] {
   try {

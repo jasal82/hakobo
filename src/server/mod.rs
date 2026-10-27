@@ -89,7 +89,7 @@ pub async fn serve(cfg: ServerConfig, listener: tokio::net::TcpListener) -> anyh
     Ok(())
 }
 
-const COOKIE: &str = "sqizzo_token";
+const COOKIE: &str = "hakobo_token";
 
 /// Zugriffsschutz: Token (Cookie/Header/Query) und Host-Prüfung im lokalen
 /// Modus (gegen DNS-Rebinding).
@@ -138,9 +138,9 @@ fn authorized(headers: &HeaderMap, token: &str) -> bool {
         .any(|c| c.trim() == format!("{COOKIE}={token}"))
 }
 
-const LOGIN_PAGE: &str = r#"<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sqizzo – Anmeldung</title>
+const LOGIN_PAGE: &str = r#"<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hakobo – Anmeldung</title>
 <style>body{font:14px/1.5 system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#f4f4f2;color:#1c1917}form{background:#fff;padding:2rem;border:1px solid #e6e4e0;border-radius:12px;box-shadow:0 12px 28px -10px rgba(28,25,23,.2);width:min(360px,90vw)}h1{font-size:1.15rem;font-weight:600;margin:0 0 .25rem}p{color:#6b665f;margin:0 0 1.25rem}input{width:100%;box-sizing:border-box;padding:.6rem .75rem;border:1px solid #d3d0ca;border-radius:7px;background:#fff;font:inherit}input:focus{outline:none;border-color:#16946a;box-shadow:0 0 0 3px rgba(22,148,106,.28)}button{margin-top:1rem;width:100%;padding:.6rem;border:0;border-radius:7px;background:#1c1917;color:#fff;font:inherit;font-weight:500;cursor:pointer}@media(prefers-color-scheme:dark){body{background:#111;color:#ecebe8}form{background:#181818;border-color:#2a2a2a}p{color:#94918b}input{background:#111;border-color:#3a3a3a;color:inherit}button{background:#ecebe8;color:#181818}}</style>
-<form method="get" action="/"><h1>Sqizzo</h1><p>Bitte das Zugangstoken eingeben, das beim Start des Servers angezeigt wurde.</p><input name="token" type="password" autofocus placeholder="Zugangstoken" autocomplete="current-password"><button>Anmelden</button></form></html>"#;
+<form method="get" action="/"><h1>Hakobo</h1><p>Bitte das Zugangstoken eingeben, das beim Start des Servers angezeigt wurde.</p><input name="token" type="password" autofocus placeholder="Zugangstoken" autocomplete="current-password"><button>Anmelden</button></form></html>"#;
 
 async fn static_handler(uri: Uri) -> Response {
     let path = uri.path().trim_start_matches('/');

@@ -1,15 +1,15 @@
-# Sqizzo
+# Hakobo
 
 Notizen, Todos und Termine als Outline – lokal gespeichert als lesbares Markdown, automatisch versioniert mit Git und auf Wunsch zwischen Rechnern synchronisiert.
 
-Sqizzo verbindet den Drill-down von Workflowy (in jeden Punkt hineinzoomen) mit Docs-as-Code (jede Seite ist eine `.md`-Datei, jede Änderung eine Git-Version), echten Todos und Terminen, verschachtelten Tags und eigenen Typen mit Feldern – ohne Cloud-Zwang und ohne schwerfälliges Datenmodell.
+Hakobo verbindet den Drill-down von Workflowy (in jeden Punkt hineinzoomen) mit Docs-as-Code (jede Seite ist eine `.md`-Datei, jede Änderung eine Git-Version), echten Todos und Terminen, verschachtelten Tags und eigenen Typen mit Feldern – ohne Cloud-Zwang und ohne schwerfälliges Datenmodell.
 
 ## Das Konzept in fünf Sätzen
 
 1. **Alles ist ein Knoten** in einem Baum: Notizbuch → Seiten (Dateien) → Zeilen → Unterzeilen. Ein Klick auf den Aufzählungspunkt zoomt hinein.
 2. **Jeder Knoten** hat eine Textzeile, optional eine Notiz in Markdown (mit Codeblöcken und Syntax-Hervorhebung) und Kinder.
 3. **Todos und Termine** entstehen aus dem Text heraus: `[ ]` macht ein Todo, `/morgen 14 uhr` einen Termin, `/fällig fr` eine Fälligkeit, `/jeden montag` eine Wiederholung, `/erinnerung 15m` eine Erinnerung.
-4. **Tags** (`#projekte/sqonto/milestone1`) ordnen zu, ohne zu verschieben; ein Tag mit Feldern ist ein **Typ** (Meeting, Projekt, Person, Snippet oder eigene).
+4. **Tags** (`#projekte/sorobo/milestone1`) ordnen zu, ohne zu verschieben; ein Tag mit Feldern ist ein **Typ** (Meeting, Projekt, Person, Snippet oder eigene).
 5. **Die Inbox** nimmt alles Neue auf – per globalem Tastenkürzel, Kommandozeile oder `Strg+N`. Einsortiert (`Strg+M`) oder zugeordnet (`#`, `@`) wird später.
 
 ## Starten und bauen
@@ -17,11 +17,11 @@ Sqizzo verbindet den Drill-down von Workflowy (in jeden Punkt hineinzoomen) mit 
 Voraussetzungen: Node.js 24, Rust (stable), unter Windows die WebView2-Laufzeit (in Windows 11 enthalten). Für die Synchronisation die Git-Kommandozeile; lokale Versionen funktionieren auch ohne.
 
 ```powershell
-build.cmd        # baut Oberfläche und Programm → dist\Sqizzo.exe
-start.cmd        # startet Sqizzo (baut beim ersten Mal)
+build.cmd        # baut Oberfläche und Programm → dist\Hakobo.exe
+start.cmd        # startet Hakobo (baut beim ersten Mal)
 ```
 
-Unter Linux und macOS `./build.sh`. Das Notizbuch liegt standardmäßig in `Dokumente/Sqizzo` (in den Einstellungen änderbar). Sqizzo läuft beim Schließen im Infobereich weiter, damit Schnellerfassung und Erinnerungen funktionieren; „Beenden“ im Tray-Menü beendet es ganz.
+Unter Linux und macOS `./build.sh`. Das Notizbuch liegt standardmäßig in `Dokumente/Hakobo` (in den Einstellungen änderbar). Hakobo läuft beim Schließen im Infobereich weiter, damit Schnellerfassung und Erinnerungen funktionieren; „Beenden“ im Tray-Menü beendet es ganz.
 
 ## Bedienung
 
@@ -82,33 +82,43 @@ Todos im Format von Obsidian Tasks (`- [ ] Aufgabe 📅 2026-10-30`) erscheinen 
 
 ### Typen
 
-Ein Typ ist ein Tag mit Feldern, definiert in `.sqizzo/types.toml` oder über die Typen in der Seitenleiste. Mitgeliefert: **Meeting** (Datum, Teilnehmer, Projekt, Ort), **Projekt** (Status, Ziel, Deadline), **Person** (E-Mail, Telefon, Firma, Rolle), **Snippet** (Sprache, Quelle). Jeder Typ hat eine Tabellenansicht; Felder mit dem Schlüssel `date` erscheinen in der Agenda.
+Ein Typ ist ein Tag mit Feldern, definiert in `.hakobo/types.toml` oder über die Typen in der Seitenleiste. Mitgeliefert: **Meeting** (Datum, Teilnehmer, Projekt, Ort), **Projekt** (Status, Ziel, Deadline), **Person** (E-Mail, Telefon, Firma, Rolle), **Snippet** (Sprache, Quelle). Jeder Typ hat eine Tabellenansicht; Felder mit dem Schlüssel `date` erscheinen in der Agenda.
 
 ## Speicherung, Versionen, Synchronisation
 
-Jede Seite ist eine Markdown-Datei, Unterseiten liegen im gleichnamigen Ordner. Das Format ist in [docs/format.md](docs/format.md) beschrieben und bleibt in jedem Editor, in Obsidian und auf GitHub lesbar. Änderungen von außen (anderer Editor, `git pull`) übernimmt Sqizzo sofort.
+Jede Seite ist eine Markdown-Datei, Unterseiten liegen im gleichnamigen Ordner. Das Format ist in [docs/format.md](docs/format.md) beschrieben und bleibt in jedem Editor, in Obsidian und auf GitHub lesbar. Änderungen von außen (anderer Editor, `git pull`) übernimmt Hakobo sofort.
 
 - **Versionen**: Nach kurzer Ruhepause (Standard 30 s) wird automatisch committet. Für jede Seite gibt es einen Versionsverlauf mit Vergleich und Wiederherstellen.
-- **Synchronisation**: In den Einstellungen ein Remote eintragen (z. B. ein privates GitHub-Repository). Sqizzo holt, führt zusammen und überträgt regelmäßig und kurz nach jeder Änderung. Es nutzt die installierte Git-Kommandozeile mit deinen vorhandenen Anmeldedaten (SSH oder HTTPS).
+- **Synchronisation**: In den Einstellungen ein Remote eintragen (z. B. ein privates GitHub-Repository). Hakobo holt, führt zusammen und überträgt regelmäßig und kurz nach jeder Änderung. Es nutzt die installierte Git-Kommandozeile mit deinen vorhandenen Anmeldedaten (SSH oder HTTPS).
 - **Konflikte**: Markdown-Dateien werden zeilenweise vereinigt (`merge=union`), es entstehen nie Konfliktmarker. Im ungünstigsten Fall stehen beide Fassungen einer Zeile untereinander.
-- **Zweites Gerät**: `sqizzo clone <url>` holt das Notizbuch und trägt es als Standard ein. Alternativ in einem leeren Notizbuch die Remote-URL eintragen.
+- **Zweites Gerät**: `hakobo clone <url>` holt das Notizbuch und trägt es als Standard ein. Alternativ in einem leeren Notizbuch die Remote-URL eintragen.
 
 ## Kommandozeile
 
 ```bash
-sqizzo add "Zahnarzt /morgen 14 uhr /erinnerung 1h"
-sqizzo add "[] Steuererklärung /fällig 31.12. #privat/finanzen"
-sqizzo add --to Projekte "Idee für den Bankimport"
-echo "Notiz aus der Pipeline" | sqizzo add -
-sqizzo agenda --days 14
-sqizzo search "rechnung #kunde is:open"
-sqizzo inbox
-sqizzo sync
-sqizzo clone git@github.com:name/notizen.git
-sqizzo serve --port 8090          # Oberfläche im Browser, z. B. im Heimnetz
+hakobo add "Zahnarzt /morgen 14 uhr /erinnerung 1h"
+hakobo add "[] Steuererklärung /fällig 31.12. #privat/finanzen"
+hakobo add --to Projekte "Idee für den Bankimport"
+echo "Notiz aus der Pipeline" | hakobo add -
+hakobo agenda --days 14
+hakobo search "rechnung #kunde is:open"
+hakobo inbox
+hakobo sync
+hakobo clone git@github.com:name/notizen.git
+hakobo serve --port 8090          # Oberfläche im Browser, z. B. im Heimnetz
 ```
 
 Läuft die App, sprechen die Befehle mit ihr (Fenster und Dateien bleiben synchron); sonst arbeiten sie direkt auf dem Notizbuch und legen eine Version an.
+
+## Umstieg von Sqizzo
+
+Bis Oktober 2026 hieß Hakobo *Sqizzo*. Beim ersten Start übernimmt Hakobo alles Vorhandene:
+
+- Die Einstellungen (`%APPDATA%\sqizzo` bzw. der Einstellungsordner des Systems) werden zu `hakobo`, samt Fensterposition, Erinnerungen und Ansichtseinstellungen. Läuft Sqizzo noch, bricht Hakobo mit einem Hinweis ab – Sqizzo zuerst über den Infobereich beenden.
+- Ein Notizbuch im Standardordner `Dokumente/Sqizzo` wird nach `Dokumente/Hakobo` verschoben. Gelingt das nicht (z. B. weil eine Datei darin geöffnet ist), bleibt es am alten Ort und wird als Ordner eingetragen. Ein selbst gewählter Ordner bleibt unverändert.
+- Im Notizbuch wird `.sqizzo/` zu `.hakobo/`, die `.gitignore` wird angepasst und beides als eigene Version committet. Auf weiteren Geräten sollte ebenfalls Hakobo laufen.
+- Autostart und Benachrichtigungen werden unter dem neuen Namen eingerichtet.
+- Die Kommandozeile heißt jetzt `hakobo`, die Umgebungsvariablen `HAKOBO_…`.
 
 ## Entwicklung
 

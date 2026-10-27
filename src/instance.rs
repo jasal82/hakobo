@@ -1,4 +1,4 @@
-//! Einzelinstanz: Läuft Sqizzo bereits, holt ein erneuter Start das Fenster
+//! Einzelinstanz: Läuft Hakobo bereits, holt ein erneuter Start das Fenster
 //! nach vorne. Die Kommandozeile spricht über die API mit der laufenden App,
 //! damit Fenster und Dateien nie auseinanderlaufen.
 

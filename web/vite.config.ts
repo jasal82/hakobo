@@ -4,9 +4,9 @@ import { writeFileSync } from 'node:fs';
 
 // Im Entwicklungsmodus leitet Vite API-Anfragen an das laufende
 // Rust-Backend weiter (`cargo run -- --no-open --token dev`).
-const backend = process.env.SQIZZO_BACKEND ?? 'http://127.0.0.1:4590';
+const backend = process.env.HAKOBO_BACKEND ?? 'http://127.0.0.1:4590';
 // Token des Entwicklungsservers (`--token dev`), damit die API ohne Anmeldung antwortet.
-const token = process.env.SQIZZO_DEV_TOKEN ?? 'dev';
+const token = process.env.HAKOBO_DEV_TOKEN ?? 'dev';
 
 export default defineConfig({
   plugins: [

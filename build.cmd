@@ -1,12 +1,12 @@
 @echo off
-rem Baut Sqizzo (Oberflaeche und Programm) und legt das Ergebnis unter dist\ ab:
-rem   dist\Sqizzo.exe   App, Server und Kommandozeile in einem Programm
+rem Baut Hakobo (Oberflaeche und Programm) und legt das Ergebnis unter dist\ ab:
+rem   dist\Hakobo.exe   App, Server und Kommandozeile in einem Programm
 setlocal
 cd /d "%~dp0"
 
-if "%SQIZZO_FRONTEND_READY%"=="1" (
+if "%HAKOBO_FRONTEND_READY%"=="1" (
   if not exist web\dist\index.html (
-    echo SQIZZO_FRONTEND_READY verlangt eine bereits gebaute Oberflaeche ^(web\dist\index.html fehlt^).
+    echo HAKOBO_FRONTEND_READY verlangt eine bereits gebaute Oberflaeche ^(web\dist\index.html fehlt^).
     goto :error
   )
   echo [1-2/3] Vorbereitete Oberflaeche verwenden ...
@@ -18,13 +18,13 @@ if "%SQIZZO_FRONTEND_READY%"=="1" (
 )
 
 echo [3/3] Programm bauen (Release) ...
-cargo build --locked --release --bin sqizzo || goto :error
+cargo build --locked --release --bin hakobo || goto :error
 
 if not exist dist mkdir dist
-copy /y target\release\sqizzo.exe dist\Sqizzo.exe >nul || goto :error
+copy /y target\release\hakobo.exe dist\Hakobo.exe >nul || goto :error
 
 echo.
-echo Fertig: dist\Sqizzo.exe  (Start per Doppelklick oder start.cmd)
+echo Fertig: dist\Hakobo.exe  (Start per Doppelklick oder start.cmd)
 exit /b 0
 
 :error

@@ -1,8 +1,8 @@
-//! Sqizzo – Notizen, Todos und Termine als Outline; lokal gespeichert als
+//! Hakobo – Notizen, Todos und Termine als Outline; lokal gespeichert als
 //! Markdown, automatisch versioniert mit Git, optional synchronisiert.
 //!
 //! Ein Programm: Desktop-App (Fenster, Tray, globaler Hotkey), Server für den
-//! Browser (`sqizzo serve`) und Kommandozeile (`sqizzo add`, `agenda`, …).
+//! Browser (`hakobo serve`) und Kommandozeile (`hakobo add`, `agenda`, …).
 
 // Unter Windows als GUI-Programm bauen: kein Konsolenfenster beim Start.
 // Aus einem Terminal aufgerufen, hängt sich das Programm an dessen Konsole.
@@ -17,6 +17,7 @@ mod dates;
 mod desktop;
 mod git;
 mod instance;
+mod legacy;
 mod notify;
 mod proc;
 mod search;
@@ -37,18 +38,18 @@ use crate::app::App;
 use crate::settings::Settings;
 
 #[derive(Parser)]
-#[command(name = "sqizzo", version, about = "Sqizzo – Notizen, Todos und Termine als Outline, versioniert mit Git")]
+#[command(name = "hakobo", version, about = "Hakobo – Notizen, Todos und Termine als Outline, versioniert mit Git")]
 struct Cli {
     #[command(subcommand)]
     command: Option<Command>,
-    /// Ordner des Notizbuchs (Standard: Einstellung bzw. Dokumente/Sqizzo).
-    #[arg(long, global = true, env = "SQIZZO_VAULT")]
+    /// Ordner des Notizbuchs (Standard: Einstellung bzw. Dokumente/Hakobo).
+    #[arg(long, global = true, env = "HAKOBO_VAULT")]
     vault: Option<PathBuf>,
     /// Port für die lokale App (belegt → freier Port).
     #[arg(long, default_value_t = 4519)]
     port: u16,
     /// Kein Fenster öffnen (nur Server, für die Entwicklung).
-    #[arg(long, env = "SQIZZO_NO_OPEN", value_parser = clap::builder::FalseyValueParser::new())]
+    #[arg(long, env = "HAKOBO_NO_OPEN", value_parser = clap::builder::FalseyValueParser::new())]
     no_open: bool,
     /// Im Browser statt im App-Fenster öffnen.
     #[arg(long)]
@@ -60,13 +61,13 @@ struct Cli {
     #[arg(long, hide = true)]
     token: Option<String>,
     /// Eigener Einstellungsordner (Tests, Entwicklung).
-    #[arg(long, global = true, hide = true, env = "SQIZZO_CONFIG_DIR")]
+    #[arg(long, global = true, hide = true, env = "HAKOBO_CONFIG_DIR")]
     config_dir: Option<PathBuf>,
 }
 
 #[derive(Subcommand)]
 enum Command {
-    /// Idee, Todo oder Termin in die Inbox, z. B. `sqizzo add "Zahnarzt /morgen 14 uhr"`.
+    /// Idee, Todo oder Termin in die Inbox, z. B. `hakobo add "Zahnarzt /morgen 14 uhr"`.
     Add {
         /// Statt in die Inbox unter diese Seite (Titel oder Pfad).
         #[arg(long)]
@@ -80,7 +81,7 @@ enum Command {
         #[arg(long, default_value_t = 7)]
         days: i64,
     },
-    /// Fuzzy-Suche, z. B. `sqizzo search "rechnung #kunde is:open"`.
+    /// Fuzzy-Suche, z. B. `hakobo search "rechnung #kunde is:open"`.
     Search {
         #[arg(long, default_value_t = 20)]
         limit: usize,
@@ -98,11 +99,11 @@ enum Command {
     },
     /// Als Server starten, erreichbar per Browser (z. B. im Heimnetz).
     Serve {
-        #[arg(long, default_value = "0.0.0.0", env = "SQIZZO_HOST")]
+        #[arg(long, default_value = "0.0.0.0", env = "HAKOBO_HOST")]
         host: String,
-        #[arg(long, default_value_t = 8090, env = "SQIZZO_PORT")]
+        #[arg(long, default_value_t = 8090, env = "HAKOBO_PORT")]
         port: u16,
-        #[arg(long, env = "SQIZZO_TOKEN")]
+        #[arg(long, env = "HAKOBO_TOKEN")]
         token: Option<String>,
     },
 }
@@ -131,7 +132,7 @@ fn attach_console() -> bool {
 }
 
 fn init_logging(log_file: Option<PathBuf>) {
-    let filter = tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "sqizzo=info,warn".into());
+    let filter = tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "hakobo=info,warn".into());
     let builder = tracing_subscriber::fmt().with_env_filter(filter).with_target(false);
     match log_file.and_then(|p| {
         let _ = std::fs::create_dir_all(p.parent()?);
@@ -145,12 +146,27 @@ fn init_logging(log_file: Option<PathBuf>) {
 fn main() -> Result<()> {
     let has_console = attach_console();
     let cli = Cli::parse();
-    let config = cli.config_dir.clone().filter(|d| !d.as_os_str().is_empty()).unwrap_or_else(settings::config_dir);
-    std::fs::create_dir_all(&config)?;
-    let settings = Settings::load(&config);
-    let vault_dir = cli.vault.clone().or_else(|| settings.vault.clone()).unwrap_or_else(settings::default_vault);
     let is_app = cli.command.is_none();
-    init_logging((!has_console && is_app).then(|| config.join("sqizzo.log")));
+    let config = match cli.config_dir.clone().filter(|d| !d.as_os_str().is_empty()) {
+        Some(dir) => dir,
+        None => {
+            let config = settings::config_dir();
+            if let Err(e) = legacy::take_over_config(&legacy::config_dir(), &config) {
+                if is_app && !has_console {
+                    legacy::alert(&format!("{e:#}"));
+                }
+                return Err(e);
+            }
+            config
+        }
+    };
+    std::fs::create_dir_all(&config)?;
+    let mut settings = Settings::load(&config);
+    if cli.vault.is_none() && cli.config_dir.is_none() {
+        legacy::take_over_vault(&mut settings, &config, &legacy::default_vault(), &settings::default_vault())?;
+    }
+    let vault_dir = cli.vault.clone().or_else(|| settings.vault.clone()).unwrap_or_else(settings::default_vault);
+    init_logging((!has_console && is_app).then(|| config.join("hakobo.log")));
 
     let result = match cli.command {
         None => run_app(&cli, &vault_dir, config, settings),
@@ -189,6 +205,7 @@ fn run_app(cli: &Cli, vault_dir: &Path, config: PathBuf, settings: Settings) -> 
     }
     let token = cli.token.clone().filter(|t| !t.is_empty()).unwrap_or_else(random_token);
     let theme = settings.theme.clone();
+    legacy::take_over_windows(settings.autostart);
     let app = App::open(vault_dir, config.clone(), settings)?;
     notify::init(&config);
     let rt = tokio::runtime::Runtime::new()?;
@@ -203,11 +220,11 @@ fn run_app(cli: &Cli, vault_dir: &Path, config: PathBuf, settings: Settings) -> 
     let cfg = server::ServerConfig { app: app.clone(), local: true, host: "127.0.0.1".into(), port: cli.port, token: Some(token.clone()) };
     let (listener, addr) = rt.block_on(server::bind(&cfg))?;
     let base = format!("http://127.0.0.1:{}", addr.port());
-    tracing::info!("Sqizzo läuft unter {base} (Notizbuch {})", app.vault_dir().display());
+    tracing::info!("Hakobo läuft unter {base} (Notizbuch {})", app.vault_dir().display());
     app.spawn_background(rt.handle());
 
     if cli.no_open {
-        println!("Sqizzo läuft unter {base}/?token={token} – Strg+C zum Beenden.");
+        println!("Hakobo läuft unter {base}/?token={token} – Strg+C zum Beenden.");
         return rt.block_on(serve_until_ctrl_c(cfg, listener, app));
     }
     instance::register(&config, addr.port(), &token, &app.vault_dir());
@@ -279,7 +296,7 @@ fn serve(vault_dir: &Path, config: PathBuf, settings: Settings, host: &str, port
     app.spawn_background(rt.handle());
     let shown = if host == "0.0.0.0" { format!("http://<rechnername>:{}", addr.port()) } else { format!("http://{addr}") };
     println!();
-    println!("  Sqizzo {} läuft als Server", env!("CARGO_PKG_VERSION"));
+    println!("  Hakobo {} läuft als Server", env!("CARGO_PKG_VERSION"));
     println!("  Notizbuch:    {}", app.vault_dir().display());
     println!("  Adresse:      {shown}");
     println!("  Direktlink:   {shown}/?token={token}");
@@ -499,7 +516,7 @@ fn print_sync(s: &serde_json::Map<String, Value>) -> Result<()> {
 
 fn cmd_clone(url: &str, vault_dir: &Path, config: &Path, mut settings: Settings, explicit: bool) -> Result<()> {
     if instance::find(config).is_some() {
-        bail!("Bitte Sqizzo zuerst beenden.");
+        bail!("Bitte Hakobo zuerst beenden.");
     }
     let target = if explicit || !vault_dir.exists() || std::fs::read_dir(vault_dir)?.next().is_none() {
         vault_dir.to_path_buf()

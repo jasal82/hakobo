@@ -26,7 +26,7 @@ fn opens_empty_vault_with_virtual_inbox_and_types() {
     let inbox = v.get(&v.inbox).unwrap();
     assert_eq!(inbox.text, "Inbox");
     assert!(!inbox.page.as_ref().unwrap().has_file);
-    assert!(tmp.path().join(".sqizzo/types.toml").exists());
+    assert!(tmp.path().join(".hakobo/types.toml").exists());
     assert!(v.types.types.contains_key("meeting"));
     assert_eq!(v.get(ROOT).unwrap().children, vec![v.inbox.clone()]);
 }

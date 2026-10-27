@@ -12,8 +12,8 @@ use serde::Serialize;
 
 use crate::proc::NoWindow;
 
-const GITATTRIBUTES: &str = "# Sqizzo: gleichzeitige Änderungen ohne Konfliktmarker zusammenführen\n*.md merge=union\n* text=auto\n";
-const GITIGNORE: &str = "# Sqizzo\n.*.sqizzo-tmp\n.obsidian/workspace*.json\n.trash/\n.DS_Store\nThumbs.db\ndesktop.ini\n";
+const GITATTRIBUTES: &str = "# Hakobo: gleichzeitige Änderungen ohne Konfliktmarker zusammenführen\n*.md merge=union\n* text=auto\n";
+const GITIGNORE: &str = "# Hakobo\n.*.hakobo-tmp\n.obsidian/workspace*.json\n.trash/\n.DS_Store\nThumbs.db\ndesktop.ini\n";
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -54,7 +54,7 @@ fn signature(repo: &Repository) -> Signature<'static> {
         return sig.to_owned();
     }
     let host = hostname();
-    Signature::now(&format!("Sqizzo ({host})"), "sqizzo@localhost").expect("Signatur")
+    Signature::now(&format!("Hakobo ({host})"), "hakobo@localhost").expect("Signatur")
 }
 
 /// Legt Repository, `.gitattributes` und `.gitignore` an (falls nötig).
@@ -67,13 +67,18 @@ pub fn ensure_repo(dir: &Path) -> Result<()> {
     }
     let attrs = dir.join(".gitattributes");
     match std::fs::read_to_string(&attrs) {
+        // Notizbücher aus der Zeit, als Hakobo noch Sqizzo hieß
+        Ok(text) if text.contains("# Sqizzo:") => std::fs::write(&attrs, text.replace("# Sqizzo:", "# Hakobo:"))?,
         Ok(text) if text.contains("merge=union") => {}
         Ok(text) => std::fs::write(&attrs, format!("{}\n{GITATTRIBUTES}", text.trim_end()))?,
         Err(_) => std::fs::write(&attrs, GITATTRIBUTES)?,
     }
     let ignore = dir.join(".gitignore");
     match std::fs::read_to_string(&ignore) {
-        Ok(text) if text.contains(".sqizzo-tmp") => {}
+        Ok(text) if text.contains(".hakobo-tmp") => {}
+        Ok(text) if text.contains(".sqizzo-tmp") => {
+            std::fs::write(&ignore, text.replace("# Sqizzo", "# Hakobo").replace(".*.sqizzo-tmp", ".*.hakobo-tmp"))?
+        }
         Ok(text) => std::fs::write(&ignore, format!("{}\n{GITIGNORE}", text.trim_end()))?,
         Err(_) => std::fs::write(&ignore, GITIGNORE)?,
     }
@@ -399,7 +404,7 @@ fn resolve_conflicts(dir: &Path) -> Result<Vec<String>> {
 
 /// Zeilenweise Vereinigung über `git merge-file --union` (Rückfall: beide Fassungen).
 fn union_merge(base: &[u8], ours: &[u8], theirs: &[u8]) -> Vec<u8> {
-    let tmp = std::env::temp_dir().join(format!("sqizzo-merge-{}", rand::random::<u32>()));
+    let tmp = std::env::temp_dir().join(format!("hakobo-merge-{}", rand::random::<u32>()));
     let result = (|| -> Result<Vec<u8>> {
         std::fs::create_dir_all(&tmp)?;
         let (o, b, t) = (tmp.join("ours"), tmp.join("base"), tmp.join("theirs"));
@@ -491,6 +496,23 @@ mod tests {
     }
 
     #[test]
+    fn git_files_from_sqizzo_get_the_new_name() {
+        let tmp = tempfile::tempdir().unwrap();
+        ensure_repo(tmp.path()).unwrap();
+        let old_ignore = "# Sqizzo\r\n.*.sqizzo-tmp\r\n.trash/\r\neigene-regel/\r\n";
+        std::fs::write(tmp.path().join(".gitignore"), old_ignore).unwrap();
+        std::fs::write(tmp.path().join(".gitattributes"), "# Sqizzo: Zusammenführen\n*.md merge=union\n").unwrap();
+        ensure_repo(tmp.path()).unwrap();
+        let ignore = std::fs::read_to_string(tmp.path().join(".gitignore")).unwrap();
+        assert_eq!(ignore, "# Hakobo\r\n.*.hakobo-tmp\r\n.trash/\r\neigene-regel/\r\n");
+        let attrs = std::fs::read_to_string(tmp.path().join(".gitattributes")).unwrap();
+        assert_eq!(attrs, "# Hakobo: Zusammenführen\n*.md merge=union\n");
+        // Ein zweiter Start ändert nichts mehr.
+        ensure_repo(tmp.path()).unwrap();
+        assert_eq!(std::fs::read_to_string(tmp.path().join(".gitignore")).unwrap(), ignore);
+    }
+
+    #[test]
     fn sync_two_clones_with_union_merge() {
         if !cli_available() {
             return;
@@ -579,25 +601,25 @@ mod tests {
         git(&remote, &["init", "--bare", "-b", "main"]);
         let url = remote.to_string_lossy().replace('\\', "/");
         let a = tmp.path().join("a");
-        std::fs::create_dir_all(a.join(".sqizzo")).unwrap();
+        std::fs::create_dir_all(a.join(".hakobo")).unwrap();
         ensure_repo(&a).unwrap();
         setup_identity(&a);
-        std::fs::write(a.join(".sqizzo/types.toml"), "x = 1\n").unwrap();
+        std::fs::write(a.join(".hakobo/types.toml"), "x = 1\n").unwrap();
         commit_all(&a, "1").unwrap();
         set_remote(&a, Some(&url)).unwrap();
         push(&a).unwrap();
         let b = tmp.path().join("b");
         clone(&url, &b).unwrap();
         setup_identity(&b);
-        std::fs::write(a.join(".sqizzo/types.toml"), "x = 2\n").unwrap();
+        std::fs::write(a.join(".hakobo/types.toml"), "x = 2\n").unwrap();
         commit_all(&a, "2").unwrap();
         push(&a).unwrap();
-        std::fs::write(b.join(".sqizzo/types.toml"), "x = 3\n").unwrap();
+        std::fs::write(b.join(".hakobo/types.toml"), "x = 3\n").unwrap();
         commit_all(&b, "3").unwrap();
         fetch(&b).unwrap();
         let r = integrate(&b).unwrap();
-        assert_eq!(r.resolved, vec![".sqizzo/types.toml".to_string()]);
-        assert_eq!(std::fs::read_to_string(b.join(".sqizzo/types.toml")).unwrap().replace("\r\n", "\n"), "x = 3\n");
+        assert_eq!(r.resolved, vec![".hakobo/types.toml".to_string()]);
+        assert_eq!(std::fs::read_to_string(b.join(".hakobo/types.toml")).unwrap().replace("\r\n", "\n"), "x = 3\n");
         assert_eq!(open(&b).unwrap().state(), git2::RepositoryState::Clean);
     }
 }

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
-    /// Ordner des Notizbuchs (Standard: Dokumente/Sqizzo).
+    /// Ordner des Notizbuchs (Standard: Dokumente/Hakobo).
     pub vault: Option<PathBuf>,
     /// Globales Tastenkürzel für die Schnellerfassung, z. B. `Ctrl+Shift+Space`.
     pub hotkey: String,
@@ -81,15 +81,15 @@ impl Settings {
 /// Standardordner des Notizbuchs.
 pub fn default_vault() -> PathBuf {
     let base = dirs::document_dir().or_else(dirs::home_dir).unwrap_or_else(|| PathBuf::from("."));
-    base.join("Sqizzo")
+    base.join("Hakobo")
 }
 
-/// Ordner der Einstellungen (`SQIZZO_CONFIG_DIR` für Tests).
+/// Ordner der Einstellungen (`HAKOBO_CONFIG_DIR` für Tests).
 pub fn config_dir() -> PathBuf {
-    if let Some(dir) = std::env::var_os("SQIZZO_CONFIG_DIR").filter(|d| !d.is_empty()) {
+    if let Some(dir) = std::env::var_os("HAKOBO_CONFIG_DIR").filter(|d| !d.is_empty()) {
         return PathBuf::from(dir);
     }
-    dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("sqizzo")
+    dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("hakobo")
 }
 
 /// Autostart mit Windows (Registry-Schlüssel `Run` des Benutzers).
@@ -100,9 +100,9 @@ pub fn set_autostart(enabled: bool) -> Result<()> {
     let status = if enabled {
         let exe = std::env::current_exe()?;
         let value = format!("\"{}\" --tray", exe.display());
-        std::process::Command::new("reg").args(["add", key, "/v", "Sqizzo", "/t", "REG_SZ", "/d", &value, "/f"]).no_window().output()?
+        std::process::Command::new("reg").args(["add", key, "/v", "Hakobo", "/t", "REG_SZ", "/d", &value, "/f"]).no_window().output()?
     } else {
-        std::process::Command::new("reg").args(["delete", key, "/v", "Sqizzo", "/f"]).no_window().output()?
+        std::process::Command::new("reg").args(["delete", key, "/v", "Hakobo", "/f"]).no_window().output()?
     };
     if !status.status.success() && enabled {
         anyhow::bail!("Autostart konnte nicht eingerichtet werden: {}", String::from_utf8_lossy(&status.stderr).trim());

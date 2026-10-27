@@ -103,9 +103,13 @@ fn commit_message(paths: &BTreeSet<String>) -> String {
 
 impl App {
     pub fn open(vault_dir: &Path, config_dir: PathBuf, settings: Settings) -> Result<Arc<App>> {
+        // Ein Notizbuch aus der Zeit, als Hakobo noch Sqizzo hieß: Vault::open benennt `.sqizzo/` um.
+        let from_sqizzo = vault_dir.join(".sqizzo").is_dir() && !vault_dir.join(".hakobo").exists();
         let vault = Vault::open(vault_dir)?;
         if let Err(e) = git::ensure_repo(&vault.dir) {
             tracing::warn!("Versionierung nicht verfügbar: {e:#}");
+        } else if from_sqizzo && let Err(e) = git::commit_all(&vault.dir, "Sqizzo heißt jetzt Hakobo") {
+            tracing::warn!("{e:#}");
         }
         let (events, _) = broadcast::channel(512);
         let remote = git::remote_url(&vault.dir);
@@ -448,7 +452,7 @@ impl App {
                         for p in ev.paths {
                             let Ok(rel) = p.strip_prefix(&dir) else { continue };
                             let rel = rel.to_string_lossy().replace('\\', "/");
-                            if rel.is_empty() || rel.starts_with(".git/") || rel == ".git" || rel.ends_with(".sqizzo-tmp") {
+                            if rel.is_empty() || rel.starts_with(".git/") || rel == ".git" || rel.ends_with(".hakobo-tmp") {
                                 continue;
                             }
                             pending.insert(rel);

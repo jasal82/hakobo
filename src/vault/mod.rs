@@ -279,7 +279,7 @@ pub fn write_atomic(path: &Path, data: &[u8]) -> Result<()> {
         std::fs::create_dir_all(dir)?;
     }
     let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
-    let tmp = path.with_file_name(format!(".{name}.sqizzo-tmp"));
+    let tmp = path.with_file_name(format!(".{name}.hakobo-tmp"));
     std::fs::write(&tmp, data).with_context(|| format!("{} konnte nicht geschrieben werden", path.display()))?;
     std::fs::rename(&tmp, path).with_context(|| format!("{} konnte nicht ersetzt werden", path.display()))?;
     Ok(())
@@ -389,6 +389,9 @@ impl Vault {
     pub fn open(dir: &Path) -> Result<Vault> {
         std::fs::create_dir_all(dir).with_context(|| format!("Ordner {} konnte nicht angelegt werden", dir.display()))?;
         let dir = dunce(dir);
+        if let Err(e) = crate::legacy::take_over_vault_dir(&dir) {
+            tracing::warn!("{e:#}");
+        }
         let (types, types_error) = match TypesFile::load(&dir) {
             Ok(t) if t.types.is_empty() && !dir.join(types::FILE).exists() => {
                 let d = TypesFile::defaults();

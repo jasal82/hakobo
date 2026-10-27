@@ -29,9 +29,9 @@ function describe(c: CommitInfo, path: string): { title: string; detail?: string
   return { title: s || 'Version' };
 }
 
-/** Gerät/Autor: „Sqizzo (RECHNER)“ → „RECHNER“. */
+/** Gerät/Autor: „Hakobo (RECHNER)“ → „RECHNER“; ältere Versionen stammen von „Sqizzo (RECHNER)“. */
 function author(c: CommitInfo): string {
-  const m = /^Sqizzo \((.+)\)$/.exec(c.author);
+  const m = /^(?:Hakobo|Sqizzo) \((.+)\)$/.exec(c.author);
   return m ? m[1] : c.author;
 }
 

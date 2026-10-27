@@ -12,7 +12,7 @@ import type { Node, TagHit } from '../lib/types';
 import { allPages, NodeIcon, nodeTitle, PathLine, pathTitles, pushList, readList, useCandidates, useListKeys } from './search/common';
 import { Dialog, Highlighted, useScrollActive } from './ui';
 
-const MOVE_TARGETS = 'sqizzo-move-targets';
+const MOVE_TARGETS = 'hakobo-move-targets';
 
 /** Darf `ids` unter `target` verschoben werden? */
 function validTarget(nodes: Record<string, Node>, ids: string[], target: string): boolean {

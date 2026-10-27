@@ -82,7 +82,7 @@ export function App() {
     // Schriftgröße: gespeicherten Wert übernehmen, auch nach Änderungen in anderen Fenstern.
     void loadZoom();
     const onSettings = () => void loadZoom();
-    window.addEventListener('sqizzo-settings', onSettings);
+    window.addEventListener('hakobo-settings', onSettings);
     // Strg+Mausrad vergrößert/verkleinert.
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey || e.deltaY === 0) return;
@@ -91,7 +91,7 @@ export function App() {
     };
     window.addEventListener('wheel', onWheel, { passive: false });
     return () => {
-      window.removeEventListener('sqizzo-settings', onSettings);
+      window.removeEventListener('hakobo-settings', onSettings);
       window.removeEventListener('wheel', onWheel);
     };
   }, []);
@@ -154,7 +154,7 @@ export function App() {
   if (loadError) {
     return (
       <div className="boot">
-        <h2>Sqizzo konnte das Notizbuch nicht laden</h2>
+        <h2>Hakobo konnte das Notizbuch nicht laden</h2>
         <p className="subtle">{loadError}</p>
         <button className="btn" onClick={() => location.reload()}>
           Erneut versuchen

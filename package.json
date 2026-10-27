@@ -1,5 +1,5 @@
 {
-  "name": "sqizzo-workspace",
+  "name": "hakobo-workspace",
   "private": true,
   "workspaces": ["web"],
   "scripts": {

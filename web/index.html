@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>Sqizzo</title>
+    <title>Hakobo</title>
     <script>
       (function () {
         try {
-          var t = localStorage.getItem('sqizzo-theme') || 'system';
+          var t = localStorage.getItem('hakobo-theme') || 'system';
           var dark = t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
           document.documentElement.dataset.theme = dark ? 'dark' : 'light';
           if (location.pathname.indexOf('/capture') === 0) document.documentElement.classList.add('is-capture');

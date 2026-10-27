@@ -9,7 +9,7 @@ export function TitleBar() {
   const [max, setMax] = useState(false);
   const sidebar = useStore((s) => s.sidebar);
   useEffect(() => {
-    window.__sqizzoWindow = (s) => setMax(s.maximized);
+    window.__hakoboWindow = (s) => setMax(s.maximized);
     ipc('ready');
   }, []);
   const isWin = desktop?.platform === 'windows';
@@ -30,7 +30,7 @@ export function TitleBar() {
             const v = !sidebar;
             store().set({ sidebar: v });
             try {
-              localStorage.setItem('sqizzo-sidebar', v ? '1' : '0');
+              localStorage.setItem('hakobo-sidebar', v ? '1' : '0');
             } catch {
               /* egal */
             }
@@ -45,7 +45,7 @@ export function TitleBar() {
         <button className="btn btn-ghost btn-icon btn-sm" onClick={() => history.forward()} title="Vor">
           <ArrowRight size={15} />
         </button>
-        <span className="tb-brand">Sqizzo</span>
+        <span className="tb-brand">Hakobo</span>
       </div>
       <button className="tb-search" onClick={() => store().set({ searchOpen: true })}>
         <Search size={14} />

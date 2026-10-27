@@ -1,4 +1,4 @@
-//! Typen: Tags mit Feldern, definiert in `.sqizzo/types.toml`.
+//! Typen: Tags mit Feldern, definiert in `.hakobo/types.toml`.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -48,9 +48,9 @@ pub struct TypesFile {
     pub types: BTreeMap<String, TypeDef>,
 }
 
-pub const FILE: &str = ".sqizzo/types.toml";
+pub const FILE: &str = ".hakobo/types.toml";
 
-const HEADER: &str = "# Sqizzo-Typen: Ein Tag wird zum Typ, wenn er hier Felder bekommt.\n# Feldarten: text, number, date, select (options), ref (target, multiple), url, email, phone, checkbox\n\n";
+const HEADER: &str = "# Hakobo-Typen: Ein Tag wird zum Typ, wenn er hier Felder bekommt.\n# Feldarten: text, number, date, select (options), ref (target, multiple), url, email, phone, checkbox\n\n";
 
 impl TypesFile {
     pub fn load(vault: &Path) -> Result<TypesFile> {

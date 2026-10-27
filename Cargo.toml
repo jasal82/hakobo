@@ -1,13 +1,13 @@
 [package]
-name = "sqizzo"
+name = "hakobo"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.92"
-description = "Sqizzo – lokale Notizen als Outline mit Todos, Terminen und automatischer Git-Versionierung"
-default-run = "sqizzo"
+description = "Hakobo – lokale Notizen als Outline mit Todos, Terminen und automatischer Git-Versionierung"
+default-run = "hakobo"
 
 [[bin]]
-name = "sqizzo"
+name = "hakobo"
 path = "src/main.rs"
 
 [dependencies]
@@ -52,7 +52,7 @@ tray-icon = "0.26"
 global-hotkey = "0.9"
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_System_Console", "Win32_Foundation"] }
+windows-sys = { version = "0.61", features = ["Win32_System_Console", "Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
 tauri-winrt-notification = "0.8"
 
 [target.'cfg(not(windows))'.dependencies]

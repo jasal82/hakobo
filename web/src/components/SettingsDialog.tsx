@@ -19,7 +19,7 @@ const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
   { id: 'reminders', label: 'Erinnerungen', icon: <Bell size={15} /> },
   { id: 'sync', label: 'Versionen & Sync', icon: <GitBranch size={15} /> },
   { id: 'vault', label: 'Notizbuch', icon: <Notebook size={15} /> },
-  { id: 'about', label: 'Über Sqizzo', icon: <Info size={15} /> },
+  { id: 'about', label: 'Über Hakobo', icon: <Info size={15} /> },
 ];
 
 const DEFAULT_HOTKEY = 'Ctrl+Shift+Space';
@@ -69,7 +69,7 @@ function Notice({ kind = 'info', children }: { kind?: 'info' | 'warning' | 'erro
 }
 
 export function SettingsDialog() {
-  const [tab, setTab] = useState<Tab>(() => (sessionStorage.getItem('sqizzo-settings-tab') as Tab) || 'general');
+  const [tab, setTab] = useState<Tab>(() => (sessionStorage.getItem('hakobo-settings-tab') as Tab) || 'general');
   const [settings, setSettings] = useState<Settings | null>(null);
   const [vaultPath, setVaultPath] = useState('');
   const [defaultVault, setDefaultVault] = useState('');
@@ -100,13 +100,13 @@ export function SettingsDialog() {
     const onChange = () => {
       if (timer.current === undefined) void load();
     };
-    window.addEventListener('sqizzo-settings', onChange);
-    return () => window.removeEventListener('sqizzo-settings', onChange);
+    window.addEventListener('hakobo-settings', onChange);
+    return () => window.removeEventListener('hakobo-settings', onChange);
   }, [load]);
 
   useEffect(() => {
     try {
-      sessionStorage.setItem('sqizzo-settings-tab', tab);
+      sessionStorage.setItem('hakobo-settings-tab', tab);
     } catch {
       /* egal */
     }
@@ -283,7 +283,7 @@ function GeneralTab({ settings, update }: TabProps) {
       <Row label="Beim Schließen im Infobereich weiterlaufen" hint="Nötig, damit Tastenkürzel und Erinnerungen auch bei geschlossenem Fenster funktionieren.">
         <Toggle checked={settings.closeToTray} onChange={(v) => update({ closeToTray: v })} />
       </Row>
-      <Row label="Mit Windows starten" hint="Sqizzo startet unsichtbar im Infobereich, damit die Schnellerfassung sofort bereitsteht.">
+      <Row label="Mit Windows starten" hint="Hakobo startet unsichtbar im Infobereich, damit die Schnellerfassung sofort bereitsteht.">
         <Toggle checked={settings.autostart} onChange={(v) => update({ autostart: v }, true)} />
       </Row>
     </section>
@@ -327,7 +327,7 @@ function CaptureTab({ settings, setHotkey }: { settings: Settings; setHotkey: (h
         </div>
       </div>
       <h3>Von der Kommandozeile</h3>
-      <pre className="set-code">sqizzo add "Zahnarzt /morgen 14 uhr"{'\n'}sqizzo add --to Projekte "Idee für später"</pre>
+      <pre className="set-code">hakobo add "Zahnarzt /morgen 14 uhr"{'\n'}hakobo add --to Projekte "Idee für später"</pre>
       <p className="set-text subtle">Läuft die App, landet der Eintrag sofort in der geöffneten Inbox; sonst schreibt der Befehl direkt ins Notizbuch.</p>
     </section>
   );
@@ -369,7 +369,7 @@ function RemindersTab({ settings, update }: TabProps) {
       <p className="set-text">
         Eine eigene Erinnerung setzt du mit <code>/erinnerung 15m</code>, <code>/erinnerung 1h</code> oder <code>/erinnerung morgen 8 uhr</code>. Sie steht dann als Feld <code>remind::</code> im Eintrag und ersetzt den Standard.
       </p>
-      <p className="set-text subtle">Erinnerungen erscheinen als Windows-Benachrichtigung, solange Sqizzo läuft (auch im Infobereich). Ein Klick öffnet den Eintrag.</p>
+      <p className="set-text subtle">Erinnerungen erscheinen als Windows-Benachrichtigung, solange Hakobo läuft (auch im Infobereich). Ein Klick öffnet den Eintrag.</p>
     </section>
   );
 }
@@ -451,7 +451,7 @@ function SyncTab({ settings, update }: TabProps) {
           </div>
         </div>
       </div>
-      <Row label="Version anlegen nach" hint="So lange wartet Sqizzo nach der letzten Änderung. Spätestens nach 5 Minuten wird immer gesichert.">
+      <Row label="Version anlegen nach" hint="So lange wartet Hakobo nach der letzten Änderung. Spätestens nach 5 Minuten wird immer gesichert.">
         <select className="select set-select" value={settings.commitDelaySecs} onChange={(e) => update({ commitDelaySecs: Number(e.target.value) })}>
           {delays.some(([v]) => v === settings.commitDelaySecs) ? null : <option value={settings.commitDelaySecs}>{settings.commitDelaySecs} Sekunden</option>}
           {delays.map(([v, l]) => (
@@ -536,7 +536,7 @@ function SyncTab({ settings, update }: TabProps) {
           )}
         </div>
         <span className="field-hint">
-          Sqizzo nutzt die installierte Git-Kommandozeile mit deinen vorhandenen Anmeldedaten (SSH-Schlüssel oder Git Credential Manager für HTTPS). Beim ersten Verbinden werden die Notizen von hier und vom Remote zusammengeführt.
+          Hakobo nutzt die installierte Git-Kommandozeile mit deinen vorhandenen Anmeldedaten (SSH-Schlüssel oder Git Credential Manager für HTTPS). Beim ersten Verbinden werden die Notizen von hier und vom Remote zusammengeführt.
         </span>
       </label>
       {err && (
@@ -563,7 +563,7 @@ function SyncTab({ settings, update }: TabProps) {
       <p className="set-text">
         Auf dem anderen Rechner entweder in einem neuen, leeren Notizbuch hier dieselbe Remote-Adresse eintragen – oder im Terminal:
       </p>
-      <pre className="set-code">sqizzo clone git@github.com:name/notizen.git</pre>
+      <pre className="set-code">hakobo clone git@github.com:name/notizen.git</pre>
       <p className="set-text subtle">Gleichzeitige Änderungen an derselben Seite werden zeilenweise zusammengeführt, ohne Konfliktmarker. Im ungünstigsten Fall stehen beide Fassungen einer Zeile untereinander.</p>
     </section>
   );
@@ -609,7 +609,7 @@ function VaultTab({ settings, vaultPath, defaultVault, restart, update }: TabPro
           Leer lassen für den Standardordner <span className="mono">{defaultVault}</span>. Ein neuer Ordner wird beim nächsten Start angelegt; er wird automatisch versioniert.
         </span>
       </label>
-      {restart && <Notice kind="info">Wirksam nach einem Neustart von Sqizzo.</Notice>}
+      {restart && <Notice kind="info">Wirksam nach einem Neustart von Hakobo.</Notice>}
     </section>
   );
 }
@@ -631,13 +631,13 @@ const SHORTCUTS: [string, string][] = [
 ];
 
 const CLI: [string, string][] = [
-  ['sqizzo add "…"', 'In die Inbox erfassen (mit /Befehlen)'],
-  ['sqizzo agenda', 'Termine und fällige Todos'],
-  ['sqizzo search "…"', 'Fuzzy-Suche mit Filtern'],
-  ['sqizzo inbox', 'Inbox anzeigen'],
-  ['sqizzo sync', 'Jetzt synchronisieren'],
-  ['sqizzo clone <url>', 'Notizbuch auf ein weiteres Gerät holen'],
-  ['sqizzo serve', 'Als Server für den Browser starten'],
+  ['hakobo add "…"', 'In die Inbox erfassen (mit /Befehlen)'],
+  ['hakobo agenda', 'Termine und fällige Todos'],
+  ['hakobo search "…"', 'Fuzzy-Suche mit Filtern'],
+  ['hakobo inbox', 'Inbox anzeigen'],
+  ['hakobo sync', 'Jetzt synchronisieren'],
+  ['hakobo clone <url>', 'Notizbuch auf ein weiteres Gerät holen'],
+  ['hakobo serve', 'Als Server für den Browser starten'],
 ];
 
 function AboutTab() {
@@ -650,7 +650,7 @@ function AboutTab() {
       <div className="set-about">
         <img src="/favicon.svg" alt="" width={44} height={44} />
         <div>
-          <div className="set-about-name">Sqizzo {info?.version ?? ''}</div>
+          <div className="set-about-name">Hakobo {info?.version ?? ''}</div>
           <div className="set-row-hint">Notizen, Todos und Termine als Outline – lokal als Markdown, versioniert mit Git.</div>
         </div>
       </div>

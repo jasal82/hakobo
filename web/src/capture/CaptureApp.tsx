@@ -1,6 +1,6 @@
 // Erfassungsfenster für den globalen Hotkey: rahmenlos, transparent, oben
 // eine Karte mit dem Eingabefeld. Die Desktop-Hülle ruft bei jedem Öffnen
-// `window.__sqizzoCapture.show()` auf.
+// `window.__hakoboCapture.show()` auf.
 
 import { loadZoom } from '../lib/zoom';
 import { useEffect, useRef, useState } from 'react';
@@ -19,7 +19,7 @@ export function CaptureApp() {
     // Notizbuch laden (Typen und Knoten für Vorschläge und Linktexte).
     void store().init();
     void loadZoom();
-    window.__sqizzoCapture = {
+    window.__hakoboCapture = {
       show: () => {
         window.clearTimeout(timer.current);
         setSuccess(null);
@@ -29,7 +29,7 @@ export function CaptureApp() {
       },
     };
     return () => {
-      window.__sqizzoCapture = undefined;
+      window.__hakoboCapture = undefined;
     };
   }, []);
 

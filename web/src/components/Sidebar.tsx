@@ -29,12 +29,12 @@ function PageItem({ id, depth }: { id: string; depth: number }) {
   const node = useStore((s) => s.nodes[id]);
   const active = useStore((s) => s.route.view === 'node' && s.route.id === id);
   const hasSub = useStore((s) => s.nodes[id]?.children.some((c) => s.nodes[c]?.kind === 'page'));
-  const [open, setOpen] = useState(() => localStorage.getItem(`sqizzo-tree-${id}`) === '1');
+  const [open, setOpen] = useState(() => localStorage.getItem(`hakobo-tree-${id}`) === '1');
   if (!node) return null;
   const toggle = () => {
     setOpen(!open);
     try {
-      localStorage.setItem(`sqizzo-tree-${id}`, open ? '0' : '1');
+      localStorage.setItem(`hakobo-tree-${id}`, open ? '0' : '1');
     } catch {
       /* egal */
     }
@@ -117,7 +117,7 @@ function TagItem({ t, depth }: { t: TagNode; depth: number }) {
 }
 
 function Section({ title, children, action, id }: { title: string; children: React.ReactNode; action?: React.ReactNode; id: string }) {
-  const [open, setOpen] = useState(() => localStorage.getItem(`sqizzo-sec-${id}`) !== '0');
+  const [open, setOpen] = useState(() => localStorage.getItem(`hakobo-sec-${id}`) !== '0');
   return (
     <section className="nav-section">
       <div className="nav-section-head">
@@ -125,7 +125,7 @@ function Section({ title, children, action, id }: { title: string; children: Rea
           onClick={() => {
             setOpen(!open);
             try {
-              localStorage.setItem(`sqizzo-sec-${id}`, open ? '0' : '1');
+              localStorage.setItem(`hakobo-sec-${id}`, open ? '0' : '1');
             } catch {
               /* egal */
             }
