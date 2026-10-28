@@ -4,7 +4,7 @@
 
 [package]
 name = "hakobo"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.92"
 description = "Hakobo – lokale Notizen als Outline mit Todos, Terminen und automatischer Git-Versionierung"
