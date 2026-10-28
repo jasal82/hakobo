@@ -46,6 +46,25 @@ Write-Host "  ok  Hakobo.exe trägt Version $exeVersion"
 & node "$root/scripts/smoke-test.mjs" "$installDir/Hakobo.exe"
 if ($LASTEXITCODE -ne 0) { throw 'Rauchtest des installierten Programms fehlgeschlagen.' }
 
+# Kommandozeile: Das Setup trägt den Programmordner in den PATH des Benutzers ein (Aufgabe
+# „addtopath“, standardmäßig an), damit `hakobo` in neuen Terminals gefunden wird.
+# Verglichen wird der eindeutige Ordnername: Der Pfad davor kann in der kurzen 8.3-Form stehen.
+$installLeaf = Split-Path $installDir -Leaf
+function In-UserPath {
+    # Reine Textvergleiche: Fremde PATH-Einträge können Zeichen enthalten, an denen Split-Path scheitert.
+    @([Environment]::GetEnvironmentVariable('Path', 'User') -split ';' | Where-Object { $_.TrimEnd('\').Split('\')[-1] -eq $installLeaf }).Count -gt 0
+}
+if (!(In-UserPath)) { throw 'Das Setup hat den Programmordner nicht in den PATH eingetragen.' }
+$savedPath = $env:Path
+try {
+    $env:Path = [Environment]::GetEnvironmentVariable('Path', 'User') + ';' + [Environment]::GetEnvironmentVariable('Path', 'Machine')
+    $found = (Get-Command hakobo -ErrorAction Stop).Source
+    if ((Split-Path $found -Leaf) -ne 'Hakobo.exe' -or (Split-Path (Split-Path $found -Parent) -Leaf) -ne $installLeaf) {
+        throw "``hakobo`` findet $found statt des installierten Programms."
+    }
+} finally { $env:Path = $savedPath }
+Write-Host '  ok  Befehl hakobo über den PATH des Benutzers'
+
 Install 'Update über bestehende Installation'
 
 # Selbst-Update (src/update.rs): Das von Hakobo gestartete Setup startet das Programm wieder, das
@@ -100,5 +119,6 @@ if ($exitCode -ne 0) { throw "Deinstallation fehlgeschlagen (Exitcode $exitCode)
 for ($i = 0; $i -lt 20 -and (Test-Path -LiteralPath "$installDir/Hakobo.exe"); $i++) { Start-Sleep -Milliseconds 500 }
 if (Test-Path -LiteralPath "$installDir/Hakobo.exe") { throw 'Die Deinstallation hat Hakobo.exe nicht entfernt.' }
 if (Test-Path -LiteralPath $uninstallKey) { throw 'Die Deinstallation hat den Eintrag in „Apps“ nicht entfernt.' }
+if (In-UserPath) { throw 'Die Deinstallation hat den Programmordner nicht aus dem PATH entfernt.' }
 Write-Host '  ok  Deinstallation'
 Write-Host 'Installer-Test bestanden.'

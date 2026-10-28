@@ -16,7 +16,7 @@ Hakobo verbindet den Drill-down von Workflowy (in jeden Punkt hineinzoomen) mit 
 
 Fertige Pakete gibt es unter [Releases](https://github.com/jasal82/hakobo/releases):
 
-- **Windows**: `Hakobo-X.Y.Z-windows-x64-setup.exe` (Installation pro Benutzer, ohne Administratorrechte) oder `…-portable.zip` zum Entpacken an einen beliebigen Ort.
+- **Windows**: `Hakobo-X.Y.Z-windows-x64-setup.exe` (Installation pro Benutzer, ohne Administratorrechte, macht den Befehl `hakobo` im Terminal verfügbar) oder `…-portable.zip` zum Entpacken an einen beliebigen Ort.
 - **macOS** (Apple Silicon) und **Linux** (x64): `Hakobo-X.Y.Z-macos-arm64.tar.gz` bzw. `…-linux-x64.tar.gz`. Unter Linux öffnet sich die Oberfläche im Browser.
 
 Das Notizbuch liegt standardmäßig in `Dokumente/Hakobo` (in den Einstellungen änderbar). Hakobo läuft beim Schließen im Infobereich weiter, damit Schnellerfassung und Erinnerungen funktionieren; „Beenden“ im Tray-Menü beendet es ganz.
@@ -126,7 +126,15 @@ hakobo clone git@github.com:name/notizen.git
 hakobo serve --port 8090          # Oberfläche im Browser, z. B. im Heimnetz
 ```
 
-Läuft die App, sprechen die Befehle mit ihr (Fenster und Dateien bleiben synchron); sonst arbeiten sie direkt auf dem Notizbuch und legen eine Version an.
+Läuft die App, sprechen die Befehle mit ihr (Fenster und Dateien bleiben synchron); sonst arbeiten sie direkt auf dem Notizbuch und legen eine Version an. `hakobo` ohne Befehl startet die App.
+
+Damit `hakobo` im Terminal verfügbar ist:
+
+- **Windows-Setup**: trägt den Programmordner in den `PATH` des Benutzers ein (abwählbar, wird beim Deinstallieren wieder entfernt). Danach ein neues Terminal öffnen.
+- **Windows portabel**: den entpackten Ordner selbst in den `PATH` aufnehmen.
+- **macOS und Linux**: `hakobo` in einen Ordner im `PATH` legen, z. B. `~/.local/bin`.
+
+Unter Windows ist `Hakobo.exe` ein Programm ohne Konsolenfenster. Aus einem Terminal gestartet, schreibt es seine Ausgabe trotzdem dorthin, aber das Terminal wartet nicht auf das Ende – die Ausgabe erscheint dann nach der nächsten Eingabeaufforderung. In Skripten deshalb `hakobo … | Out-Default` (PowerShell) bzw. `start /wait hakobo …` (cmd) verwenden; dann stimmt auch der Exitcode.
 
 ## Umstieg von Sqizzo
 

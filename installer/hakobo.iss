@@ -38,13 +38,20 @@ WizardStyle=modern
 ; Hakobo läuft meist im Infobereich weiter: vor dem Ersetzen beenden lassen.
 CloseApplications=yes
 RestartApplications=no
+; Der Programmordner kommt in den PATH des Benutzers: laufende Programme benachrichtigen.
+ChangesEnvironment=yes
 
 [Languages]
 Name: "german"; MessagesFile: "compiler:Languages\German.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
+[CustomMessages]
+german.AddToPath=Befehl „hakobo“ im Terminal verfügbar machen (PATH)
+english.AddToPath=Make the hakobo command available in terminals (PATH)
+
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "addtopath"; Description: "{cm:AddToPath}"
 
 [Files]
 ; Ausdrückliche Liste: Notizen liegen im Notizbuch (Dokumente\Hakobo), nie im Programmordner.
@@ -70,4 +77,67 @@ Filename: "{app}\Hakobo.exe"; Flags: nowait; Check: Relaunch
 function Relaunch: Boolean;
 begin
   Result := ExpandConstant('{param:relaunch|}') <> '';
+end;
+
+// PATH des Benutzers (HKCU\Environment): Einträge durch „;“ getrennt, Groß-/Kleinschreibung egal.
+// Der Wert bleibt REG_EXPAND_SZ, damit Einträge wie %USERPROFILE%\bin erhalten bleiben.
+const
+  EnvKey = 'Environment';
+
+function UserPath: string;
+begin
+  if not RegQueryStringValue(HKCU, EnvKey, 'Path', Result) then
+    Result := '';
+end;
+
+function PathPos(Paths, Dir: string): Integer;
+begin
+  Result := Pos(';' + Uppercase(Dir) + ';', ';' + Uppercase(Paths) + ';');
+end;
+
+procedure AddToPath(Dir: string);
+var
+  Paths: string;
+begin
+  Paths := UserPath;
+  if PathPos(Paths, Dir) > 0 then
+    exit;
+  if (Paths <> '') and (Paths[Length(Paths)] <> ';') then
+    Paths := Paths + ';';
+  RegWriteExpandStringValue(HKCU, EnvKey, 'Path', Paths + Dir);
+end;
+
+procedure RemoveFromPath(Dir: string);
+var
+  Paths: string;
+  P: Integer;
+begin
+  Paths := UserPath;
+  P := PathPos(Paths, Dir);
+  if P = 0 then
+    exit;
+  // In „;Pfade;“ steht der Eintrag samt führendem „;“ an Stelle P.
+  Paths := ';' + Paths + ';';
+  Delete(Paths, P, Length(Dir) + 1);
+  // Übrig sind die anderen Einträge zwischen „;“ – oder nichts, wenn Hakobo der einzige war.
+  if Length(Paths) <= 2 then
+    Paths := ''
+  else
+    Paths := Copy(Paths, 2, Length(Paths) - 2);
+  RegWriteExpandStringValue(HKCU, EnvKey, 'Path', Paths);
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+    if WizardIsTaskSelected('addtopath') then
+      AddToPath(ExpandConstant('{app}'))
+    else
+      RemoveFromPath(ExpandConstant('{app}'));
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usPostUninstall then
+    RemoveFromPath(ExpandConstant('{app}'));
 end;
