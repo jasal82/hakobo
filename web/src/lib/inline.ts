@@ -198,8 +198,8 @@ export function headingLevel(text: string): [number, string] {
   return m ? [m[1].length, m[2]] : [0, text];
 }
 
-/** Klartext (für Titel, Linktexte, Suche). */
-export function plainText(text: string, withTags = true): string {
+/** Klartext (für Titel, Linktexte, Suche). `linkText` ersetzt den Linktext (Standard: Alias oder Ziel). */
+export function plainText(text: string, withTags = true, linkText?: (s: Extract<Segment, { t: 'link' }>) => string): string {
   const parts: string[] = [];
   const walk = (segs: Segment[]) => {
     for (const s of segs) {
@@ -212,7 +212,7 @@ export function plainText(text: string, withTags = true): string {
           if (withTags) parts.push(s.raw);
           break;
         case 'link':
-          parts.push(s.alias || s.target || '');
+          parts.push(linkText ? linkText(s) : s.alias || s.target || '');
           break;
         case 'url':
           parts.push(s.label);

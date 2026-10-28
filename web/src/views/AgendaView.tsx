@@ -8,6 +8,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { CalendarClock, ChevronLeft, ChevronRight, CircleAlert, Plus, Repeat } from 'lucide-react';
 import { api, type CapturePreview } from '../lib/api';
 import { addDays, dayLabel, isoDate, longDayLabel, parseIsoDate, startOfDay } from '../lib/dates';
+import { readableText } from '../lib/links';
 import { store, useStore } from '../lib/store';
 import type { Agenda, AgendaEntry, Node } from '../lib/types';
 import { RichText, openTag } from '../components/RichText';
@@ -342,8 +343,17 @@ function layoutDay(entries: AgendaEntry[]): Placed[] {
   return out;
 }
 
+/** Tooltip-Text eines Termins: wie angezeigt, ohne Link-Syntax. */
+function useTooltip(e: AgendaEntry): string {
+  return useStore((s) => {
+    const n = s.nodes[e.id];
+    return n ? readableText(s.nodes, n, n.text) : e.text;
+  });
+}
+
 function WeekEvent({ p, today }: { p: Placed; today: Date }) {
   const node = useStore((s) => s.nodes[p.e.id]) as Node | undefined;
+  const tooltip = useTooltip(p.e);
   const types = useStore((s) => s.types);
   const color = nodeColor(node, types) ?? 'var(--accent)';
   const short = p.end - p.start <= 35;
@@ -358,7 +368,7 @@ function WeekEvent({ p, today }: { p: Placed; today: Date }) {
         width: `calc(${100 / p.cols}% - 4px)`,
         ['--ev-color' as string]: color,
       }}
-      title={`${hhmm(p.e.when.startTime)}${p.e.when.endTime ? `–${hhmm(p.e.when.endTime)}` : ''} ${node ? node.text : p.e.text}`}
+      title={`${hhmm(p.e.when.startTime)}${p.e.when.endTime ? `–${hhmm(p.e.when.endTime)}` : ''} ${tooltip}`}
       onClick={(ev) => {
         ev.stopPropagation();
         if ((ev.target as HTMLElement).closest('a, button')) return;
@@ -380,13 +390,14 @@ function WeekEvent({ p, today }: { p: Placed; today: Date }) {
 
 function AllDayChip({ e }: { e: AgendaEntry }) {
   const node = useStore((s) => s.nodes[e.id]) as Node | undefined;
+  const tooltip = useTooltip(e);
   const types = useStore((s) => s.types);
   const color = nodeColor(node, types);
   return (
     <div
       className={`wk-allday-item${isClosed(e) ? ' is-closed' : ''}${e.overdue ? ' is-overdue' : ''}${e.kind === 'todo' ? ' is-todo' : ''}`}
       style={color ? { ['--ev-color' as string]: color } : undefined}
-      title={node?.text ?? e.text}
+      title={tooltip}
       onClick={(ev) => {
         if ((ev.target as HTMLElement).closest('a, button')) return;
         store().reveal(e.id, { edit: true });

@@ -76,6 +76,14 @@ export function isPerson(n: Node | undefined): boolean {
   return !!n?.tags.includes('person');
 }
 
+/** Klartext wie angezeigt (Linktitel, Personen mit „@“), etwa für Tooltips. */
+export function readableText(nodes: Record<string, Node>, source: Node | undefined, text: string): string {
+  return plainText(text, true, (s) => {
+    const id = resolveKey(nodes, source, s.key);
+    return (isPerson(id ? nodes[id] : undefined) ? '@' : '') + linkLabel(nodes, id, s.alias, s.target);
+  });
+}
+
 /** Linktext für einen Knoten (Seiten direkt, Knoten über den Server, der die ID festschreibt). */
 export async function linkTextFor(nodes: Record<string, Node>, id: string, getLink: (id: string) => Promise<{ link: string }>): Promise<string> {
   const n = nodes[id];
