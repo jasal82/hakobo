@@ -119,6 +119,11 @@ if ($exitCode -ne 0) { throw "Deinstallation fehlgeschlagen (Exitcode $exitCode)
 for ($i = 0; $i -lt 20 -and (Test-Path -LiteralPath "$installDir/Hakobo.exe"); $i++) { Start-Sleep -Milliseconds 500 }
 if (Test-Path -LiteralPath "$installDir/Hakobo.exe") { throw 'Die Deinstallation hat Hakobo.exe nicht entfernt.' }
 if (Test-Path -LiteralPath $uninstallKey) { throw 'Die Deinstallation hat den Eintrag in „Apps“ nicht entfernt.' }
-if (In-UserPath) { throw 'Die Deinstallation hat den Programmordner nicht aus dem PATH entfernt.' }
+# Das Deinstallationsprogramm arbeitet als Kopie im Temp-Ordner weiter; kurz warten.
+for ($i = 0; $i -lt 20 -and (In-UserPath); $i++) { Start-Sleep -Milliseconds 500 }
+if (In-UserPath) {
+    Write-Host "PATH des Benutzers: $([Environment]::GetEnvironmentVariable('Path', 'User'))"
+    throw 'Die Deinstallation hat den Programmordner nicht aus dem PATH entfernt.'
+}
 Write-Host '  ok  Deinstallation'
 Write-Host 'Installer-Test bestanden.'

@@ -136,8 +136,9 @@ begin
       RemoveFromPath(ExpandConstant('{app}'));
 end;
 
+// Gleich zu Beginn der Deinstallation: Ist Hakobo.exe weg, steht auch der PATH-Eintrag nicht mehr.
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
-  if CurUninstallStep = usPostUninstall then
+  if CurUninstallStep = usUninstall then
     RemoveFromPath(ExpandConstant('{app}'));
 end;
