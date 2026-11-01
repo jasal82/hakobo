@@ -18,6 +18,7 @@ import { indentFor } from '../../lib/code';
 import { plainText } from '../../lib/inline';
 import { linkTextFor } from '../../lib/links';
 import { ancestors, store } from '../../lib/store';
+import { followLinkAt } from '../RichText';
 import { detectTrigger } from './suggest';
 
 /** Codeblock (```…```) an einer Position: Bereich und Sprache. */
@@ -178,6 +179,16 @@ export function BodyEditor({ id, onClose }: { id: string; onClose: (focusTitle: 
             key: 'Shift-Enter',
             run: () => {
               closeRef.current(true);
+              return true;
+            },
+          },
+          {
+            // Link, Tag oder Webadresse am Cursor öffnen (wie im Titel).
+            key: 'Mod-o',
+            run: (v) => {
+              const head = v.state.selection.main.head;
+              const line = v.state.doc.lineAt(head);
+              if (!followLinkAt(store().nodes[id], line.text, head - line.from)) store().toast('Hier gibt es keinen Link zum Öffnen', 'info');
               return true;
             },
           },

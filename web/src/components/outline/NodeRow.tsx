@@ -5,7 +5,7 @@
 // Eine Zeile der Gliederung (rekursiv mit Kindern).
 
 import { memo, useState, type DragEvent, type MouseEvent } from 'react';
-import { ChevronRight, CircleCheck, CircleDot, Copy, FileOutput, FileText, FolderInput, History, MoreHorizontal, Plus, StickyNote, Tag, Trash2, ZoomIn } from 'lucide-react';
+import { ChevronRight, CircleCheck, CircleDot, CodeXml, Copy, FileOutput, FileText, FolderInput, History, MoreHorizontal, Plus, StickyNote, Tag, Trash2, ZoomIn } from 'lucide-react';
 import { createSubpage, cycleTask, deleteNode, moveInto, selectRange, toggleSelected, toggleTodo, toPage } from '../../lib/outline';
 import { isAncestor, isCollapsed, store, typesOf, useStore } from '../../lib/store';
 import type { Node } from '../../lib/types';
@@ -108,6 +108,8 @@ export const NodeRow = memo(function NodeRow({ id, root, inbox }: { id: string; 
   const openMenu = (e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // Schon per Tastatur (Umschalt+F10) geöffnet – das nachfolgende Kontextmenü-Ereignis ignorieren.
+    if (menu && e.type === 'contextmenu') return;
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setMenu({ left: r.left, top: r.top, bottom: r.bottom });
   };
@@ -183,7 +185,7 @@ export const NodeRow = memo(function NodeRow({ id, root, inbox }: { id: string; 
               <Tag size={14} /> Zuordnen
             </button>
           )}
-          <button className="btn btn-ghost btn-icon btn-sm" onMouseDown={(e) => e.preventDefault()} onClick={openMenu} aria-label="Aktionen">
+          <button className="btn btn-ghost btn-icon btn-sm" onMouseDown={(e) => e.preventDefault()} onClick={openMenu} aria-label="Aktionen" title="Aktionen (Umschalt+F10)" aria-haspopup="menu">
             <MoreHorizontal size={15} />
           </button>
         </span>
@@ -224,6 +226,7 @@ export function RowMenu({ node, root, anchor, onClose }: { node: Node; root: str
   const item = (icon: React.ReactNode, label: string, run: () => void, hint?: string, danger?: boolean) => (
     <button
       className={`menu-item${danger ? ' is-danger' : ''}`}
+      role="menuitem"
       onClick={() => {
         onClose();
         run();
@@ -234,10 +237,15 @@ export function RowMenu({ node, root, anchor, onClose }: { node: Node; root: str
       {hint && <span className="menu-hint">{hint}</span>}
     </button>
   );
+  const code = isCodeNode(node);
+  // Knöpfe im Kopf des Codeblocks (Sprache, Kopieren) – auch per Tastatur über dieses Menü.
+  const codeButton = (cls: string) => document.querySelector<HTMLButtonElement>(`.row[data-id="${CSS.escape(id)}"] ${cls}`);
   return (
     <Popover anchor={anchor} onClose={onClose} width={240}>
-      <div className="menu">
+      <div className="menu" role="menu">
         {item(<ZoomIn size={15} />, node.kind === 'page' ? 'Seite öffnen' : 'Hineinzoomen', () => s.zoom(id), 'Alt+→')}
+        {code && item(<CodeXml size={15} />, 'Sprache …', () => codeButton('.code-lang')?.click())}
+        {code && item(<Copy size={15} />, 'Code kopieren', () => codeButton('.code-copy')?.click())}
         {node.kind === 'item' && item(<StickyNote size={15} />, node.body ? 'Notiz bearbeiten' : 'Notiz hinzufügen', () => s.set({ bodyEdit: id }), 'Umschalt+↵')}
         {node.kind === 'item' && item(node.task ? <CircleCheck size={15} /> : <CircleDot size={15} />, node.task ? (node.task === 'done' ? 'Wieder öffnen' : 'Erledigen') : 'Als Todo', () => (node.task ? cycleTask(id) : toggleTodo(id)), 'Strg+↵')}
         {node.task && node.kind === 'item' && item(<CircleDot size={15} />, 'Kein Todo mehr', () => toggleTodo(id))}

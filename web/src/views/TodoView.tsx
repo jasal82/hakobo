@@ -13,6 +13,7 @@ import { ancestors, field, pageOf, store, useStore } from '../lib/store';
 import type { Node } from '../lib/types';
 import { RichText } from '../components/RichText';
 import { MetaChips, TaskBox } from '../components/outline/fields';
+import { moveFocus } from '../components/ui';
 
 type Group = { key: string; title: string; tone?: 'danger' | 'warn' | 'accent'; items: Node[] };
 
@@ -115,7 +116,13 @@ export function TodoView() {
   };
 
   return (
-    <div className="view todo-view">
+    <div
+      className="view todo-view"
+      onKeyDown={(e) => {
+        // ↑ ↓ zwischen den Todos.
+        if ((e.target as HTMLElement).matches('.todo-main')) moveFocus(e, e.currentTarget, '.todo-main');
+      }}
+    >
       <div className="view-inner">
         <div className="view-head">
           <ListTodo size={22} className="faint" />

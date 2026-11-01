@@ -436,13 +436,14 @@ function RefInput({ def, node, current, onSave }: { def: FieldDef; node: Node; c
   );
 }
 
-export function TaskBox({ node, size = 16 }: { node: Node; size?: number }) {
+export function TaskBox({ node, size = 16, tabIndex }: { node: Node; size?: number; tabIndex?: number }) {
   const t = node.task;
   if (!t) return null;
   return (
     <button
       className={`taskbox is-${t}`}
       style={{ width: size, height: size }}
+      tabIndex={tabIndex}
       onMouseDown={(e) => e.preventDefault()}
       onClick={(e) => {
         e.stopPropagation();

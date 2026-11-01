@@ -5,7 +5,7 @@
 // Gezoomte Ansicht eines Knotens (Seite, Eintrag oder Notizbuch-Wurzel).
 
 import { isCodeNode } from '../lib/code';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { ChevronRight, FilePlus2, FileText, FolderInput, History, Inbox as InboxIcon, Link2, MoreHorizontal, Plus, StickyNote } from 'lucide-react';
 import { useState } from 'react';
 import { plainText } from '../lib/inline';
@@ -18,19 +18,19 @@ import { BodyEditor } from '../components/outline/BodyEditor';
 import { FieldsForm, TaskBox } from '../components/outline/fields';
 import { Children, NodeRow, RowMenu } from '../components/outline/NodeRow';
 import { TitleEditor } from '../components/outline/TitleEditor';
-import type { Anchor } from '../components/ui';
+import { RouteLink, type Anchor } from '../components/ui';
 
 export function Breadcrumbs({ id }: { id: string }) {
   const nodes = useStore((s) => s.nodes);
   const root = useStore((s) => s.root);
   const trail = ancestors(nodes, id);
   return (
-    <nav className="crumbs">
-      <a onClick={() => store().navigate({ view: 'node', id: root })}>Notizbuch</a>
+    <nav className="crumbs" aria-label="Pfad">
+      <RouteLink route={{ view: 'node', id: root }}>Notizbuch</RouteLink>
       {trail.map((a) => (
         <span key={a.id} className="crumb">
           <ChevronRight size={13} />
-          <a onClick={() => store().navigate({ view: 'node', id: a.id })}>{a.kind === 'item' ? plainText(a.text, false) || 'Unbenannt' : a.text}</a>
+          <RouteLink route={{ view: 'node', id: a.id }}>{a.kind === 'item' ? plainText(a.text, false) || 'Unbenannt' : a.text}</RouteLink>
         </span>
       ))}
     </nav>
@@ -136,6 +136,7 @@ export function NodeView({ id, inbox }: { id: string; inbox?: boolean }) {
   const bodyEdit = useStore((s) => s.bodyEdit === id);
   const types = useStore((s) => s.types);
   const [menu, setMenu] = useState<Anchor | null>(null);
+  const menuBtn = useRef<HTMLButtonElement>(null);
   useSelectionKeys(id);
 
   if (!node) {
@@ -159,6 +160,11 @@ export function NodeView({ id, inbox }: { id: string; inbox?: boolean }) {
     if (isRoot) createSubpage(root);
     else createChild(id, items.length);
   };
+  const editableTitle = id !== store().inbox;
+  const openMenu = () => {
+    const r = menuBtn.current?.getBoundingClientRect();
+    if (r) setMenu({ left: r.left - 200, top: r.top, bottom: r.bottom });
+  };
 
   return (
     <div
@@ -173,30 +179,36 @@ export function NodeView({ id, inbox }: { id: string; inbox?: boolean }) {
           {isRoot ? (
             <h1 className="zoom-title-static">Notizbuch</h1>
           ) : (
-            <div className="zoom-title-row">
+            <div
+              className="zoom-title-row"
+              onContextMenu={(e) => {
+                // Auch Umschalt+F10 und die Menütaste im Titel.
+                e.preventDefault();
+                openMenu();
+              }}
+            >
               {node.kind === 'item' && node.task && <TaskBox node={node} size={20} />}
               {inbox && <InboxIcon className="zoom-icon" size={22} />}
               {node.kind === 'page' && !inbox && <FileText className="zoom-icon" size={22} />}
               <div
                 className="zoom-title"
+                // Per Tab erreichbar; der Fokus öffnet den Titel zum Bearbeiten.
+                tabIndex={editableTitle && !focused ? 0 : undefined}
+                aria-label={editableTitle && !focused ? 'Titel bearbeiten' : undefined}
+                onFocus={(e) => {
+                  if (e.target === e.currentTarget && e.currentTarget.matches(':focus-visible') && editableTitle && !focused) store().setFocus({ id, caret: 'end' });
+                }}
                 onClick={(e) => {
-                  if (!(e.target as HTMLElement).closest('a') && id !== store().inbox) store().setFocus({ id, caret: 'end' });
+                  if (!(e.target as HTMLElement).closest('a') && editableTitle) store().setFocus({ id, caret: 'end' });
                 }}
               >
-                {focused && id !== store().inbox ? (
+                {focused && editableTitle ? (
                   <TitleEditor id={id} root={id} className="is-zoom" placeholder={node.kind === 'page' ? 'Seitentitel' : 'Ohne Titel'} />
                 ) : (
                   <h1>{node.text ? <RichText text={node.text} source={node} /> : <span className="faint">{node.kind === 'page' ? 'Unbenannt' : isCodeNode(node) ? 'Codeblock' : 'Ohne Titel'}</span>}</h1>
                 )}
               </div>
-              <button
-                className="btn btn-ghost btn-icon"
-                onClick={(e) => {
-                  const r = e.currentTarget.getBoundingClientRect();
-                  setMenu({ left: r.left - 200, top: r.top, bottom: r.bottom });
-                }}
-                aria-label="Aktionen"
-              >
+              <button ref={menuBtn} className="btn btn-ghost btn-icon" onClick={openMenu} aria-label="Aktionen" title="Aktionen (Umschalt+F10)" aria-haspopup="menu">
                 <MoreHorizontal size={17} />
               </button>
             </div>
@@ -207,8 +219,10 @@ export function NodeView({ id, inbox }: { id: string; inbox?: boolean }) {
               {bodyEdit ? (
                 <BodyEditor
                   id={id}
-                  onClose={() => {
+                  onClose={(focusTitle) => {
                     store().set({ bodyEdit: null });
+                    // Esc bzw. Umschalt+Enter: zurück in den Titel.
+                    if (focusTitle && editableTitle) store().setFocus({ id, caret: 'end' });
                   }}
                 />
               ) : (

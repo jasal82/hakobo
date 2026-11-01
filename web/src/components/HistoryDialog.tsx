@@ -10,7 +10,7 @@ import { api } from '../lib/api';
 import { formatDateTime, relativeTime } from '../lib/dates';
 import { store, useStore } from '../lib/store';
 import type { CommitInfo } from '../lib/types';
-import { Dialog } from './ui';
+import { Dialog, moveFocus } from './ui';
 import { diffBlocks, diffLines, diffStats, type DiffLine } from './settings/diff';
 
 const CURRENT = '__current__';
@@ -114,6 +114,13 @@ export function HistoryDialog() {
     };
   }, [id]);
 
+  // Nach dem Laden: Fokus in die Liste, damit ↑ ↓ sofort Versionen wählen.
+  const loaded = !!commits?.length;
+  useEffect(() => {
+    const a = document.activeElement;
+    if (loaded && (!a || a === document.body || a.matches('.dialog'))) document.querySelector<HTMLElement>('.history-dialog .hist-item.is-active')?.focus();
+  }, [loaded]);
+
   useEffect(() => {
     if (!id || !selected) return;
     let alive = true;
@@ -182,7 +189,16 @@ export function HistoryDialog() {
         </div>
       ) : commits ? (
         <div className="hist-layout">
-          <div className="hist-list" role="listbox" aria-label="Versionen">
+          <div
+            className="hist-list"
+            role="listbox"
+            aria-label="Versionen"
+            onKeyDown={(e) => {
+              // ↑ ↓ wählen die vorige/nächste Version.
+              if (!(e.target as HTMLElement).matches('.hist-item') || !moveFocus(e, e.currentTarget, '.hist-item')) return;
+              (document.activeElement as HTMLElement | null)?.click();
+            }}
+          >
             <button className={`hist-item${selected === CURRENT ? ' is-active' : ''}`} onClick={() => setSelected(CURRENT)}>
               <span className="hist-item-title">Aktueller Stand</span>
               <span className="hist-item-meta">so wie die Seite jetzt ist</span>

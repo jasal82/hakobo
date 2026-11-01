@@ -206,6 +206,15 @@ export function CaptureBox({ variant, onDone, onCancel, resetKey = 0 }: { varian
       openPicker();
       return true;
     }
+    // Rücktaste am Anfang entfernt den zuletzt übernommenen Befehl (Chip).
+    if (e.key === 'Backspace' && !mod && accepted.length) {
+      const [from, to] = ref.current?.getSelection() ?? [1, 1];
+      if (from === 0 && to === 0) {
+        e.preventDefault();
+        setAccepted((l) => l.slice(0, -1));
+        return true;
+      }
+    }
     if (e.key === 'Escape') {
       e.preventDefault();
       onCancel();

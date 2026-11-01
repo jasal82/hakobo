@@ -51,7 +51,7 @@ class LinkChip extends WidgetType {
     s.className = `cm-chip ${this.cls}`;
     s.textContent = this.label;
     if (this.id) s.dataset.id = this.id;
-    s.title = this.id ? 'Strg+Klick öffnet das Ziel' : 'Ziel gibt es (noch) nicht';
+    s.title = this.id ? 'Strg+Klick oder Strg+O öffnet das Ziel' : 'Ziel gibt es (noch) nicht';
     return s;
   }
   ignoreEvent() {

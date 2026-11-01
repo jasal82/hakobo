@@ -1009,3 +1009,14 @@ button.ff-value:hover {
 .md pre:hover::after {
   opacity: 0;
 }
+
+/* Tastatur: Knöpfe, die sonst erst beim Überfahren erscheinen */
+.row-line:focus-within > .row-actions,
+.code-block:focus-within .code-head,
+.md pre:focus-within .md-copy {
+  opacity: 1;
+}
+.zoom-title:focus-visible {
+  outline-offset: 4px;
+  border-radius: var(--radius-sm);
+}

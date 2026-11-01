@@ -1,0 +1,116 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
+// Übersicht der Tastenkürzel (F1 und „Über Hakobo“ in den Einstellungen).
+
+import { store } from '../lib/store';
+import { Dialog } from './ui';
+
+/** Gruppen aus [Tasten, Beschreibung]; Alternativen sind mit „ / “ getrennt. */
+export const SHORTCUT_GROUPS: { title: string; keys: [string, string][] }[] = [
+  {
+    title: 'Überall',
+    keys: [
+      ['Strg+K', 'Suchen'],
+      ['Strg+N', 'Schnell erfassen'],
+      ['Strg+1 … Strg+5', 'Inbox, Agenda, Todos, Woche, Notizbuch'],
+      ['F6 / Umschalt+F6', 'Zwischen Titelleiste, Seitenleiste und Inhalt wechseln'],
+      ['Alt+← / Alt+→', 'Zurück / Vor (außerhalb des Editors)'],
+      ['Strg+\\', 'Seitenleiste ein- oder ausblenden'],
+      ['Strg+,', 'Einstellungen'],
+      ['Strg++ / Strg+- / Strg+0', 'Schrift größer / kleiner / zurücksetzen'],
+      ['Esc', 'Dialog, Menü oder Bearbeitung schließen'],
+      ['F1', 'Diese Übersicht'],
+    ],
+  },
+  {
+    title: 'Gliederung',
+    keys: [
+      ['↑ / ↓', 'Vorheriger / nächster Eintrag (auch: zurück in die Gliederung)'],
+      ['Enter', 'Neuer Eintrag / Zeile teilen'],
+      ['Tab / Umschalt+Tab', 'Einrücken / Ausrücken'],
+      ['Strg+Enter', 'Todo erledigen (oder zum Todo machen)'],
+      ['Strg+Umschalt+Enter', 'Todo an / aus'],
+      ['Umschalt+Enter', 'Notiz bearbeiten (Esc oder Umschalt+Enter zurück)'],
+      ['Alt+→ / Alt+Enter / Strg+.', 'Hineinzoomen'],
+      ['Alt+←', 'Herauszoomen'],
+      ['Strg+↑ / Strg+↓', 'Zuklappen / aufklappen'],
+      ['Alt+Umschalt+↑ / Alt+Umschalt+↓', 'Eintrag verschieben'],
+      ['Umschalt+↑ / Umschalt+↓', 'Am Zeilenrand: Einträge auswählen'],
+      ['Strg+M', 'Einsortieren'],
+      ['Strg+O', 'Link, Tag oder Webadresse am Cursor öffnen'],
+      ['Strg+L', 'Link auf den Eintrag kopieren'],
+      ['Strg+B / Strg+I', 'Fett / kursiv'],
+      ['Strg+Umschalt+Entf', 'Eintrag löschen'],
+      ['Umschalt+F10 / Menütaste', 'Aktionsmenü des Eintrags'],
+      ['Strg+Z / Strg+Y', 'Rückgängig / Wiederholen'],
+      ['/', 'Befehle: Termin, Fällig, Wiederholung, Erinnerung …'],
+      ['@ / # / [[', 'Person erwähnen, Tag, Link'],
+    ],
+  },
+  {
+    title: 'Ausgewählte Einträge',
+    keys: [
+      ['Umschalt+↑ / Umschalt+↓', 'Auswahl erweitern'],
+      ['Tab / Umschalt+Tab', 'Einrücken / Ausrücken'],
+      ['Strg+Enter', 'Erledigen'],
+      ['Strg+M', 'Einsortieren'],
+      ['Strg+C / Strg+X', 'Kopieren / Ausschneiden (als Markdown)'],
+      ['Entf', 'Löschen'],
+      ['Enter / Esc', 'Bearbeiten / Auswahl aufheben'],
+    ],
+  },
+  {
+    title: 'Listen, Menüs und Tabellen',
+    keys: [
+      ['↑ / ↓ / Pos1 / Ende', 'Durch Seitenleiste, Listen und Menüs gehen'],
+      ['→ / ←', 'Seitenleiste: Unterseiten und Tags auf- und zuklappen'],
+      ['Enter / Leertaste', 'Öffnen oder auslösen'],
+      ['Pfeiltasten', 'Typ-Tabelle: Zelle wählen'],
+      ['Enter / F2', 'Typ-Tabelle: Zelle bearbeiten oder Eintrag öffnen'],
+      ['Tab', 'Woche: Tageskopf wählen, Enter legt einen Termin an'],
+    ],
+  },
+];
+
+export function ShortcutTable() {
+  return (
+    <>
+      {SHORTCUT_GROUPS.map((g) => (
+        <section key={g.title} className="shortcut-group">
+          <h4>{g.title}</h4>
+          <table className="set-table">
+            <tbody>
+              {g.keys.map(([k, d]) => (
+                <tr key={k}>
+                  <td>
+                    {k.split(' / ').map((part, i) => (
+                      <span key={i}>
+                        {i > 0 && ' / '}
+                        <kbd>{part}</kbd>
+                      </span>
+                    ))}
+                  </td>
+                  <td>{d}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      ))}
+    </>
+  );
+}
+
+export function ShortcutsDialog() {
+  const close = () => store().set({ shortcutsOpen: false });
+  return (
+    <Dialog title="Tastenkürzel" onClose={close} width={640} className="shortcuts-dialog">
+      {/* Fokussierbar, damit die Pfeiltasten die Liste rollen. */}
+      <div className="shortcuts-body" tabIndex={0} aria-label="Liste der Tastenkürzel">
+        <ShortcutTable />
+      </div>
+    </Dialog>
+  );
+}

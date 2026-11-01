@@ -18,6 +18,32 @@ export function openExternal(href: string) {
   window.open(href, '_blank', 'noopener');
 }
 
+/**
+ * Öffnet den Link, Tag oder die Webadresse am Cursor (sonst den nächstgelegenen in `text`).
+ * Liefert `false`, wenn der Text nichts davon enthält.
+ */
+export function followLinkAt(source: Node | undefined, text: string, caret: number): boolean {
+  const found: Extract<Segment, { t: 'link' | 'tag' | 'url' }>[] = [];
+  const walk = (segs: Segment[]) => {
+    for (const s of segs) {
+      if (s.t === 'link' || s.t === 'tag' || s.t === 'url') found.push(s);
+      else if ('children' in s) walk(s.children);
+    }
+  };
+  walk(tokenize(text));
+  if (!found.length) return false;
+  const dist = (s: Segment) => (caret < s.s ? s.s - caret : caret > s.e ? caret - s.e : 0);
+  const best = found.reduce((a, b) => (dist(b) < dist(a) ? b : a));
+  if (best.t === 'tag') openTag(best.tag);
+  else if (best.t === 'url') openExternal(best.href);
+  else {
+    const id = resolveKey(store().nodes, source, best.key);
+    if (id) store().reveal(id, { edit: store().nodes[id]?.kind === 'item' });
+    else store().toast(`„${best.target}“ gibt es (noch) nicht`, 'error');
+  }
+  return true;
+}
+
 /** Link-Segment: abonniert nur sein eigenes Ziel (Titel, Typ). */
 function LinkSeg({ s, source }: { s: Extract<Segment, { t: 'link' }>; source: Node | undefined }) {
   const info = useStore((st) => {

@@ -4,7 +4,7 @@
 
 // Seitenleiste: Inbox, Agenda, Seitenbaum, Tag-Baum, Typen, Sync-Status.
 
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useState, type KeyboardEvent } from 'react';
 import { CalendarDays, CalendarRange, ChevronRight, Cloud, CloudOff, FileText, Hash, Inbox, ListTodo, Notebook, Plus, RefreshCw, Search, Settings, Table2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { relativeTime } from '../lib/dates';
@@ -13,6 +13,40 @@ import { store, useStore } from '../lib/store';
 import type { Node } from '../lib/types';
 import { pendingVersion, useUpdate } from '../lib/update';
 import { openUpdates } from './UpdateProgress';
+import { moveFocus, RouteLink } from './ui';
+
+/** Elemente der Seitenleiste, zwischen denen ↑ und ↓ wechseln. */
+const NAV = '[data-nav]';
+
+/**
+ * → und ← in Baum und Abschnitten: aufklappen bzw. zum ersten Kind,
+ * zuklappen bzw. zum übergeordneten Eintrag.
+ */
+function treeKeys(e: KeyboardEvent<HTMLElement>, expandable: boolean, open: boolean, setOpen: (v: boolean) => void) {
+  if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
+  const el = e.currentTarget;
+  const list = [...(el.closest('.sidebar')?.querySelectorAll<HTMLElement>(NAV) ?? [])];
+  const i = list.indexOf(el);
+  const depth = Number(el.dataset.depth ?? -1);
+  if (e.key === 'ArrowRight') {
+    e.preventDefault();
+    if (expandable && !open) setOpen(true);
+    else if (expandable && Number(list[i + 1]?.dataset.depth) > depth) list[i + 1].focus();
+  } else if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    if (expandable && open) setOpen(false);
+    else {
+      for (let j = i - 1; j >= 0; j--) {
+        const d = list[j].dataset.depth;
+        if (d === undefined) break;
+        if (Number(d) < depth) {
+          list[j].focus();
+          break;
+        }
+      }
+    }
+  }
+}
 
 function useInboxCount(): number {
   return useStore((s) => s.nodes[s.inbox]?.children.length ?? 0);
@@ -37,10 +71,10 @@ function PageItem({ id, depth }: { id: string; depth: number }) {
   const hasSub = useStore((s) => s.nodes[id]?.children.some((c) => s.nodes[c]?.kind === 'page'));
   const [open, setOpen] = useState(() => localStorage.getItem(`hakobo-tree-${id}`) === '1');
   if (!node) return null;
-  const toggle = () => {
-    setOpen(!open);
+  const setOpenSaved = (v: boolean) => {
+    setOpen(v);
     try {
-      localStorage.setItem(`hakobo-tree-${id}`, open ? '0' : '1');
+      localStorage.setItem(`hakobo-tree-${id}`, v ? '1' : '0');
     } catch {
       /* egal */
     }
@@ -48,14 +82,23 @@ function PageItem({ id, depth }: { id: string; depth: number }) {
   return (
     <>
       <div className={`nav-item tree-item${active ? ' is-active' : ''}`} style={{ paddingLeft: 8 + depth * 14 }}>
-        <button className={`tree-fold${hasSub ? '' : ' is-hidden'}${open ? ' is-open' : ''}`} onClick={toggle} tabIndex={-1}>
+        <button className={`tree-fold${hasSub ? '' : ' is-hidden'}${open ? ' is-open' : ''}`} onClick={() => setOpenSaved(!open)} tabIndex={-1} aria-hidden="true">
           <ChevronRight size={12} />
         </button>
-        <a onClick={() => store().navigate({ view: 'node', id })} className="nav-link">
+        <RouteLink
+          route={{ view: 'node', id }}
+          className="nav-link"
+          data-nav=""
+          data-depth={depth}
+          aria-expanded={hasSub ? open : undefined}
+          aria-current={active ? 'page' : undefined}
+          onKeyDown={(e) => treeKeys(e, !!hasSub, open, setOpenSaved)}
+        >
           <FileText size={14} />
           <span className="truncate">{node.text}</span>
-        </a>
-        <button className="nav-add" title="Unterseite anlegen" onClick={() => createSubpage(id)}>
+        </RouteLink>
+        {/* Per Tastatur: „Unterseite“ in der Seite selbst oder im Aktionsmenü. */}
+        <button className="nav-add" title="Unterseite anlegen" aria-label="Unterseite anlegen" tabIndex={-1} onClick={() => createSubpage(id)}>
           <Plus size={13} />
         </button>
       </div>
@@ -108,13 +151,21 @@ function TagItem({ t, depth }: { t: TagNode; depth: number }) {
   return (
     <>
       <div className={`nav-item tree-item${active ? ' is-active' : ''}`} style={{ paddingLeft: 8 + depth * 14 }}>
-        <button className={`tree-fold${t.children.length ? '' : ' is-hidden'}${open ? ' is-open' : ''}`} onClick={() => setOpen(!open)} tabIndex={-1}>
+        <button className={`tree-fold${t.children.length ? '' : ' is-hidden'}${open ? ' is-open' : ''}`} onClick={() => setOpen(!open)} tabIndex={-1} aria-hidden="true">
           <ChevronRight size={12} />
         </button>
-        <a className="nav-link" onClick={() => store().navigate({ view: 'tag', tag: t.full })}>
+        <RouteLink
+          route={{ view: 'tag', tag: t.full }}
+          className="nav-link"
+          data-nav=""
+          data-depth={depth}
+          aria-expanded={t.children.length ? open : undefined}
+          aria-current={active ? 'page' : undefined}
+          onKeyDown={(e) => treeKeys(e, t.children.length > 0, open, setOpen)}
+        >
           <Hash size={13} />
           <span className="truncate">{t.name}</span>
-        </a>
+        </RouteLink>
         {t.count > 0 && <span className="nav-count">{t.count}</span>}
       </div>
       {open && <TagTree tags={t.children} depth={depth + 1} />}
@@ -124,19 +175,18 @@ function TagItem({ t, depth }: { t: TagNode; depth: number }) {
 
 function Section({ title, children, action, id }: { title: string; children: React.ReactNode; action?: React.ReactNode; id: string }) {
   const [open, setOpen] = useState(() => localStorage.getItem(`hakobo-sec-${id}`) !== '0');
+  const setOpenSaved = (v: boolean) => {
+    setOpen(v);
+    try {
+      localStorage.setItem(`hakobo-sec-${id}`, v ? '1' : '0');
+    } catch {
+      /* egal */
+    }
+  };
   return (
     <section className="nav-section">
       <div className="nav-section-head">
-        <button
-          onClick={() => {
-            setOpen(!open);
-            try {
-              localStorage.setItem(`hakobo-sec-${id}`, open ? '0' : '1');
-            } catch {
-              /* egal */
-            }
-          }}
-        >
+        <button data-nav="" data-depth={-1} aria-expanded={open} onClick={() => setOpenSaved(!open)} onKeyDown={(e) => treeKeys(e, true, open, setOpenSaved)}>
           <ChevronRight size={12} className={open ? 'is-open' : ''} />
           {title}
         </button>
@@ -204,44 +254,51 @@ export function Sidebar() {
     return c;
   }, [nodes]);
   const is = (v: string) => route.view === v;
+  const mainLink = (active: boolean) => ({ className: `nav-item nav-link${active ? ' is-active' : ''}`, 'data-nav': '', 'aria-current': active ? ('page' as const) : undefined });
   return (
-    <aside className="sidebar">
-      <button className="nav-search" onClick={() => store().set({ searchOpen: true })}>
+    <aside
+      className="sidebar"
+      aria-label="Seitenleiste"
+      onKeyDown={(e) => {
+        if ((e.target as HTMLElement).matches(NAV)) moveFocus(e, e.currentTarget, NAV);
+      }}
+    >
+      <button className="nav-search" data-nav="" onClick={() => store().set({ searchOpen: true })}>
         <Search size={14} />
         <span>Suchen</span>
         <kbd>Strg K</kbd>
       </button>
       <nav className="nav-main">
-        <a className={`nav-item nav-link${is('inbox') ? ' is-active' : ''}`} onClick={() => store().navigate({ view: 'inbox' })}>
+        <RouteLink route={{ view: 'inbox' }} {...mainLink(is('inbox'))} title="Inbox (Strg+1)">
           <Inbox size={15} />
           <span>Inbox</span>
           {inboxCount > 0 && <span className="nav-count is-strong">{inboxCount}</span>}
-        </a>
-        <a className={`nav-item nav-link${is('agenda') ? ' is-active' : ''}`} onClick={() => store().navigate({ view: 'agenda' })}>
+        </RouteLink>
+        <RouteLink route={{ view: 'agenda' }} {...mainLink(is('agenda'))} title="Agenda (Strg+2)">
           <CalendarDays size={15} />
           <span>Agenda</span>
           {todayCount > 0 && <span className="nav-count">{todayCount}</span>}
-        </a>
-        <a className={`nav-item nav-link${is('todos') ? ' is-active' : ''}`} onClick={() => store().navigate({ view: 'todos' })}>
+        </RouteLink>
+        <RouteLink route={{ view: 'todos' }} {...mainLink(is('todos'))} title="Todos (Strg+3)">
           <ListTodo size={15} />
           <span>Todos</span>
           {openTodos > 0 && <span className="nav-count">{openTodos}</span>}
-        </a>
-        <a className={`nav-item nav-link${is('week') ? ' is-active' : ''}`} onClick={() => store().navigate({ view: 'week' })}>
+        </RouteLink>
+        <RouteLink route={{ view: 'week' }} {...mainLink(is('week'))} title="Woche (Strg+4)">
           <CalendarRange size={15} />
           <span>Woche</span>
-        </a>
-        <a className={`nav-item nav-link${route.view === 'node' && route.id === root ? ' is-active' : ''}`} onClick={() => store().navigate({ view: 'node', id: root })}>
+        </RouteLink>
+        <RouteLink route={{ view: 'node', id: root }} {...mainLink(route.view === 'node' && route.id === root)} title="Notizbuch (Strg+5)">
           <Notebook size={15} />
           <span>Notizbuch</span>
-        </a>
+        </RouteLink>
       </nav>
       <div className="nav-scroll">
         <Section
           id="pages"
           title="Seiten"
           action={
-            <button className="nav-add is-visible" title="Neue Seite" onClick={() => createSubpage(root)}>
+            <button className="nav-add is-visible" title="Neue Seite" aria-label="Neue Seite" onClick={() => createSubpage(root)}>
               <Plus size={13} />
             </button>
           }
@@ -251,11 +308,11 @@ export function Sidebar() {
         {Object.keys(types).length > 0 && (
           <Section id="types" title="Typen">
             {Object.entries(types).map(([key, t]) => (
-              <a key={key} className={`nav-item nav-link${route.view === 'type' && route.type === key ? ' is-active' : ''}`} onClick={() => store().navigate({ view: 'type', type: key })}>
+              <RouteLink key={key} route={{ view: 'type', type: key }} {...mainLink(route.view === 'type' && route.type === key)} data-depth={0}>
                 <span className="type-dot" style={{ ['--type-color' as string]: `var(--t-${t.color ?? 'gray'})` }} />
                 <span className="truncate">{t.label}</span>
                 <Table2 size={13} className="nav-trailing" />
-              </a>
+              </RouteLink>
             ))}
           </Section>
         )}

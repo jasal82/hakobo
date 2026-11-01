@@ -14,7 +14,7 @@ import type { FieldDef, Node } from '../lib/types';
 import { RichText } from '../components/RichText';
 import { DateChip, FieldPopover, TaskBox } from '../components/outline/fields';
 import { ensureTypeHome } from '../components/outline/suggest';
-import type { Anchor } from '../components/ui';
+import { RouteLink, type Anchor } from '../components/ui';
 import { crumbTitle, pathOf } from './parts/common';
 import { TypeEditor } from './parts/TypeEditor';
 import { setFieldValue } from '../lib/outline';
@@ -38,17 +38,38 @@ function sortValue(n: Node, key: string, defs: FieldDef[]): string {
   return v.toLowerCase();
 }
 
-function Cell({ n, def, onEdit }: { n: Node; def: FieldDef; onEdit: (def: FieldDef, a: Anchor) => void }) {
+/** Gemeinsame Eigenschaften einer per Pfeiltasten erreichbaren Zelle (nur eine ist per Tab erreichbar). */
+type CellNav = { tabIndex: number; 'data-r': number; 'data-c': number; onFocus: () => void };
+
+/** Enter oder F2 bearbeitet, die Leertaste schaltet um. */
+function cellKeys(activate: () => void, space: () => void = activate) {
+  return (e: React.KeyboardEvent<HTMLElement>) => {
+    if (e.target !== e.currentTarget || e.ctrlKey || e.altKey || e.metaKey) return;
+    if (e.key === 'Enter' || e.key === 'F2') {
+      e.preventDefault();
+      activate();
+    } else if (e.key === ' ') {
+      e.preventDefault();
+      space();
+    }
+  };
+}
+
+function Cell({ n, def, onEdit, nav }: { n: Node; def: FieldDef; onEdit: (def: FieldDef, a: Anchor) => void; nav: CellNav }) {
   const v = valueOf(n, def);
-  const open = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('a')) return;
-    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+  const openAt = (el: HTMLElement) => {
+    const r = el.getBoundingClientRect();
     onEdit(def, { left: r.left, top: r.top, bottom: r.bottom });
   };
+  const open = (e: React.MouseEvent<HTMLElement>) => {
+    if ((e.target as HTMLElement).closest('a')) return;
+    openAt(e.currentTarget);
+  };
   if (def.kind === 'checkbox') {
+    const toggle = () => setFieldValue(n.id, def.key, v === 'true' ? 'false' : 'true');
     return (
-      <td className="ty-cell is-check">
-        <button className={`ty-check${v === 'true' ? ' is-on' : ''}`} onClick={() => setFieldValue(n.id, def.key, v === 'true' ? 'false' : 'true')} aria-label={v === 'true' ? 'ja' : 'nein'}>
+      <td className="ty-cell is-check" {...nav} aria-label={`${def.label}: ${v === 'true' ? 'ja' : 'nein'}`} onKeyDown={cellKeys(toggle)}>
+        <button className={`ty-check${v === 'true' ? ' is-on' : ''}`} tabIndex={-1} onClick={toggle} aria-label={v === 'true' ? 'ja' : 'nein'}>
           {v === 'true' && <Check size={12} strokeWidth={3} />}
         </button>
       </td>
@@ -77,10 +98,61 @@ function Cell({ n, def, onEdit }: { n: Node; def: FieldDef; onEdit: (def: FieldD
     }
   }
   return (
-    <td className={`ty-cell is-${def.kind}`} onClick={open}>
+    <td className={`ty-cell is-${def.kind}`} {...nav} onClick={open} onKeyDown={(e) => cellKeys(() => openAt(e.currentTarget))(e)}>
       <div className="ty-cell-inner">{content}</div>
     </td>
   );
+}
+
+/** Pfeiltasten, Pos1/Ende (mit Strg: erste/letzte Zeile) und Bild↑/↓ zwischen den Zellen. */
+function gridKeys(e: React.KeyboardEvent<HTMLElement>, rows: number, cols: number) {
+  const td = e.target as HTMLElement;
+  if (!td.matches('td[data-r]') || e.altKey || e.metaKey || e.shiftKey) return;
+  let r = Number(td.dataset.r);
+  let c = Number(td.dataset.c);
+  switch (e.key) {
+    case 'ArrowUp':
+      r--;
+      break;
+    case 'ArrowDown':
+      r++;
+      break;
+    case 'ArrowLeft':
+      c--;
+      break;
+    case 'ArrowRight':
+      c++;
+      break;
+    case 'Home':
+      c = 0;
+      if (e.ctrlKey) r = 0;
+      break;
+    case 'End':
+      c = cols - 1;
+      if (e.ctrlKey) r = rows - 1;
+      break;
+    case 'PageUp':
+      r -= 10;
+      break;
+    case 'PageDown':
+      r += 10;
+      break;
+    default:
+      return;
+  }
+  if (e.ctrlKey && e.key.startsWith('Arrow')) return;
+  e.preventDefault();
+  const table = e.currentTarget;
+  // Unter der letzten Zeile: Eingabe für einen neuen Eintrag.
+  if (r >= rows && e.key === 'ArrowDown') {
+    table.querySelector<HTMLElement>('.ty-new input')?.focus();
+    return;
+  }
+  r = Math.max(0, Math.min(rows - 1, r));
+  c = Math.max(0, Math.min(cols - 1, c));
+  const next = table.querySelector<HTMLElement>(`td[data-r="${r}"][data-c="${c}"]`);
+  next?.focus();
+  next?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
 
 export function TypeView({ type }: { type: string }) {
@@ -93,6 +165,8 @@ export function TypeView({ type }: { type: string }) {
   const [editing, setEditing] = useState<{ id: string; def: FieldDef; anchor: Anchor } | null>(null);
   const [editor, setEditor] = useState(false);
   const [title, setTitle] = useState('');
+  // Zelle, die per Tab erreichbar ist (Zeile, Spalte; Spalte 0 = Titel).
+  const [cur, setCur] = useState({ r: 0, c: 0 });
 
   const defs = def?.fields ?? [];
   const rows = useMemo(() => {
@@ -154,7 +228,12 @@ export function TypeView({ type }: { type: string }) {
   }
 
   const sortIcon = (key: string) => (sort?.key === key ? sort.dir === 1 ? <ArrowUp size={12} /> : <ArrowDown size={12} /> : null);
+  const sortLabel = (key: string) => (sort?.key === key ? (sort.dir === 1 ? 'ascending' : 'descending') : undefined);
   const node = editing ? nodes[editing.id] : undefined;
+  const cols = defs.length + 1;
+  const curR = Math.min(cur.r, rows.length - 1);
+  const curC = Math.min(cur.c, cols - 1);
+  const nav = (r: number, c: number): CellNav => ({ tabIndex: r === curR && c === curC ? 0 : -1, 'data-r': r, 'data-c': c, onFocus: () => setCur({ r, c }) });
 
   return (
     <div className="view ty-view">
@@ -162,9 +241,9 @@ export function TypeView({ type }: { type: string }) {
         <div className="view-head">
           <span className="type-dot ty-dot" style={{ ['--type-color' as string]: `var(--t-${def.color ?? 'gray'})` }} />
           <h1>{def.label}</h1>
-          <a className="tag" onClick={() => store().navigate({ view: 'tag', tag: t })} title="Als Liste">
+          <RouteLink className="tag" route={{ view: 'tag', tag: t }} title="Als Liste">
             #{t}
-          </a>
+          </RouteLink>
           <span className="ty-count">{rows.length}</span>
           <label className="tg-search">
             <Search size={14} />
@@ -179,35 +258,59 @@ export function TypeView({ type }: { type: string }) {
           <table className="ty-table">
             <thead>
               <tr>
-                <th className="ty-title-col" onClick={() => toggleSort('__title')}>
-                  <span>Titel</span>
-                  {sortIcon('__title')}
+                <th className="ty-title-col" onClick={() => toggleSort('__title')} aria-sort={sortLabel('__title')}>
+                  <button
+                    className="ty-sort"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleSort('__title');
+                    }}
+                  >
+                    <span>Titel</span>
+                    {sortIcon('__title')}
+                  </button>
                 </th>
                 {defs.map((d) => (
-                  <th key={d.key} onClick={() => toggleSort(d.key)} title={`${d.key} · ${d.kind}`}>
-                    <span>{d.label}</span>
-                    {sortIcon(d.key)}
+                  <th key={d.key} onClick={() => toggleSort(d.key)} title={`${d.key} · ${d.kind}`} aria-sort={sortLabel(d.key)}>
+                    <button
+                      className="ty-sort"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleSort(d.key);
+                      }}
+                    >
+                      <span>{d.label}</span>
+                      {sortIcon(d.key)}
+                    </button>
                   </th>
                 ))}
                 <th className="ty-page-col" title="Wo der Eintrag steht">Seite</th>
               </tr>
             </thead>
-            <tbody>
-              {rows.map((n) => {
+            <tbody onKeyDown={(e) => gridKeys(e, rows.length, cols)}>
+              {rows.map((n, r) => {
                 const page = pageOf(nodes, n.id);
                 const place = n.kind === 'page' ? (n.path?.split('/').slice(0, -1).join(' › ') ?? '') : pathOf(nodes, n.id);
                 return (
                   <tr key={n.id} className={n.task === 'done' || n.task === 'cancelled' ? 'is-closed' : ''}>
-                    <td className="ty-cell ty-title-col">
+                    <td
+                      className="ty-cell ty-title-col"
+                      {...nav(r, 0)}
+                      onKeyDown={cellKeys(
+                        () => store().reveal(n.id, { edit: n.kind !== 'page' }),
+                        // Leertaste: Todo erledigen bzw. wieder öffnen
+                        () => n.task && store().commit([{ op: 'update', id: n.id, task: n.task === 'done' || n.task === 'cancelled' ? 'open' : 'done' }]),
+                      )}
+                    >
                       <div className="ty-title">
-                        {n.kind === 'page' ? <FileText size={13} className="faint" /> : n.task ? <TaskBox node={n} size={14} /> : null}
+                        {n.kind === 'page' ? <FileText size={13} className="faint" /> : n.task ? <TaskBox node={n} size={14} tabIndex={-1} /> : null}
                         <a className="ty-title-link" onClick={() => store().reveal(n.id, { edit: n.kind !== 'page' })}>
                           {n.text ? <RichText text={n.text.replace(new RegExp(`(^|\\s)#${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=\\s|$)`, 'i'), '$1').trim() || n.text} source={n} /> : <span className="faint">(leer)</span>}
                         </a>
                       </div>
                     </td>
-                    {defs.map((d) => (
-                      <Cell key={d.key} n={n} def={d} onEdit={(fd, anchor) => setEditing({ id: n.id, def: fd, anchor })} />
+                    {defs.map((d, i) => (
+                      <Cell key={d.key} n={n} def={d} nav={nav(r, i + 1)} onEdit={(fd, anchor) => setEditing({ id: n.id, def: fd, anchor })} />
                     ))}
                     <td className="ty-cell ty-page-col">
                       <span className="ty-place" title={place}>
@@ -221,7 +324,16 @@ export function TypeView({ type }: { type: string }) {
                 <td colSpan={defs.length + 2}>
                   <form onSubmit={(e) => void add(e)}>
                     <Plus size={14} />
-                    <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={`Neu: ${def.label} … (landet in ${def.page || home?.text || 'Inbox'})`} />
+                    <input
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        // ↑ zurück in die Tabelle.
+                        if (e.key !== 'ArrowUp' || !rows.length) return;
+                        e.preventDefault();
+                        e.currentTarget.closest('tbody')?.querySelector<HTMLElement>(`td[data-r="${rows.length - 1}"][data-c="${curC}"]`)?.focus();
+                      }}
+                      placeholder={`Neu: ${def.label} … (landet in ${def.page || home?.text || 'Inbox'})`} />
                   </form>
                 </td>
               </tr>

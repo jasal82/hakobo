@@ -367,3 +367,16 @@
     display: none;
   }
 }
+
+/* Tastatur */
+.nav-link:focus-visible,
+.nav-section-head > button:focus-visible,
+.nav-search:focus-visible,
+.sync-line:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
+}
+.nav-item:focus-within .nav-trailing {
+  opacity: .7;
+}

@@ -72,6 +72,8 @@ interface State {
   assign: { id: string } | null;
   captureOpen: boolean;
   settingsOpen: boolean;
+  /** Übersicht der Tastenkürzel (F1). */
+  shortcutsOpen: boolean;
   /** Bereich, den die Einstellungen beim nächsten Öffnen zeigen (z. B. `updates`). */
   settingsTab: string | null;
   history: string | null;
@@ -484,6 +486,7 @@ export const useStore = create<Store>()((set, get) => {
     assign: null,
     captureOpen: false,
     settingsOpen: false,
+    shortcutsOpen: false,
     settingsTab: null,
     history: null,
     sidebar: window.innerWidth > 760 && localStorage.getItem('hakobo-sidebar') !== '0',

@@ -13,7 +13,7 @@ import { store, useStore } from '../lib/store';
 import type { Agenda, AgendaEntry, Node } from '../lib/types';
 import { RichText, openTag } from '../components/RichText';
 import { TaskBox } from '../components/outline/fields';
-import { Popover, type Anchor } from '../components/ui';
+import { activateKeys, moveFocus, Popover, type Anchor } from '../components/ui';
 import { hhmm, hiddenTags, minutesOf, nodeColor, pathOf, useReloadOnChange } from './parts/common';
 
 const isClosed = (e: AgendaEntry) => e.task === 'done' || e.task === 'cancelled';
@@ -125,9 +125,7 @@ function EntryRow({ e, today, showDate }: { e: AgendaEntry; today: Date; showDat
         if ((ev.target as HTMLElement).closest('a, button')) return;
         store().reveal(e.id, { edit: true });
       }}
-      onKeyDown={(ev) => {
-        if (ev.key === 'Enter') store().reveal(e.id, { edit: true });
-      }}
+      onKeyDown={activateKeys(() => store().reveal(e.id, { edit: true }))}
     >
       <span className="ag-time">{showDate ? e.human : timeLabel(e, today)}</span>
       <span className="ag-mark">
@@ -201,7 +199,13 @@ export function AgendaView() {
   const total = groups.reduce((n, g) => n + g.entries.length, 0);
 
   return (
-    <div className="view ag-view">
+    <div
+      className="view ag-view"
+      onKeyDown={(ev) => {
+        // ↑ ↓ zwischen den Einträgen.
+        if ((ev.target as HTMLElement).matches('.ag-entry')) moveFocus(ev, ev.currentTarget, '.ag-entry');
+      }}
+    >
       <div className="view-inner">
         <div className="view-head">
           <h1>Agenda</h1>
@@ -369,11 +373,14 @@ function WeekEvent({ p, today }: { p: Placed; today: Date }) {
         ['--ev-color' as string]: color,
       }}
       title={`${hhmm(p.e.when.startTime)}${p.e.when.endTime ? `–${hhmm(p.e.when.endTime)}` : ''} ${tooltip}`}
+      role="button"
+      tabIndex={0}
       onClick={(ev) => {
         ev.stopPropagation();
         if ((ev.target as HTMLElement).closest('a, button')) return;
         store().reveal(p.e.id, { edit: true });
       }}
+      onKeyDown={activateKeys(() => store().reveal(p.e.id, { edit: true }))}
       onDoubleClick={(ev) => ev.stopPropagation()}
     >
       <span className="wk-event-time">
@@ -398,10 +405,13 @@ function AllDayChip({ e }: { e: AgendaEntry }) {
       className={`wk-allday-item${isClosed(e) ? ' is-closed' : ''}${e.overdue ? ' is-overdue' : ''}${e.kind === 'todo' ? ' is-todo' : ''}`}
       style={color ? { ['--ev-color' as string]: color } : undefined}
       title={tooltip}
+      role="button"
+      tabIndex={0}
       onClick={(ev) => {
         if ((ev.target as HTMLElement).closest('a, button')) return;
         store().reveal(e.id, { edit: true });
       }}
+      onKeyDown={activateKeys(() => store().reveal(e.id, { edit: true }))}
     >
       {e.kind === 'todo' && node && <TaskBox node={node} size={12} />}
       <span className="wk-allday-text">{node ? <RichText text={node.text} source={node} /> : <RichText text={e.text} />}</span>
@@ -489,7 +499,15 @@ export function WeekView({ start }: { start?: string }) {
   const thisWeek = days.some((d) => isoDate(d) === isoDate(today));
 
   return (
-    <div className="wk-view">
+    <div
+      className="wk-view"
+      onKeyDown={(ev) => {
+        // ↑ ↓ zwischen den Terminen, ← → zwischen den Tagesköpfen.
+        const t = ev.target as HTMLElement;
+        if (t.matches('.wk-event, .wk-allday-item')) moveFocus(ev, ev.currentTarget, '.wk-allday-item, .wk-event');
+        else if (t.matches('.wk-col-head')) moveFocus(ev, ev.currentTarget, '.wk-col-head', { horizontal: true });
+      }}
+    >
       <div className="wk-head">
         <h1>{monthLabel}</h1>
         <span className="wk-kw">KW {kw}</span>
@@ -516,11 +534,21 @@ export function WeekView({ start }: { start?: string }) {
         <div className="wk-gutter" />
         {days.map((d) => {
           const isToday = isoDate(d) === isoDate(today);
+          // Per Tastatur (und Klick): neuer Termin zur nächsten vollen Stunde, sonst um 9 Uhr.
+          const minutes = isToday && now.getHours() < 23 ? (now.getHours() + 1) * 60 : 9 * 60;
           return (
-            <div key={isoDate(d)} className={`wk-col-head${isToday ? ' is-today' : ''}${d.getDay() === 0 || d.getDay() === 6 ? ' is-weekend' : ''}`}>
+            <button
+              key={isoDate(d)}
+              className={`wk-col-head${isToday ? ' is-today' : ''}${d.getDay() === 0 || d.getDay() === 6 ? ' is-weekend' : ''}`}
+              title={`Neuer Termin am ${longDayLabel(d)}`}
+              onClick={(ev) => {
+                const r = ev.currentTarget.getBoundingClientRect();
+                setCreate({ anchor: { left: r.left, top: r.top, bottom: r.bottom }, date: d, minutes });
+              }}
+            >
               <span className="wk-wd">{d.toLocaleDateString('de-DE', { weekday: 'short' }).replace('.', '')}</span>
               <span className="wk-date">{d.getDate()}</span>
-            </div>
+            </button>
           );
         })}
       </div>

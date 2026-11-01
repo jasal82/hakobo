@@ -11,6 +11,7 @@ import { pageOf, store, useStore } from '../lib/store';
 import type { Node } from '../lib/types';
 import { RichText } from '../components/RichText';
 import { MetaChips, TaskBox } from '../components/outline/fields';
+import { activateKeys, moveFocus, RouteLink } from '../components/ui';
 import { pathOf } from './parts/common';
 import { TypeEditor } from './parts/TypeEditor';
 
@@ -47,9 +48,7 @@ function TagRow({ n, page }: { n: Node; page: Node | undefined }) {
         if ((e.target as HTMLElement).closest('a, button, .chip')) return;
         store().reveal(n.id, { edit: !isPage });
       }}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') store().reveal(n.id, { edit: !isPage });
-      }}
+      onKeyDown={activateKeys(() => store().reveal(n.id, { edit: !isPage }))}
     >
       {path && <div className="tg-path">{path}</div>}
       <div className="tg-line">
@@ -112,7 +111,13 @@ export function TagView({ tag }: { tag: string }) {
   const isType = !!types[t];
 
   return (
-    <div className="view tg-view">
+    <div
+      className="view tg-view"
+      onKeyDown={(e) => {
+        // ↑ ↓ zwischen den Einträgen.
+        if ((e.target as HTMLElement).matches('.tg-row')) moveFocus(e, e.currentTarget, '.tg-row');
+      }}
+    >
       <div className="view-inner">
         <div className="tg-head">
           <h1 className="tg-title">
@@ -123,7 +128,7 @@ export function TagView({ tag }: { tag: string }) {
               return (
                 <span key={full} className="tg-seg">
                   {i > 0 && <ChevronRight size={16} className="tg-sep" />}
-                  {last ? <span>{s}</span> : <a onClick={() => store().navigate({ view: 'tag', tag: full })}>{s}</a>}
+                  {last ? <span>{s}</span> : <RouteLink route={{ view: 'tag', tag: full }}>{s}</RouteLink>}
                 </span>
               );
             })}
@@ -186,7 +191,7 @@ export function TagView({ tag }: { tag: string }) {
             <section key={g.page?.id ?? 'none'} className="tg-group">
               <h2 className="tg-group-head">
                 <FileText size={13} />
-                {g.page ? <a onClick={() => store().navigate({ view: 'node', id: g.page!.id })}>{g.page.path ?? g.page.text}</a> : 'Ohne Seite'}
+                {g.page ? <RouteLink route={{ view: 'node', id: g.page.id }}>{g.page.path ?? g.page.text}</RouteLink> : 'Ohne Seite'}
                 <span className="faint">{g.items.length}</span>
               </h2>
               {g.items.map((n) => (

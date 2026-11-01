@@ -37,6 +37,7 @@ import { store, useStore } from '../lib/store';
 import type { Settings } from '../lib/types';
 import { Dialog } from './ui';
 import { HotkeyInput } from './settings/HotkeyInput';
+import { ShortcutTable } from './Shortcuts';
 import { applyTheme, type Theme } from './settings/theme';
 
 type Tab = 'general' | 'capture' | 'reminders' | 'sync' | 'vault' | 'updates' | 'about';
@@ -659,22 +660,6 @@ function VaultTab({ settings, vaultPath, defaultVault, restart, update }: TabPro
   );
 }
 
-const SHORTCUTS: [string, string][] = [
-  ['Enter', 'Neuer Eintrag / Zeile teilen'],
-  ['Tab / Umschalt+Tab', 'Einrücken / Ausrücken'],
-  ['Strg+Enter', 'Todo erledigen (oder zum Todo machen)'],
-  ['Umschalt+Enter', 'Notiz bearbeiten'],
-  ['Alt+→ / Alt+←', 'Hinein- / herauszoomen'],
-  ['Strg+↑ / Strg+↓', 'Zuklappen / aufklappen'],
-  ['Alt+Umschalt+↑ / ↓', 'Eintrag verschieben'],
-  ['Strg+M', 'Einsortieren'],
-  ['Strg+K', 'Suchen'],
-  ['Strg+N', 'Schnell erfassen'],
-  ['Strg+Z / Strg+Y', 'Rückgängig / Wiederholen'],
-  ['/', 'Befehle: Termin, Fällig, Wiederholung, Erinnerung …'],
-  ['@  #  [[', 'Person erwähnen, Tag, Link'],
-];
-
 const CLI: [string, string][] = [
   ['hakobo add "…"', 'In die Inbox erfassen (mit /Befehlen)'],
   ['hakobo agenda', 'Termine und fällige Todos'],
@@ -849,23 +834,7 @@ function AboutTab() {
         </dd>
       </dl>
       <h3>Tastenkürzel</h3>
-      <table className="set-table">
-        <tbody>
-          {SHORTCUTS.map(([k, d]) => (
-            <tr key={k}>
-              <td>
-                {k.split(' / ').map((part, i) => (
-                  <span key={i}>
-                    {i > 0 && ' / '}
-                    <kbd>{part}</kbd>
-                  </span>
-                ))}
-              </td>
-              <td>{d}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <ShortcutTable />
       <h3>Kommandozeile</h3>
       <table className="set-table">
         <tbody>

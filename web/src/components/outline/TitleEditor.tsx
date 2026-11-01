@@ -31,6 +31,7 @@ import {
 import { createOp, store, useStore } from '../../lib/store';
 import type { Op } from '../../lib/types';
 import { InlineEditor, type InlineEditorHandle } from '../InlineEditor';
+import { followLinkAt } from '../RichText';
 import { useSuggest } from './suggest';
 
 /** ``` bzw. ```rust am Zeilenanfang macht die Zeile zum Codeblock. */
@@ -235,6 +236,11 @@ export function TitleEditor({ id, root, className, placeholder }: { id: string; 
       }
       if (k === 'l') {
         void copyLink(id);
+        return done();
+      }
+      if (k === 'o') {
+        s.commitTitle(id);
+        if (!followLinkAt(node, t, start)) s.toast('Hier gibt es keinen Link zum Öffnen', 'info');
         return done();
       }
     }
