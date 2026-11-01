@@ -977,3 +977,293 @@ button.wk-col-head:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
+
+/* ------------------------------------------------- Kalender: neue Termine */
+
+.wk-head .tabs {
+  flex: none;
+}
+button.wk-col-head.is-selected,
+.mo-day.is-selected {
+  background: var(--accent-soft);
+}
+.wk-allday-grid {
+  position: relative;
+  cursor: cell;
+}
+.wk-day-sel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  pointer-events: none;
+}
+.wk-allday-time {
+  color: var(--fg-subtle);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+.wk-sel {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  border: 1.5px dashed var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent-soft-fg);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.ev-pop .fp-title {
+  padding: 0;
+}
+.ev-when {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 8px;
+}
+.ev-when label {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.ev-when label > span {
+  color: var(--fg-subtle);
+  font-size: 11.5px;
+}
+.ev-when .ev-time {
+  grid-column: 1 / -1;
+}
+.ev-when .input {
+  min-width: 0;
+}
+
+/* ------------------------------------------------------------------ Monat */
+
+.mo-weekdays {
+  display: grid;
+  grid-template-columns: 30px repeat(7, minmax(0, 1fr));
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  color: var(--fg-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  text-align: center;
+}
+.mo-kw-head {
+  color: var(--fg-faint);
+  font-size: 10px;
+}
+.mo-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  overflow: auto;
+}
+.mo-week {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  min-height: 92px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.mo-kw {
+  align-self: start;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg-faint);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.mo-kw:hover {
+  color: var(--accent);
+}
+.mo-days {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  min-height: 0;
+}
+.mo-day {
+  border-left: 1px solid var(--border-subtle);
+  padding: 4px 6px;
+  cursor: cell;
+  outline-offset: -2px;
+}
+.mo-day.is-weekend {
+  background-color: var(--bg-subtle);
+}
+.mo-day.is-out .mo-date {
+  color: var(--fg-faint);
+}
+.mo-day.is-out:not(.is-selected) {
+  background-color: color-mix(in srgb, var(--bg-subtle) 60%, var(--bg));
+}
+.mo-day:hover:not(.is-selected) {
+  background-color: var(--bg-hover);
+}
+.mo-date {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border-radius: 99px;
+  color: var(--fg);
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.mo-day.is-today .mo-date {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+.mo-lanes {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  align-content: start;
+  pointer-events: none;
+}
+.mo-lanes > * {
+  pointer-events: auto;
+}
+.mo-ev {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  height: 20px;
+  margin: 0 3px;
+  padding: 0 5px;
+  border-radius: 4px;
+  color: var(--fg);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+}
+.mo-ev:hover {
+  background: var(--bg-hover);
+}
+.mo-ev.is-bar {
+  background: color-mix(in srgb, var(--ev-color) 15%, var(--bg));
+  border-left: 3px solid var(--ev-color);
+}
+.mo-ev.is-bar:hover {
+  background: color-mix(in srgb, var(--ev-color) 24%, var(--bg));
+}
+.mo-ev.is-bar.is-todo {
+  background: var(--bg-muted);
+  border-left-color: var(--fg-faint);
+}
+/* Läuft über den Wochenrand: gerade Kante statt Rundung. */
+.mo-ev.cont-l {
+  margin-left: 0;
+  border-left: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.mo-ev.cont-r {
+  margin-right: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.mo-ev.is-overdue {
+  color: var(--danger);
+}
+.mo-ev.is-bar.is-overdue {
+  border-left-color: var(--danger);
+  background: var(--danger-soft);
+}
+.mo-ev.is-closed .mo-ev-text {
+  color: var(--fg-faint);
+  text-decoration: line-through;
+}
+.mo-ev-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ev-color);
+}
+.mo-ev-time {
+  flex: none;
+  color: var(--fg-subtle);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.mo-ev-repeat {
+  flex: none;
+  color: var(--fg-faint);
+}
+.mo-ev-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mo-ev .taskbox {
+  margin: 0;
+  flex: none;
+}
+.mo-ev .wikilink.is-person {
+  padding: 0;
+  background: none;
+}
+.mo-ev:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  z-index: 1;
+}
+.mo-more {
+  justify-self: start;
+  height: 18px;
+  margin: 0 3px;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg-subtle);
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.mo-more:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+.mo-day-pop .fp-title {
+  padding: 10px 12px 4px;
+  color: var(--fg-subtle);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.mo-day-list {
+  display: grid;
+  gap: 2px;
+  max-height: 300px;
+  overflow: auto;
+  padding: 0 6px 4px;
+}
+.mo-day-list .mo-ev {
+  height: 24px;
+}
+.mo-day-pop .menu {
+  border-top: 1px solid var(--border-subtle);
+  padding: 4px;
+}

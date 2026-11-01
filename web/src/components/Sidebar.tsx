@@ -14,6 +14,7 @@ import type { Node } from '../lib/types';
 import { pendingVersion, useUpdate } from '../lib/update';
 import { openUpdates } from './UpdateProgress';
 import { moveFocus, RouteLink } from './ui';
+import { calendarRoute } from '../views/parts/calendar';
 
 /** Elemente der Seitenleiste, zwischen denen ↑ und ↓ wechseln. */
 const NAV = '[data-nav]';
@@ -284,9 +285,9 @@ export function Sidebar() {
           <span>Todos</span>
           {openTodos > 0 && <span className="nav-count">{openTodos}</span>}
         </RouteLink>
-        <RouteLink route={{ view: 'week' }} {...mainLink(is('week'))} title="Woche (Strg+4)">
+        <RouteLink route={calendarRoute()} {...mainLink(is('week') || is('month'))} title="Kalender: Woche oder Monat (Strg+4)">
           <CalendarRange size={15} />
-          <span>Woche</span>
+          <span>Kalender</span>
         </RouteLink>
         <RouteLink route={{ view: 'node', id: root }} {...mainLink(route.view === 'node' && route.id === root)} title="Notizbuch (Strg+5)">
           <Notebook size={15} />

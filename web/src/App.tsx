@@ -20,7 +20,10 @@ import { HistoryDialog } from './components/HistoryDialog';
 import { ShortcutsDialog } from './components/Shortcuts';
 import { focusables } from './components/ui';
 import { NodeView } from './views/NodeView';
-import { AgendaView, WeekView } from './views/AgendaView';
+import { AgendaView } from './views/AgendaView';
+import { WeekView } from './views/WeekView';
+import { MonthView } from './views/MonthView';
+import { calendarRoute } from './views/parts/calendar';
 import { TodoView } from './views/TodoView';
 import { TagView } from './views/TagView';
 import { TypeView } from './views/TypeView';
@@ -66,6 +69,8 @@ function Main() {
       return <TodoView />;
     case 'week':
       return <WeekView start={route.start} />;
+    case 'month':
+      return <MonthView month={route.month} />;
     case 'tag':
       return <TagView tag={route.tag} key={route.tag} />;
     case 'type':
@@ -124,7 +129,7 @@ const VIEW_KEYS: Record<string, () => void> = {
   '1': () => store().navigate({ view: 'inbox' }),
   '2': () => store().navigate({ view: 'agenda' }),
   '3': () => store().navigate({ view: 'todos' }),
-  '4': () => store().navigate({ view: 'week' }),
+  '4': () => store().navigate(calendarRoute()),
   '5': () => store().navigate({ view: 'node', id: store().root }),
 };
 

@@ -14,7 +14,7 @@ export const SHORTCUT_GROUPS: { title: string; keys: [string, string][] }[] = [
     keys: [
       ['Strg+K', 'Suchen'],
       ['Strg+N', 'Schnell erfassen'],
-      ['Strg+1 … Strg+5', 'Inbox, Agenda, Todos, Woche, Notizbuch'],
+      ['Strg+1 … Strg+5', 'Inbox, Agenda, Todos, Kalender, Notizbuch'],
       ['F6 / Umschalt+F6', 'Zwischen Titelleiste, Seitenleiste und Inhalt wechseln'],
       ['Alt+← / Alt+→', 'Zurück / Vor (außerhalb des Editors)'],
       ['Strg+\\', 'Seitenleiste ein- oder ausblenden'],
@@ -69,7 +69,16 @@ export const SHORTCUT_GROUPS: { title: string; keys: [string, string][] }[] = [
       ['Enter / Leertaste', 'Öffnen oder auslösen'],
       ['Pfeiltasten', 'Typ-Tabelle: Zelle wählen'],
       ['Enter / F2', 'Typ-Tabelle: Zelle bearbeiten oder Eintrag öffnen'],
-      ['Tab', 'Woche: Tageskopf wählen, Enter legt einen Termin an'],
+    ],
+  },
+  {
+    title: 'Kalender',
+    keys: [
+      ['Pfeiltasten', 'Monat: Tag wählen · Woche: Tagesköpfe (← →) und Termine (↑ ↓)'],
+      ['Umschalt+Pfeiltasten', 'Mehrere Tage wählen'],
+      ['Enter', 'Neuer Termin am gewählten Tag oder Zeitraum'],
+      ['Bild↑ / Bild↓', 'Voriger / nächster Monat bzw. Woche'],
+      ['Esc', 'Auswahl aufheben'],
     ],
   },
 ];

@@ -21,6 +21,8 @@ export type Route =
   | { view: 'agenda' }
   | { view: 'todos' }
   | { view: 'week'; start?: string }
+  /** `month`: `2026-11` (sonst der aktuelle Monat). */
+  | { view: 'month'; month?: string }
   | { view: 'tag'; tag: string }
   | { view: 'type'; type: string };
 
@@ -357,6 +359,8 @@ export function routeToHash(r: Route): string {
       return `#/type/${encodeURIComponent(r.type)}`;
     case 'week':
       return r.start ? `#/week/${r.start}` : '#/week';
+    case 'month':
+      return r.month ? `#/month/${r.month}` : '#/month';
     default:
       return `#/${r.view}`;
   }
@@ -375,6 +379,8 @@ export function hashToRoute(h: string, root: string): Route {
       return { view: 'todos' };
     case 'week':
       return { view: 'week', start: parts[1] };
+    case 'month':
+      return { view: 'month', month: parts[1] };
     case 'tag':
       return { view: 'tag', tag: decodeURIComponent(parts.slice(1).join('/')) };
     case 'type':
