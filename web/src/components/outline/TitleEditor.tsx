@@ -33,7 +33,7 @@ import type { Op } from '../../lib/types';
 import { InlineEditor, type InlineEditorHandle } from '../InlineEditor';
 import { followLinkAt } from '../RichText';
 import { toggleTable } from '../../lib/table';
-import { attachImages, pastedImages } from '../../lib/images';
+import { attachImages, chooseImages, pastedImages } from '../../lib/images';
 import { useSuggest } from './suggest';
 
 /** ``` bzw. ```rust am Zeilenanfang macht die Zeile zum Codeblock. */
@@ -133,6 +133,11 @@ export function TitleEditor({
       case 'table':
         if (rest) s.setText(id, rest.text, rest.caret);
         toggleTable(id);
+        break;
+      case 'image':
+        // Befehl aus dem Text nehmen; ein leerer Eintrag bekommt den Bildnamen.
+        if (rest) s.setText(id, rest.text, rest.caret);
+        void chooseImages(id, { edit: true });
         break;
     }
   }

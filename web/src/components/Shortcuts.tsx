@@ -102,6 +102,7 @@ export const SHORTCUT_GROUPS: { title: string; keys: [string, string][] }[] = [
     title: 'Bilder',
     keys: [
       ['Strg+V', 'Bild aus der Zwischenablage an den Eintrag hängen (in der Notiz: an der Cursorstelle)'],
+      ['/bild', 'Bild aus einer Datei einfügen (auch im Aktionsmenü: Umschalt+F10)'],
       ['Enter / Leertaste', 'Ausgewähltes Bild groß anzeigen (Tab springt zu den Bildern einer Notiz)'],
     ],
   },

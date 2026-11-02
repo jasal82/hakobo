@@ -5,7 +5,7 @@
 // Eine Zeile der Gliederung (rekursiv mit Kindern).
 
 import { memo, useState, type DragEvent, type MouseEvent } from 'react';
-import { ChevronRight, CircleCheck, CircleDot, CodeXml, Copy, FileOutput, FileText, FolderInput, History, List, MoreHorizontal, Plus, StickyNote, Table2, Tag, Trash2, Type, ZoomIn } from 'lucide-react';
+import { ChevronRight, CircleCheck, CircleDot, CodeXml, Copy, FileOutput, FileText, FolderInput, History, ImagePlus, List, MoreHorizontal, Plus, StickyNote, Table2, Tag, Trash2, Type, ZoomIn } from 'lucide-react';
 import { canDrop, draggedIds, dropOn, dropPosition, endDrag, startDrag, type DropPos } from '../../lib/drag';
 import { createSubpage, cycleTask, deleteNode, selectRange, toggleSelected, toggleTodo, toPage } from '../../lib/outline';
 import { isCollapsed, isTable, store, typesOf, useStore } from '../../lib/store';
@@ -13,7 +13,7 @@ import { toggleTable } from '../../lib/table';
 import type { Node } from '../../lib/types';
 import { isCodeNode } from '../../lib/code';
 import { Markdown } from '../Markdown';
-import { attachImages, hasFiles, imageFiles, insertImageNodes, setImageWidth } from '../../lib/images';
+import { attachImages, chooseImages, hasFiles, imageFiles, insertImageNodes, setImageWidth } from '../../lib/images';
 import { caretFromClick, RichText } from '../RichText';
 import { Popover, type Anchor } from '../ui';
 import { BodyEditor } from './BodyEditor';
@@ -282,6 +282,7 @@ export function RowMenu({ node, root, anchor, onClose }: { node: Node; root: str
         {code && item(<CodeXml size={15} />, 'Sprache …', () => codeButton('.code-lang')?.click())}
         {code && item(<Copy size={15} />, 'Code kopieren', () => codeButton('.code-copy')?.click())}
         {node.kind === 'item' && item(<StickyNote size={15} />, node.body ? 'Notiz bearbeiten' : 'Notiz hinzufügen', () => s.set({ bodyEdit: id }), 'Umschalt+↵')}
+        {!code && (node.kind === 'item' || node.kind === 'page') && item(<ImagePlus size={15} />, 'Bild einfügen …', () => void chooseImages(id), '/bild')}
         {node.kind === 'item' && item(node.task ? <CircleCheck size={15} /> : <CircleDot size={15} />, node.task ? (node.task === 'done' ? 'Wieder öffnen' : 'Erledigen') : 'Als Todo', () => (node.task ? cycleTask(id) : toggleTodo(id)), 'Strg+↵')}
         {node.task && node.kind === 'item' && item(<CircleDot size={15} />, 'Kein Todo mehr', () => toggleTodo(id))}
         {item(<FolderInput size={15} />, 'Einsortieren …', () => s.set({ move: { ids: [id] } }), 'Strg+M')}

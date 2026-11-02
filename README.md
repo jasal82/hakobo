@@ -79,6 +79,7 @@ Beim Tippen helfen Vorschläge: `/` für Befehle und Daten, `#` für Tags, `@` f
 | `/todo` | Kästchen |
 | `/h1`, `/notiz`, `/code`, `/einsortieren` | Überschrift, Notiz, Codeblock, verschieben |
 | `/tabelle` | Kinder als Tabelle zeigen (noch einmal: zurück zur Liste) |
+| `/bild` | Bild aus einer Datei an den Eintrag hängen (Dateiauswahl) |
 
 Deutsch und Englisch werden verstanden (`/tomorrow 2pm`, `/every monday`).
 
@@ -115,7 +116,7 @@ Ausgewählte Zeilen und Spalten lassen sich gemeinsam an ihrem Griff ziehen; das
 
 ### Bilder
 
-Bilder gehören wie in Workflowy zu einem Eintrag und stehen unter seinem Text. Sie lassen sich aus der Zwischenablage einfügen (`Strg+V`, z. B. ein Bildschirmfoto) oder aus dem Explorer, dem Browser oder einer anderen App in Hakobo ziehen:
+Bilder gehören wie in Workflowy zu einem Eintrag und stehen unter seinem Text. Sie lassen sich aus der Zwischenablage einfügen (`Strg+V`, z. B. ein Bildschirmfoto), aus dem Explorer, dem Browser oder einer anderen App in Hakobo ziehen oder über eine Dateiauswahl einfügen: mit `/bild` oder „Bild einfügen …“ im Aktionsmenü eines Eintrags (bei einer Seite: neue Einträge am Ende). Beim Ziehen und Einfügen gilt:
 
 | Ziel | Wirkung |
 | --- | --- |

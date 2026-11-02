@@ -128,6 +128,38 @@ export async function imagesToInbox(files: File[]) {
   if (ids?.length) s.toast(`${ids.length === 1 ? 'Bild' : `${ids.length} Bilder`} in der Inbox`, 'success', { label: 'Öffnen', run: () => store().reveal(ids[0]) });
 }
 
+/**
+ * Öffnet die Dateiauswahl für Bilder; liefert die gewählten (abgebrochen: keine).
+ * Muss direkt aus einer Nutzeraktion (Klick, Taste) kommen, sonst öffnet der Browser keinen Dialog.
+ */
+export function pickImages(): Promise<File[]> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*,.png,.jpg,.jpeg,.gif,.webp,.bmp,.avif,.svg';
+    input.multiple = true;
+    input.addEventListener('change', () => resolve([...(input.files ?? [])]), { once: true });
+    input.addEventListener('cancel', () => resolve([]), { once: true });
+    input.click();
+  });
+}
+
+/**
+ * Bild aus einer Datei einfügen (`/bild`, Aktionsmenü): an den Eintrag hängen; bei einer Seite
+ * als neue Einträge am Ende. `edit`: danach weiter im Titel schreiben.
+ */
+export async function chooseImages(id: string, { edit = false }: { edit?: boolean } = {}) {
+  const picked = await pickImages();
+  const files = picked.filter((f) => f.type.startsWith('image/') || IMAGE.test(f.name));
+  if (picked.length && !files.length) store().toast('Nur Bilder lassen sich einfügen', 'info');
+  const n = store().nodes[id];
+  if (files.length && n) {
+    if (n.kind === 'item') await attachImages(id, files);
+    else await insertImageNodes(id, undefined, files);
+  }
+  if (edit && store().nodes[id]) store().setFocus({ id, caret: 'end' });
+}
+
 /** Markdown der Bilder zum Einfügen in eine Notiz (nach dem Hochladen). */
 export async function imagesAsMarkdown(files: File[]): Promise<string> {
   return (await upload(files)).map((x) => x.md).join('\n\n');
