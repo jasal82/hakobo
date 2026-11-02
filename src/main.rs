@@ -17,6 +17,7 @@ mod app;
 mod assets;
 mod capture;
 mod dates;
+mod files;
 #[cfg(any(windows, target_os = "macos"))]
 mod desktop;
 mod git;

@@ -154,6 +154,28 @@ die Darstellung:
   Was unter einer Zelle verschachtelt ist, zeigt die Tabelle nicht an.
 - Unterseiten einer Tabellen-Seite gehören nicht zur Tabelle.
 
+### Bilder
+
+Bilder stehen als gewöhnliches Markdown in der Notiz eines Knotens; die
+Dateien liegen in `assets/`:
+
+```markdown
+- Grundriss
+  ![Grundriss](/assets/Grundriss.png)
+
+  ![Detail|320](/assets/Detail.png)
+```
+
+- Der Pfad beginnt mit `/assets/` (vom Notizbuch aus). Gelesen werden auch
+  `assets/…` und `../assets/…`; Webadressen (`https://…`) zeigt Hakobo ebenfalls an.
+- `|320` hinter dem Alternativtext ist die Anzeigebreite in Pixeln (wie in
+  Obsidian); ohne Angabe passt sich das Bild der Breite an (höchstens 560 px).
+- Beim Einfügen behält eine Datei ihren Namen; Leer- und Sonderzeichen werden zu `-`,
+  vorhandene Namen bekommen ein `-2`, `-3` … Bilder aus der Zwischenablage
+  heißen `Bild-JJJJ-MM-TT-hh-mm-ss.png`.
+- Hakobo löscht keine Dateien aus `assets/`, auch wenn kein Knoten mehr auf
+  sie verweist.
+
 ## Tags und Typen
 
 - Tag: `#` am Wortanfang, gefolgt von Buchstaben, Ziffern, `_`, `-`, `/`.

@@ -17,6 +17,7 @@ import { highlight } from '../../lib/markdown';
 import { createAfter, nextVisible, prevVisible } from '../../lib/outline';
 import { store, useStore } from '../../lib/store';
 import { Popover, useScrollActive, type Anchor } from '../ui';
+import { imageFiles } from '../../lib/images';
 
 /** Klickposition, an die der Cursor beim Öffnen des Editors springt. */
 let pendingClick: { id: string; x: number; y: number } | null = null;
@@ -273,6 +274,8 @@ function CodeEditor({ id, root, lang, guessed, code }: { id: string; root: strin
           if (u.docChanged) setCode(id, langRef.current, u.state.doc.toString());
         }),
         EditorView.domEventHandlers({
+          // Bilder nicht als Text in den Code; die Zeile legt sie davor oder dahinter ab.
+          drop: (e) => imageFiles(e.dataTransfer).length > 0,
           blur: (_e, v) => {
             // Klick woanders hin: Bearbeitung beenden (nicht bei Sprachauswahl o. Ä.).
             window.setTimeout(() => {

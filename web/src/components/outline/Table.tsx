@@ -33,6 +33,7 @@ import {
   deleteRow,
   duplicateColumn,
   duplicateRow,
+  ensureCell,
   focusCell,
   insertColumn,
   insertRow,
@@ -52,6 +53,7 @@ import {
 } from '../../lib/table';
 import { cssZoom } from '../../lib/zoom';
 import { Markdown } from '../Markdown';
+import { attachImages, hasFiles, imageFiles, setImageWidth } from '../../lib/images';
 import { caretFromClick, RichText } from '../RichText';
 import { Popover, type Anchor } from '../ui';
 import { BodyEditor } from './BodyEditor';
@@ -259,6 +261,7 @@ function TableCell({ row, col, id }: { row: number; col: number; id: string | nu
   const focused = useStore((s) => !!id && s.focus?.id === id);
   const bodyEdit = useStore((s) => !!id && s.bodyEdit === id);
   const [menu, setMenu] = useState<Anchor | null>(null);
+  const [fileOver, setFileOver] = useState(false);
   const pos: Pos = { table, root, row, col };
   const head = row === 0;
   const Tag = head ? 'th' : 'td';
@@ -294,11 +297,19 @@ function TableCell({ row, col, id }: { row: number; col: number; id: string | nu
 
   return (
     <Tag
-      className={`ot-cell${focused ? ' is-focused' : ''}${id ? '' : ' is-missing'}${nested ? ' has-nested' : ''}${closed ? ' is-closed' : ''}${drop}`}
+      className={`ot-cell${focused ? ' is-focused' : ''}${id ? '' : ' is-missing'}${nested ? ' has-nested' : ''}${closed ? ' is-closed' : ''}${drop}${fileOver ? ' drop-cell' : ''}`}
       style={w ? { width: w, minWidth: w, maxWidth: w } : undefined}
       onClick={edit}
       onContextMenu={openMenu}
       onDragOver={(e) => {
+        // Bilder von außen hängen an der Zelle
+        if (hasFiles(e.dataTransfer)) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.dataTransfer.dropEffect = 'copy';
+          if (!fileOver) setFileOver(true);
+          return;
+        }
         const d = tdrag;
         // Sonst: Ziehen von Zeilen und Einträgen (an der Tabellenzeile)
         if (!d || d.table !== table) return;
@@ -315,7 +326,20 @@ function TableCell({ row, col, id }: { row: number; col: number; id: string | nu
         }
         e.dataTransfer.dropEffect = 'move';
       }}
+      onDragLeave={(e) => {
+        if (fileOver && !e.currentTarget.contains(e.relatedTarget as globalThis.Node | null)) setFileOver(false);
+      }}
       onDrop={(e) => {
+        if (hasFiles(e.dataTransfer)) {
+          e.preventDefault();
+          e.stopPropagation();
+          setFileOver(false);
+          const files = imageFiles(e.dataTransfer);
+          if (!files.length) return store().toast('Nur Bilder lassen sich hier ablegen', 'info');
+          const target = id ?? ensureCell(table, row, col);
+          if (target) void attachImages(target, files);
+          return;
+        }
         const d = tdrag;
         if (!d || d.table !== table) return;
         e.preventDefault();
@@ -406,6 +430,7 @@ function TableCell({ row, col, id }: { row: number; col: number; id: string | nu
           <Markdown
             text={node.body}
             source={node}
+            onImageResize={(href, k, w) => setImageWidth(id!, href, k, w)}
             onClick={(e) => {
               if (window.getSelection()?.toString()) return;
               e.stopPropagation();

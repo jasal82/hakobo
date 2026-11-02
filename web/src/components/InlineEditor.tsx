@@ -14,6 +14,7 @@ import { Decoration, EditorView, ViewPlugin, WidgetType, keymap, placeholder as 
 import { tokenize, type Segment } from '../lib/inline';
 import { isPerson, linkLabel, resolveKey } from '../lib/links';
 import { store } from '../lib/store';
+import { imageFiles } from '../lib/images';
 import type { Node } from '../lib/types';
 import type { Anchor } from './ui';
 
@@ -205,6 +206,8 @@ export function InlineEditor(props: Props) {
               latest.current.onBlur?.();
               return false;
             },
+            // Bilder von außen nicht als Text einlesen (das täte CodeMirror sonst); die Zeile hängt sie an.
+            drop: (e) => imageFiles(e.dataTransfer).length > 0,
             mousedown: (e) => {
               const chip = (e.target as HTMLElement).closest('.cm-chip') as HTMLElement | null;
               if (chip?.dataset.id && (e.ctrlKey || e.metaKey)) {

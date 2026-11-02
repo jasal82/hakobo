@@ -11,17 +11,40 @@ import { LanguageDescription } from '@codemirror/language';
 import { languages } from '@codemirror/language-data';
 import { classHighlighter, highlightCode } from '@lezer/highlight';
 import { findLanguage, guessLanguage, languageLabel } from './code';
+import { fileUrl, splitAlt } from './images';
 import { linkKey, parseLinkInner } from './inline';
 
 const md = new Marked({ gfm: true, breaks: true, async: false });
 
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const attr = (s: string) => esc(s).replace(/"/g, '&quot;');
+
+/** Zähler je Bildpfad innerhalb einer Notiz (für die Breite: das k-te Bild mit diesem Pfad). */
+let seen = new Map<string, number>();
+
+// Bilder: Rahmen mit Griff für die Breite; Bilder aus dem Notizbuch über die API.
+md.use({
+  renderer: {
+    image({ href, title, text }) {
+      const { alt, width } = splitAlt(text ?? '');
+      const k = seen.get(href) ?? 0;
+      seen.set(href, k + 1);
+      const src = fileUrl(href) ?? href;
+      return (
+        `<span class="md-img" tabindex="0" role="button" aria-label="${attr(alt || 'Bild')} öffnen" data-src="${attr(href)}" data-k="${k}"${width ? ` style="width:${width}px"` : ''}>` +
+        `<img src="${attr(src)}" alt="${attr(alt)}"${title ? ` title="${attr(title)}"` : ''} draggable="false">` +
+        `<span class="md-img-resize" title="Ziehen: Breite · Doppelklick: automatisch"></span></span>`
+      );
+    },
+  },
+});
+
 export function renderMarkdown(text: string): string {
+  seen = new Map();
   // Maskierte Aufzählungszeichen aus dem Dateiformat sind normale Listen.
   const html = md.parse(text) as string;
-  return DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
+  return DOMPurify.sanitize(html, { ADD_ATTR: ['target', 'tabindex', 'draggable'] });
 }
-
-const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 const cache = new Map<string, string | null>();
 

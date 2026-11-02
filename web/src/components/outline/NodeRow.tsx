@@ -4,7 +4,7 @@
 
 // Eine Zeile der Gliederung (rekursiv mit Kindern).
 
-import { memo, useState, type MouseEvent } from 'react';
+import { memo, useState, type DragEvent, type MouseEvent } from 'react';
 import { ChevronRight, CircleCheck, CircleDot, CodeXml, Copy, FileOutput, FileText, FolderInput, History, List, MoreHorizontal, Plus, StickyNote, Table2, Tag, Trash2, Type, ZoomIn } from 'lucide-react';
 import { canDrop, draggedIds, dropOn, dropPosition, endDrag, startDrag, type DropPos } from '../../lib/drag';
 import { createSubpage, cycleTask, deleteNode, selectRange, toggleSelected, toggleTodo, toPage } from '../../lib/outline';
@@ -13,6 +13,7 @@ import { toggleTable } from '../../lib/table';
 import type { Node } from '../../lib/types';
 import { isCodeNode } from '../../lib/code';
 import { Markdown } from '../Markdown';
+import { attachImages, hasFiles, imageFiles, insertImageNodes, setImageWidth } from '../../lib/images';
 import { caretFromClick, RichText } from '../RichText';
 import { Popover, type Anchor } from '../ui';
 import { BodyEditor } from './BodyEditor';
@@ -77,6 +78,32 @@ export const NodeRow = memo(function NodeRow({ id, root, inbox }: { id: string; 
     store().setFocus({ id, caret });
   };
 
+  /** Wohin von außen gezogene Bilder kommen: Seiten nehmen sie auf, Codeblöcke nicht (dort davor/dahinter). */
+  const filePos = (e: DragEvent): DropPos => {
+    if (isPage) return 'into';
+    const pos = dropPosition(e, e.currentTarget as HTMLElement);
+    if (pos !== 'into' || !code) return pos;
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    return e.clientY < r.top + r.height / 2 ? 'before' : 'after';
+  };
+  const dropFiles = (e: DragEvent) => {
+    const files = imageFiles(e.dataTransfer);
+    if (!files.length) {
+      store().toast('Nur Bilder lassen sich hier ablegen', 'info');
+      return;
+    }
+    const pos = filePos(e);
+    if (pos === 'into') {
+      if (!isPage) void attachImages(id, files);
+      // In eine Seite (z. B. in der Notizbuch-Ansicht): als neue Einträge am Ende
+      else void insertImageNodes(id, undefined, files).then((ids) => ids && store().toast(`In „${node.text}“ eingefügt`, 'success', { label: 'Öffnen', run: () => store().reveal(ids[0]) }));
+      return;
+    }
+    const parent = node.parent ? store().nodes[node.parent] : undefined;
+    if (!parent) return;
+    void insertImageNodes(parent.id, parent.children.indexOf(id) + (pos === 'after' ? 1 : 0), files);
+  };
+
   const openMenu = (e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -103,6 +130,14 @@ export const NodeRow = memo(function NodeRow({ id, root, inbox }: { id: string; 
         }}
         onDragEnd={endDrag}
         onDragOver={(e) => {
+          // Bilder von außen: auf den Eintrag (anhängen) oder davor/dahinter (neuer Eintrag)
+          if (hasFiles(e.dataTransfer)) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = 'copy';
+            setDropAt(filePos(e));
+            return;
+          }
           const ids = draggedIds();
           if (!ids.length) return;
           const pos = dropPosition(e, e.currentTarget);
@@ -119,6 +154,12 @@ export const NodeRow = memo(function NodeRow({ id, root, inbox }: { id: string; 
         }}
         onDrop={(e) => {
           e.preventDefault();
+          if (hasFiles(e.dataTransfer)) {
+            e.stopPropagation();
+            setDropAt(null);
+            dropFiles(e);
+            return;
+          }
           // Position aus dem Ereignis selbst (der Zustand von dragover kann noch ausstehen).
           const pos = dropPosition(e, e.currentTarget);
           const ids = draggedIds();
@@ -198,6 +239,7 @@ export const NodeRow = memo(function NodeRow({ id, root, inbox }: { id: string; 
           <Markdown
             text={node.body}
             source={node}
+            onImageResize={(href, k, w) => setImageWidth(id, href, k, w)}
             onClick={(e) => {
               // Im Code darf man markieren und kopieren; Doppelklick bearbeitet trotzdem.
               if ((e.target as HTMLElement).closest('pre') && e.detail < 2) return;

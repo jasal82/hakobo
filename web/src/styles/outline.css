@@ -1353,3 +1353,97 @@ body.is-col-resizing * {
   position: absolute;
   inset: -4px -3px;
 }
+
+/* ------------------------------------------------------------------ Bilder */
+
+.md .md-img {
+  position: relative;
+  display: inline-block;
+  max-width: min(100%, 560px);
+  margin: 4px 0;
+  border-radius: var(--radius-sm);
+  vertical-align: top;
+  cursor: zoom-in;
+}
+/* Mit gesetzter Breite (Ziehen am Rand) gilt nur noch die Spaltenbreite als Grenze. */
+.md .md-img[style*='width'] {
+  max-width: 100%;
+}
+.md .md-img img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+}
+.md .md-img:focus-visible {
+  outline-offset: 2px;
+}
+.md-img-resize {
+  display: none;
+}
+.md.can-resize .md-img-resize {
+  position: absolute;
+  top: 0;
+  right: -5px;
+  bottom: 0;
+  display: block;
+  width: 10px;
+  cursor: col-resize;
+}
+.md.can-resize .md-img:hover .md-img-resize::after,
+body.is-img-resizing .md-img-resize::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 4px;
+  height: 36px;
+  max-height: 60%;
+  transform: translateY(-50%);
+  border-radius: 99px;
+  background: var(--fg-subtle);
+  box-shadow: 0 0 0 1.5px var(--bg);
+}
+body.is-img-resizing,
+body.is-img-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+.ot-body .md .md-img {
+  max-width: 100%;
+}
+
+/* Großansicht */
+.image-viewer .dialog-body {
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  background: var(--bg-subtle);
+}
+.image-viewer-body {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  cursor: zoom-out;
+}
+.image-viewer-body img {
+  max-width: 100%;
+  max-height: 74vh;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md, 0 8px 24px rgba(0, 0, 0, .15));
+  cursor: default;
+}
+.image-viewer .dialog-footer {
+  align-items: center;
+}
+.image-viewer-path {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--fg-subtle);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

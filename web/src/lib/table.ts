@@ -41,6 +41,34 @@ export function cellPos(nodes: Record<string, Node>, id: string): { table: strin
   return null;
 }
 
+/** Knoten der Zelle; fehlende Zellen (und Zeilen) werden leer angelegt. */
+export function ensureCell(table: string, row: number, col: number): string | null {
+  const s = S();
+  const existing = itemsOf(s.nodes, table)[row];
+  const id = existing ? cellOf(s.nodes, existing, col) : null;
+  if (id) return id;
+  let created: string | null = null;
+  const ops = simulate((get, push) => {
+    let rowId = itemsOf(get(), table)[row];
+    for (let r = itemsOf(get(), table).length; r <= row; r++) {
+      const op = createOp(table, r, '');
+      push(op);
+      rowId = op.id;
+    }
+    if (col === 0) {
+      created = rowId;
+      return;
+    }
+    for (let c = itemsOf(get(), rowId).length; c < col; c++) {
+      const op = createOp(rowId, c, '');
+      push(op);
+      created = op.id;
+    }
+  });
+  if (ops.length) s.commit(ops, { focusAfter: null });
+  return created;
+}
+
 /** Fokus auf eine Zelle; fehlende Zellen (und Zeilen) werden leer angelegt. */
 export function focusCell(table: string, row: number, col: number, caret: 'start' | 'end' = 'end') {
   const s = S();

@@ -86,6 +86,13 @@ export const SHORTCUT_GROUPS: { title: string; keys: [string, string][] }[] = [
     ],
   },
   {
+    title: 'Bilder',
+    keys: [
+      ['Strg+V', 'Bild aus der Zwischenablage an den Eintrag hängen (in der Notiz: an der Cursorstelle)'],
+      ['Enter / Leertaste', 'Ausgewähltes Bild groß anzeigen (Tab springt zu den Bildern einer Notiz)'],
+    ],
+  },
+  {
     title: 'Kalender',
     keys: [
       ['Pfeiltasten', 'Monat: Tag wählen · Woche: Tagesköpfe (← →) und Termine (↑ ↓)'],

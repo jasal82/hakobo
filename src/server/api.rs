@@ -7,9 +7,11 @@
 use std::convert::Infallible;
 use std::time::Duration;
 
-use axum::extract::{Query, State};
-use axum::http::StatusCode;
+use axum::body::{Body, Bytes};
+use axum::extract::{DefaultBodyLimit, Path as UrlPath, Query, State};
+use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::sse::{Event as SseEvent, KeepAlive, Sse};
+use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post, put};
 use axum::{Json, Router};
 use chrono::{Local, NaiveDate};
@@ -25,7 +27,7 @@ use crate::dates::{Remind, Repeat, parse_natural_prefix};
 use crate::settings::Settings;
 use crate::vault::types::TypesFile;
 use crate::vault::{Kind, Op};
-use crate::{agenda, capture, git, search, update};
+use crate::{agenda, capture, files, git, search, update};
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -52,6 +54,9 @@ pub fn router() -> Router<AppState> {
         .route("/system/capture/hide", post(hide_capture))
         .route("/system/open-folder", post(open_folder))
         .route("/system/open-url", post(open_url))
+        .route("/system/open-file", post(open_file))
+        .route("/files", post(upload_file).layer(DefaultBodyLimit::max(files::MAX_BYTES + 64 * 1024)))
+        .route("/files/{*path}", get(get_file))
         .route("/system/quit", post(quit))
         .route("/update", get(update_status))
         .route("/update/check", post(update_check))
@@ -384,6 +389,56 @@ async fn open_url(State(s): State<AppState>, Json(b): Json<UrlBody>) -> ApiResul
     }
     open::that_detached(&b.url)?;
     Ok(Json(json!({ "ok": true })))
+}
+
+#[derive(Deserialize)]
+struct PathBody {
+    path: String,
+}
+
+/// Bild aus `assets/` mit dem Standardprogramm öffnen (nur lokal).
+async fn open_file(State(s): State<AppState>, Json(b): Json<PathBody>) -> ApiResult<Json<Value>> {
+    if !s.local {
+        return Err(bad("Nur in der lokalen App möglich."));
+    }
+    let Some(path) = files::resolve(&s.app.vault_dir(), &b.path) else {
+        return Err(bad("Datei nicht gefunden."));
+    };
+    open::that_detached(path)?;
+    Ok(Json(json!({ "ok": true })))
+}
+
+#[derive(Deserialize)]
+struct UploadQuery {
+    name: Option<String>,
+}
+
+/// Bild speichern (Inhalt im Rumpf, Name als Parameter); liefert den Pfad für Markdown (`/assets/bild.png`).
+async fn upload_file(State(s): State<AppState>, Query(q): Query<UploadQuery>, headers: HeaderMap, body: Bytes) -> ApiResult<Json<Value>> {
+    let mime = headers.get(header::CONTENT_TYPE).and_then(|v| v.to_str().ok()).map(str::to_owned);
+    let dir = s.app.vault_dir();
+    let name = q.name.unwrap_or_default();
+    let rel = tokio::task::spawn_blocking(move || files::save(&dir, &name, mime.as_deref(), &body)).await.map_err(|e| bad(e.to_string()))??;
+    // Mit der nächsten Version festhalten (zusammen mit der Seite, die das Bild zeigt).
+    s.app.vault.lock().pending_commit.insert(rel.clone());
+    Ok(Json(json!({ "path": format!("/{rel}") })))
+}
+
+/// Bild aus `assets/` ausliefern. Eigene Sicherheitsregeln: auch direkt geöffnet (z. B. SVG) läuft kein Skript.
+async fn get_file(State(s): State<AppState>, UrlPath(path): UrlPath<String>) -> Response {
+    let Some(full) = files::resolve(&s.app.vault_dir(), &path) else {
+        return (StatusCode::NOT_FOUND, "Datei nicht gefunden").into_response();
+    };
+    match tokio::fs::read(&full).await {
+        Ok(data) => Response::builder()
+            .header(header::CONTENT_TYPE, mime_guess::from_path(&full).first_or_octet_stream().as_ref())
+            .header(header::CACHE_CONTROL, "private, max-age=3600")
+            .header(header::X_CONTENT_TYPE_OPTIONS, "nosniff")
+            .header(header::CONTENT_SECURITY_POLICY, "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox")
+            .body(Body::from(data))
+            .expect("Antwort"),
+        Err(_) => (StatusCode::NOT_FOUND, "Datei nicht gefunden").into_response(),
+    }
 }
 
 async fn quit(State(s): State<AppState>) -> Json<Value> {

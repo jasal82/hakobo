@@ -14,6 +14,7 @@ import { ancestors, isTable, isViewField, store, typesOf, useStore } from '../li
 import { TableBlock } from '../components/outline/Table';
 import type { Node } from '../lib/types';
 import { Markdown } from '../components/Markdown';
+import { hasFiles, imageFiles, imagesToInbox, insertImageNodes, setImageWidth } from '../lib/images';
 import { RichText } from '../components/RichText';
 import { BodyEditor } from '../components/outline/BodyEditor';
 import { FieldsForm, TaskBox } from '../components/outline/fields';
@@ -179,6 +180,22 @@ export function NodeView({ id, inbox }: { id: string; inbox?: boolean }) {
         // Ziehen über mehrere Einträge wählt sie aus (innerhalb eines Eintrags: Text).
         startDragSelect(e, id, e.currentTarget);
       }}
+      // Bilder neben die Einträge gezogen: als neue Einträge am Ende (im Notizbuch: in die Inbox)
+      onDragOver={(e) => {
+        if (!hasFiles(e.dataTransfer)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'copy';
+      }}
+      onDrop={(e) => {
+        if (!hasFiles(e.dataTransfer)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const files = imageFiles(e.dataTransfer);
+        if (!files.length) return store().toast('Nur Bilder lassen sich hier ablegen', 'info');
+        if (isRoot) void imagesToInbox(files);
+        else void insertImageNodes(id, undefined, files);
+      }}
     >
       <div className="view-inner">
         {!isRoot && <Breadcrumbs id={id} />}
@@ -236,6 +253,7 @@ export function NodeView({ id, inbox }: { id: string; inbox?: boolean }) {
                 <Markdown
                   text={node.body}
                   source={node}
+                  onImageResize={(href, k, w) => setImageWidth(id, href, k, w)}
                   onClick={(e) => {
                     if ((e.target as HTMLElement).closest('pre') && e.detail < 2) return;
                     if (window.getSelection()?.toString()) return;

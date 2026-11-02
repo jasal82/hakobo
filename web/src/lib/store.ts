@@ -76,6 +76,8 @@ interface State {
   settingsOpen: boolean;
   /** Übersicht der Tastenkürzel (F1). */
   shortcutsOpen: boolean;
+  /** Großansicht eines Bilds (Adresse zum Laden, Pfad aus dem Markdown, Name). */
+  imageView: { url: string; href: string; alt: string } | null;
   /** Bereich, den die Einstellungen beim nächsten Öffnen zeigen (z. B. `updates`). */
   settingsTab: string | null;
   history: string | null;
@@ -504,6 +506,7 @@ export const useStore = create<Store>()((set, get) => {
     captureOpen: false,
     settingsOpen: false,
     shortcutsOpen: false,
+    imageView: null,
     settingsTab: null,
     history: null,
     sidebar: window.innerWidth > 760 && localStorage.getItem('hakobo-sidebar') !== '0',

@@ -19,6 +19,7 @@ import { plainText } from '../../lib/inline';
 import { linkTextFor } from '../../lib/links';
 import { ancestors, store } from '../../lib/store';
 import { followLinkAt } from '../RichText';
+import { hasFiles, imageFiles, imagesAsMarkdown, pastedImages } from '../../lib/images';
 import { detectTrigger } from './suggest';
 
 /** Codeblock (```…```) an einer Position: Bereich und Sprache. */
@@ -138,6 +139,20 @@ async function complete(ctx: CompletionContext): Promise<CompletionResult | null
   return { from, options, filter: false };
 }
 
+/** Bilder hochladen und als eigene Absätze bei `from`–`to` einfügen. */
+async function insertImagesAt(v: EditorView, from: number, to: number, images: File[]) {
+  const md = await imagesAsMarkdown(images);
+  if (!md || !v.dom.isConnected) return;
+  const doc = v.state.doc;
+  from = Math.min(from, doc.length);
+  to = Math.min(to, doc.length);
+  const before = doc.sliceString(Math.max(0, from - 2), from);
+  const after = doc.sliceString(to, to + 1);
+  const insert = (from > 0 && before !== '\n\n' ? (before.endsWith('\n') ? '\n' : '\n\n') : '') + md + (after && after !== '\n' ? '\n\n' : '');
+  v.dispatch({ changes: { from, to, insert }, selection: { anchor: from + insert.length } });
+  v.focus();
+}
+
 export function BodyEditor({ id, onClose }: { id: string; onClose: (focusTitle: boolean) => void }) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
@@ -204,6 +219,27 @@ export function BodyEditor({ id, onClose }: { id: string; onClose: (focusTitle: 
               if (!v.hasFocus && !document.activeElement?.closest('.cm-tooltip')) closeRef.current(false);
             }, 120);
             return false;
+          },
+          // Bilder aus der Zwischenablage oder von außen: hochladen und an der Stelle einfügen
+          paste: (e, v) => {
+            const images = pastedImages(e.clipboardData);
+            if (!images.length) return false;
+            e.preventDefault();
+            void insertImagesAt(v, v.state.selection.main.from, v.state.selection.main.to, images);
+            return true;
+          },
+          drop: (e, v) => {
+            if (!hasFiles(e.dataTransfer)) return false;
+            e.preventDefault();
+            e.stopPropagation();
+            const images = imageFiles(e.dataTransfer);
+            if (!images.length) {
+              store().toast('Nur Bilder lassen sich hier ablegen', 'info');
+              return true;
+            }
+            const pos = v.posAtCoords({ x: e.clientX, y: e.clientY }) ?? v.state.selection.main.head;
+            void insertImagesAt(v, pos, pos, images);
+            return true;
           },
         }),
       ],

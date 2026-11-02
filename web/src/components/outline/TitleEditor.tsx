@@ -33,6 +33,7 @@ import type { Op } from '../../lib/types';
 import { InlineEditor, type InlineEditorHandle } from '../InlineEditor';
 import { followLinkAt } from '../RichText';
 import { toggleTable } from '../../lib/table';
+import { attachImages, pastedImages } from '../../lib/images';
 import { useSuggest } from './suggest';
 
 /** ``` bzw. ```rust am Zeilenanfang macht die Zeile zum Codeblock. */
@@ -277,6 +278,12 @@ export function TitleEditor({
   };
 
   const onPaste = (e: ClipboardEvent, ed: InlineEditorHandle): boolean => {
+    // Bild (z. B. Bildschirmfoto): an diesen Eintrag hängen
+    const images = pastedImages(e.clipboardData);
+    if (images.length) {
+      void attachImages(id, images);
+      return true;
+    }
     const data = e.clipboardData?.getData('text/plain') ?? '';
     if (onPasteText?.(data, ed)) return true;
     if (!data.includes('\n') || node.kind !== 'item') return false;

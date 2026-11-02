@@ -90,6 +90,22 @@ export const api = {
   hideCapture: () => post('/api/system/capture/hide'),
   openFolder: () => post('/api/system/open-folder'),
   openUrl: (url: string) => post('/api/system/open-url', { url }),
+  /** Bild aus `assets/` mit dem Standardprogramm öffnen. */
+  openFile: (path: string) => post('/api/system/open-file', { path }),
+  /** Bild speichern; liefert den Pfad für Markdown, z. B. `/assets/bild.png`. */
+  uploadFile: async (file: Blob, name: string): Promise<{ path: string }> => {
+    const res = await fetch(`/api/files${q({ name })}`, { method: 'POST', credentials: 'same-origin', body: file, headers: { 'Content-Type': file.type || 'application/octet-stream' } });
+    if (!res.ok) {
+      let msg = res.statusText || `Fehler ${res.status}`;
+      try {
+        msg = (await res.json())?.error ?? msg;
+      } catch {
+        /* keine JSON-Antwort */
+      }
+      throw new ApiError(msg, res.status);
+    }
+    return (await res.json()) as { path: string };
+  },
   quit: () => post('/api/system/quit'),
   update: {
     status: () => get<UpdateStatus>('/api/update'),

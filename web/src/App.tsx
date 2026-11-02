@@ -18,6 +18,8 @@ import { CaptureModal } from './components/CaptureBox';
 import { SettingsDialog } from './components/SettingsDialog';
 import { HistoryDialog } from './components/HistoryDialog';
 import { ShortcutsDialog } from './components/Shortcuts';
+import { ImageViewer } from './components/ImageViewer';
+import { hasFiles, imageFiles, imagesToInbox } from './lib/images';
 import { focusables } from './components/ui';
 import { NodeView } from './views/NodeView';
 import { AgendaView } from './views/AgendaView';
@@ -156,9 +158,27 @@ export function App() {
       stepZoom(e.deltaY < 0 ? 1 : -1);
     };
     window.addEventListener('wheel', onWheel, { passive: false });
+    // Dateien von außen, die keine Stelle annimmt: nicht vom Browser öffnen lassen (er verließe die App),
+    // Bilder landen in der Inbox.
+    const onDragOver = (e: DragEvent) => {
+      if (!hasFiles(e.dataTransfer)) return;
+      e.preventDefault();
+      e.dataTransfer!.dropEffect = 'copy';
+    };
+    const onDrop = (e: DragEvent) => {
+      if (!hasFiles(e.dataTransfer)) return;
+      e.preventDefault();
+      const files = imageFiles(e.dataTransfer);
+      if (files.length) void imagesToInbox(files);
+      else store().toast('Nur Bilder lassen sich ablegen', 'info');
+    };
+    window.addEventListener('dragover', onDragOver);
+    window.addEventListener('drop', onDrop);
     return () => {
       window.removeEventListener('hakobo-settings', onSettings);
       window.removeEventListener('wheel', onWheel);
+      window.removeEventListener('dragover', onDragOver);
+      window.removeEventListener('drop', onDrop);
     };
   }, []);
 
@@ -261,6 +281,7 @@ export function App() {
       {overlays.settings && <SettingsDialog />}
       {overlays.history && <HistoryDialog />}
       {overlays.shortcuts && <ShortcutsDialog />}
+      <ImageViewer />
       <UpdateProgress />
       <Toasts />
     </div>

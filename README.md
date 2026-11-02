@@ -98,6 +98,22 @@ Wie in Workflowy wird jede Zeile mit `/tabelle` (oder „Als Tabelle anzeigen“
 
 Mit der Maus: Zeilen am Griff links ziehen, Spalten am Griff in der Kopfzelle, einzelne Zellen am Griff in der Zelle (auf eine andere Zelle ablegen tauscht beide). Der Rand zwischen zwei Kopfzellen ändert die Spaltenbreite (Doppelklick: wieder automatisch). `+` rechts neben der Kopfzeile fügt eine Spalte an, `+ Zeile` darunter eine Zeile. Im Menü der Zelle lassen sich Zeilen und Spalten außerdem duplizieren und die ganze Tabelle als Markdown, TSV oder HTML kopieren (HTML lässt sich als Tabelle in Word, Mail oder eine Tabellenkalkulation einfügen). Zellen können Todos sein (`Strg+Enter`).
 
+### Bilder
+
+Bilder gehören wie in Workflowy zu einem Eintrag und stehen unter seinem Text. Sie lassen sich aus der Zwischenablage einfügen (`Strg+V`, z. B. ein Bildschirmfoto) oder aus dem Explorer, dem Browser oder einer anderen App in Hakobo ziehen:
+
+| Ziel | Wirkung |
+| --- | --- |
+| Text eines Eintrags (`Strg+V`) | Bild an den Eintrag hängen; ein leerer Eintrag bekommt den Bildnamen als Text |
+| Notiz (`Strg+V` oder Ablegen) | Bild an der Cursor- bzw. Ablegestelle einfügen |
+| Auf einen Eintrag ziehen | Bild an den Eintrag hängen |
+| Zwischen zwei Einträge ziehen | neuer Eintrag mit dem Bild (Dateiname als Text); mehrere Dateien: je ein Eintrag |
+| Tabellenzelle | Bild an die Zelle hängen |
+| Freie Fläche unter der Gliederung | neue Einträge am Ende |
+| Seitenleiste, Ansichten, Notizbuch | neue Einträge in der Inbox |
+
+Ein Klick (oder `Enter`) zeigt das Bild groß; von dort öffnet es sich auch in der Standard-App. Der Rand rechts am Bild ändert die Breite (Doppelklick: wieder automatisch). Erlaubt sind PNG, JPEG, GIF, WebP, BMP, AVIF und SVG bis 50 MB. Die Dateien liegen im Ordner `assets/` des Notizbuchs und werden mitversioniert; eine gelöschte Bildzeile löscht die Datei nicht.
+
 ### Ansichten
 
 - **Inbox**: alles Neue; jede Zeile lässt sich einsortieren (`Strg+M`) oder zuordnen (Tag oder Link vergeben).
