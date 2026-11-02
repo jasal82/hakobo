@@ -14,16 +14,30 @@ export type DropPos = 'before' | 'after' | 'into';
 /** Knoten, die gerade gezogen werden (leer: kein Ziehen aus der App). */
 let dragged: string[] = [];
 
+/**
+ * Nur innerhalb dieses Knotens ablegen (Zeilen einer Tabelle bleiben in ihrer Tabelle).
+ * Gilt bis zum nächsten `startDrag`, damit `canDrop` auch nach `endDrag` beim Ablegen stimmt.
+ */
+let within: string | null = null;
+
+/** Datentyp für Ziehen, das die App nicht verlassen soll (kein Text für Editoren oder andere Programme). */
+export const INTERNAL = 'application/x-hakobo';
+
 export function draggedIds(): string[] {
   return dragged;
 }
 
-/** Beginnt das Ziehen; bei mehreren Knoten mit einem Zähler statt der Zeile als Bild. */
-export function startDrag(e: DragEvent, ids: string[]) {
+/**
+ * Beginnt das Ziehen; bei mehreren Knoten mit einem Zähler statt der Zeile als Bild.
+ * `within`: nur zwischen die Kinder dieses Knotens (z. B. Zeilen einer Tabelle), ohne Text.
+ */
+export function startDrag(e: DragEvent, ids: string[], opts: { within?: string } = {}) {
   dragged = topLevel(ids);
+  within = opts.within ?? null;
   const nodes = store().nodes;
   e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', dragged.map((id) => nodes[id]?.text ?? '').join('\n'));
+  if (within) e.dataTransfer.setData(INTERNAL, within);
+  else e.dataTransfer.setData('text/plain', dragged.map((id) => nodes[id]?.text ?? '').join('\n'));
   if (dragged.length > 1) {
     const ghost = document.createElement('div');
     ghost.className = 'drag-ghost';
@@ -55,6 +69,8 @@ export function canDrop(ids: string[], target: string, pos: DropPos): boolean {
   const { nodes, inbox } = store();
   const t = nodes[target];
   if (!t || !ids.length) return false;
+  // Gebunden (Tabellenzeile): nur vor oder hinter ein Geschwister im selben Knoten.
+  if (within && (pos === 'into' || t.parent !== within)) return false;
   const parent = pos === 'into' ? t : nodes[t.parent ?? ''];
   if (!parent) return false;
   return ids.every((id) => {

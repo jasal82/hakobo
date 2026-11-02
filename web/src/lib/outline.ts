@@ -6,7 +6,7 @@
 
 import { formatFence, guessLanguage } from './code';
 import { newId } from './ids';
-import { applyLocal, createOp, field, isCollapsed, pageOf, store, withField } from './store';
+import { applyLocal, createOp, field, isCollapsed, isTable, pageOf, store, withField } from './store';
 import type { CommandResult, Field, Node, Op, Task } from './types';
 
 const S = () => store();
@@ -17,11 +17,15 @@ export function visibleList(root: string): string[] {
   const { nodes, collapsed } = S();
   const out: string[] = [];
   const walk = (id: string) => {
+    // Tabelle: Zeilen und ihre Zellen in Lesereihenfolge, tiefere Inhalte der Zellen nicht.
+    const table = isTable(nodes[id]);
     for (const c of nodes[id]?.children ?? []) {
       const n = nodes[c];
       if (!n) continue;
       out.push(c);
-      if (n.children.length && !isCollapsed(collapsed, n)) walk(c);
+      if (table && n.kind === 'item') {
+        for (const cell of n.children) if (nodes[cell]?.kind === 'item') out.push(cell);
+      } else if (n.children.length && !isCollapsed(collapsed, n)) walk(c);
     }
   };
   walk(root);
@@ -444,7 +448,7 @@ export function topLevel(ids: string[]): string[] {
 }
 
 /** Baut Operationen nacheinander auf einem simulierten Stand auf. */
-function simulate(build: (get: () => Record<string, Node>, push: (op: Op) => void) => void): Op[] {
+export function simulate(build: (get: () => Record<string, Node>, push: (op: Op) => void) => void): Op[] {
   let nodes = S().nodes;
   const ops: Op[] = [];
   build(

@@ -105,6 +105,17 @@ export function field(n: Node | undefined, key: string): string | undefined {
   return n?.fields.find((f) => f.key.toLowerCase() === key.toLowerCase())?.value;
 }
 
+/** Felder, die nur die Darstellung steuern (Tabelle, Spaltenbreiten) – nicht im Formular und nicht als Chip. */
+export function isViewField(key: string): boolean {
+  const k = key.toLowerCase();
+  return k === 'layout' || k === 'col-widths';
+}
+
+/** Knoten mit `layout:: table`: Kinder sind Zeilen (die erste die Kopfzeile), Text und Kinder einer Zeile ihre Zellen. */
+export function isTable(n: Node | undefined): boolean {
+  return !!n && n.kind !== 'root' && field(n, 'layout')?.trim().toLowerCase() === 'table';
+}
+
 export function withField(fields: Field[], key: string, value: string | null): Field[] {
   const i = fields.findIndex((f) => f.key.toLowerCase() === key.toLowerCase());
   if (value === null) return i < 0 ? fields : fields.filter((_, j) => j !== i);

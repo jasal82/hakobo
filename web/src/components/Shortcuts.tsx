@@ -72,6 +72,20 @@ export const SHORTCUT_GROUPS: { title: string; keys: [string, string][] }[] = [
     ],
   },
   {
+    title: 'Tabellen',
+    keys: [
+      ['/tabelle', 'Eintrag als Tabelle zeigen (noch einmal: als Liste)'],
+      ['Tab / Umschalt+Tab', 'Nächste / vorige Zelle (hinter der letzten: neue Zeile)'],
+      ['Enter', 'Neue Zeile darunter'],
+      ['Pfeiltasten', 'Am Textrand: Nachbarzelle'],
+      ['Alt+Umschalt+↑ / Alt+Umschalt+↓', 'Zeile verschieben'],
+      ['Strg+Umschalt+Entf', 'Zeile löschen'],
+      ['Umschalt+F10', 'Menü: Zeilen und Spalten einfügen, duplizieren, verschieben, sortieren, löschen; als Markdown, TSV oder HTML kopieren'],
+      ['Strg+V', 'Aus Excel, TSV oder Markdown-Tabelle einfügen'],
+      ['Strg+Enter', 'Zelle als Todo erledigen (oder zum Todo machen)'],
+    ],
+  },
+  {
     title: 'Kalender',
     keys: [
       ['Pfeiltasten', 'Monat: Tag wählen · Woche: Tagesköpfe (← →) und Termine (↑ ↓)'],

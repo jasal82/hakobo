@@ -10,9 +10,13 @@
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import { clearSelection, selectRange } from '../../lib/outline';
 
-/** Hier beginnt kein Auswahl-Ziehen (Knöpfe, Links, Ziehen zum Verschieben, Kopf der Seite …). */
+/**
+ * Hier beginnt kein Auswahl-Ziehen: Knöpfe, Links, alles zum Verschieben (Aufzählungspunkt,
+ * `draggable`), Kopf der Seite … und Tabellen: Dort gehört die Maus dem Text, den Griffen
+ * für Zeilen, Spalten und Zellen und dem Spaltenrand.
+ */
 const IGNORE =
-  'button, a, input, textarea, select, label, [role="button"], .chip, .cm-chip, .bullet, .taskbox, .row-actions, .code-head, .zoom-head, .crumbs, .backlinks, .inbox-hint, .outline-add, .outline-empty, .row-line.is-selected, .popover, .dialog';
+  'button, a, input, textarea, select, label, [role="button"], [draggable="true"], .chip, .cm-chip, .bullet, .taskbox, .row-actions, .code-head, .zoom-head, .crumbs, .backlinks, .inbox-hint, .outline-add, .outline-empty, .row-line.is-selected, .ot-wrap, .popover, .dialog';
 
 /** Rand (px), ab dem beim Ziehen gerollt wird. */
 const EDGE = 36;
@@ -114,6 +118,11 @@ export function startDragSelect(e: ReactMouseEvent, root: string, view: HTMLElem
   };
 
   const move = (ev: MouseEvent) => {
+    // Taste schon losgelassen, ohne dass ein mouseup kam (z. B. außerhalb des Fensters): beenden.
+    if (ev.buttons === 0) {
+      finish(false);
+      return;
+    }
     y = ev.clientY;
     if (active) {
       ev.preventDefault();
@@ -122,13 +131,16 @@ export function startDragSelect(e: ReactMouseEvent, root: string, view: HTMLElem
     update();
   };
 
-  const up = () => {
+  /** Aufräumen; `swallowClick`: den Klick nach dem Loslassen nicht als Klick auf einen Eintrag werten. */
+  const finish = (swallowClick: boolean) => {
     window.removeEventListener('mousemove', move, true);
     window.removeEventListener('mouseup', up, true);
+    window.removeEventListener('dragstart', stop, true);
+    window.removeEventListener('blur', stop);
     window.clearTimeout(rolling);
     if (!active) return;
     document.body.classList.remove('is-drag-selecting');
-    // Der Klick nach dem Loslassen soll keinen Eintrag zum Bearbeiten öffnen.
+    if (!swallowClick) return;
     const swallow = (ev: Event) => {
       ev.stopPropagation();
       ev.preventDefault();
@@ -136,7 +148,12 @@ export function startDragSelect(e: ReactMouseEvent, root: string, view: HTMLElem
     window.addEventListener('click', swallow, true);
     window.setTimeout(() => window.removeEventListener('click', swallow, true), 0);
   };
+  const up = () => finish(true);
+  // Beginnt stattdessen echtes Ziehen (Verschieben), meldet der Browser kein mouseup mehr.
+  const stop = () => finish(false);
 
   window.addEventListener('mousemove', move, true);
   window.addEventListener('mouseup', up, true);
+  window.addEventListener('dragstart', stop, true);
+  window.addEventListener('blur', stop);
 }

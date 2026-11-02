@@ -32,12 +32,34 @@ import { createOp, store, useStore } from '../../lib/store';
 import type { Op } from '../../lib/types';
 import { InlineEditor, type InlineEditorHandle } from '../InlineEditor';
 import { followLinkAt } from '../RichText';
+import { toggleTable } from '../../lib/table';
 import { useSuggest } from './suggest';
 
 /** ``` bzw. ```rust am Zeilenanfang macht die Zeile zum Codeblock. */
 const FENCE_START = /^(?:```|~~~)\s*([\w+#.-]*)\s*$/;
 
-export function TitleEditor({ id, root, className, placeholder }: { id: string; root: string; className?: string; placeholder?: string }) {
+/**
+ * Eigene Belegung (z. B. in Tabellenzellen), vor der üblichen Gliederungs-Steuerung:
+ * `true` = verarbeitet, `'native'` = dem Editor überlassen (z. B. Cursor im Text), `false` = wie sonst.
+ */
+export type EditorKeys = (e: KeyboardEvent, ed: InlineEditorHandle) => boolean | 'native';
+
+export function TitleEditor({
+  id,
+  root,
+  className,
+  placeholder,
+  keys,
+  onPasteText,
+}: {
+  id: string;
+  root: string;
+  className?: string;
+  placeholder?: string;
+  keys?: EditorKeys;
+  /** Mehrzeilig Eingefügtes selbst verarbeiten (`true`), sonst wie in der Gliederung. */
+  onPasteText?: (text: string, ed: InlineEditorHandle) => boolean;
+}) {
   const node = useStore((s) => s.nodes[id]);
   const focus = useStore((s) => (s.focus?.id === id ? s.focus : null));
   const h = useRef<InlineEditorHandle>(null);
@@ -107,6 +129,10 @@ export function TitleEditor({ id, root, className, placeholder }: { id: string; 
       case 'page':
         void toPage(id);
         break;
+      case 'table':
+        if (rest) s.setText(id, rest.text, rest.caret);
+        toggleTable(id);
+        break;
     }
   }
 
@@ -119,6 +145,9 @@ export function TitleEditor({ id, root, className, placeholder }: { id: string; 
 
   const onKeyDown = (e: KeyboardEvent, ed: InlineEditorHandle): boolean => {
     if (sug.onKeyDown(e)) return true;
+    const own = keys?.(e, ed);
+    if (own === 'native') return false;
+    if (own) return true;
     const s = store();
     const mod = e.ctrlKey || e.metaKey;
     const [start, end] = ed.getSelection();
@@ -249,6 +278,7 @@ export function TitleEditor({ id, root, className, placeholder }: { id: string; 
 
   const onPaste = (e: ClipboardEvent, ed: InlineEditorHandle): boolean => {
     const data = e.clipboardData?.getData('text/plain') ?? '';
+    if (onPasteText?.(data, ed)) return true;
     if (!data.includes('\n') || node.kind !== 'item') return false;
     if (looksLikeCode(data)) pasteCode(id, data);
     else pasteOutline(id, data, ed.getSelection());

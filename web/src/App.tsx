@@ -194,7 +194,7 @@ export function App() {
         s.set({ settingsOpen: true });
       } else if ((e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) && !mod && !e.altKey) {
         // Aktionsmenü des Eintrags, in dem der Fokus steht (Gliederung oder Titel).
-        const btn = document.activeElement?.closest('.row-line, .zoom-title-row')?.querySelector<HTMLElement>('[aria-haspopup="menu"]');
+        const btn = document.activeElement?.closest('.ot-cell, .row-line, .zoom-title-row')?.querySelector<HTMLElement>('[aria-haspopup="menu"]');
         if (btn) {
           e.preventDefault();
           btn.click();

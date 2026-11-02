@@ -11,7 +11,7 @@ import { humanRemind, humanRepeat, humanWhen, urgency } from '../../lib/dates';
 import { plainText, tokenize } from '../../lib/inline';
 import { linkTextFor } from '../../lib/links';
 import { setFieldValue } from '../../lib/outline';
-import { ancestors, field, store, typesOf, useStore } from '../../lib/store';
+import { ancestors, field, isViewField, store, typesOf, useStore } from '../../lib/store';
 import type { FieldDef, Hit, Node, ParseResult } from '../../lib/types';
 import { Highlighted, Popover, useScrollActive, type Anchor } from '../ui';
 import { RichText } from '../RichText';
@@ -34,7 +34,8 @@ export function fieldDefs(n: Node, types = store().types): FieldDef[] {
   };
   for (const t of typesOf(n, types)) for (const f of types[t].fields) push(f.key === 'date' && n.task ? { ...f, label: 'Fällig' } : f);
   for (const f of n.fields) {
-    if (f.key === 'tags') continue;
+    // `layout` und `col-widths` (Tabelle) steuern nur die Darstellung.
+    if (f.key === 'tags' || isViewField(f.key)) continue;
     const b = BUILTIN[f.key.toLowerCase()];
     push(b ? { ...b, label: f.key === 'date' && n.task ? 'Fällig' : b.label } : { key: f.key, label: f.key, kind: 'text' });
   }

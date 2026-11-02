@@ -5,10 +5,11 @@
 // Eine Zeile der Gliederung (rekursiv mit Kindern).
 
 import { memo, useState, type MouseEvent } from 'react';
-import { ChevronRight, CircleCheck, CircleDot, CodeXml, Copy, FileOutput, FileText, FolderInput, History, MoreHorizontal, Plus, StickyNote, Tag, Trash2, ZoomIn } from 'lucide-react';
+import { ChevronRight, CircleCheck, CircleDot, CodeXml, Copy, FileOutput, FileText, FolderInput, History, List, MoreHorizontal, Plus, StickyNote, Table2, Tag, Trash2, Type, ZoomIn } from 'lucide-react';
 import { canDrop, draggedIds, dropOn, dropPosition, endDrag, startDrag, type DropPos } from '../../lib/drag';
 import { createSubpage, cycleTask, deleteNode, selectRange, toggleSelected, toggleTodo, toPage } from '../../lib/outline';
-import { isCollapsed, store, typesOf, useStore } from '../../lib/store';
+import { isCollapsed, isTable, store, typesOf, useStore } from '../../lib/store';
+import { toggleTable } from '../../lib/table';
 import type { Node } from '../../lib/types';
 import { isCodeNode } from '../../lib/code';
 import { Markdown } from '../Markdown';
@@ -17,6 +18,7 @@ import { Popover, type Anchor } from '../ui';
 import { BodyEditor } from './BodyEditor';
 import { CodeBlock } from './CodeBlock';
 import { MetaChips, TaskBox } from './fields';
+import { TableBlock } from './Table';
 import { copyLink, TitleEditor } from './TitleEditor';
 
 export const Children = memo(function Children({ parent, root }: { parent: string; root: string }) {
@@ -50,6 +52,9 @@ export const NodeRow = memo(function NodeRow({ id, root, inbox }: { id: string; 
   const color = typeKeys.length ? types[typeKeys[0]].color : undefined;
   const heading = /^(#{1,3}) /.exec(node.text)?.[1].length ?? 0;
   const closed = node.task === 'done' || node.task === 'cancelled';
+  const table = isTable(node);
+  // Tabelle ohne Titel und Notiz rückt hoch; beim Bearbeiten des Titels steht sie wieder darunter.
+  const inlineTable = table && !node.text.trim() && !node.body && !focused && !bodyEdit && !collapsed;
 
   const startEdit = (e: MouseEvent) => {
     if ((e.target as HTMLElement).closest('a, button, .chip')) return;
@@ -86,10 +91,13 @@ export const NodeRow = memo(function NodeRow({ id, root, inbox }: { id: string; 
       <div
         className={`row-line${focused ? ' is-focused' : ''}${selected ? ' is-selected' : ''}${dropAt ? ` drop-${dropAt}` : ''}${heading ? ` is-h${heading}` : ''}${isPage ? ' is-page' : ''}${code ? ' is-code' : ''}`}
         // Ausgewählte Zeilen lassen sich als Ganzes ziehen, sonst nur am Aufzählungspunkt.
-        draggable={selected || undefined}
+        // Nicht bei einer Tabelle in der Zeile: Dort gehört das Ziehen den Zeilen, Spalten und Zellen.
+        draggable={(selected && !inlineTable) || undefined}
         onDragStart={(e) => {
+          const t = e.target as HTMLElement;
+          if (t.closest('.ot-wrap')) return;
           // Markierten Text oder Links im Editor nicht als Zeile ziehen.
-          if (!selected && !(e.target as HTMLElement).closest('.bullet')) return;
+          if (!selected && !t.closest('.bullet')) return;
           const sel = store().selection;
           startDrag(e, selected && sel.length > 1 ? sel : [id]);
         }}
@@ -142,16 +150,23 @@ export const NodeRow = memo(function NodeRow({ id, root, inbox }: { id: string; 
           </a>
         </span>
         {node.task && <TaskBox node={node} />}
-        <div className="row-content" onClick={code ? undefined : startEdit}>
-          {code ? (
-            <CodeBlock id={id} root={root} focused={focused} />
-          ) : focused ? (
-            <TitleEditor id={id} root={root} placeholder={isPage ? 'Seitentitel' : undefined} />
-          ) : (
-            <div className={`row-text${node.text ? '' : ' is-empty'}`}>{node.text ? <RichText text={node.text} source={node} /> : '​'}</div>
-          )}
-          {!isPage && !code && <MetaChips node={node} />}
-        </div>
+        {inlineTable ? (
+          // Tabelle ohne Titel: direkt neben dem Aufzählungspunkt statt unter einer leeren Zeile.
+          <div className="row-table">
+            <TableBlock table={id} root={root} />
+          </div>
+        ) : (
+          <div className="row-content" onClick={code ? undefined : startEdit}>
+            {code ? (
+              <CodeBlock id={id} root={root} focused={focused} />
+            ) : focused ? (
+              <TitleEditor id={id} root={root} placeholder={isPage ? 'Seitentitel' : table ? 'Titel der Tabelle' : undefined} />
+            ) : (
+              <div className={`row-text${node.text ? '' : ' is-empty'}`}>{node.text ? <RichText text={node.text} source={node} /> : table ? <span className="faint">Tabelle</span> : '​'}</div>
+            )}
+            {!isPage && !code && <MetaChips node={node} />}
+          </div>
+        )}
         <span className="row-actions">
           {inbox && !isPage && !code && (
             <button className="btn btn-ghost btn-sm" onMouseDown={(e) => e.preventDefault()} onClick={() => store().set({ move: { ids: [id] } })} title="Einsortieren (Strg+M)">
@@ -192,7 +207,7 @@ export const NodeRow = memo(function NodeRow({ id, root, inbox }: { id: string; 
           />
         </div>
       ) : null}
-      {hasKids && !collapsed && <Children parent={id} root={root} />}
+      {!collapsed && !inlineTable && (table ? <TableBlock table={id} root={root} /> : hasKids && <Children parent={id} root={root} />)}
       {menu && <RowMenu node={node} root={root} anchor={menu} onClose={() => setMenu(null)} />}
     </div>
   );
@@ -231,6 +246,8 @@ export function RowMenu({ node, root, anchor, onClose }: { node: Node; root: str
         {node.kind === 'item' && item(<Tag size={15} />, 'Zuordnen …', () => s.set({ assign: { id } }))}
         {item(<Copy size={15} />, 'Link kopieren', () => void copyLink(id), 'Strg+L')}
         {node.kind === 'item' && item(<FileOutput size={15} />, 'Als Seite auslagern', () => void toPage(id))}
+        {!code && id !== s.inbox && item(isTable(node) ? <List size={15} /> : <Table2 size={15} />, isTable(node) ? 'Als Liste anzeigen' : 'Als Tabelle anzeigen', () => toggleTable(id), '/tabelle')}
+        {isTable(node) && node.kind === 'item' && !node.text.trim() && item(<Type size={15} />, 'Titel hinzufügen', () => s.setFocus({ id, caret: 'end' }))}
         {node.kind === 'page' && item(<Plus size={15} />, 'Unterseite anlegen', () => createSubpage(id))}
         {node.kind === 'page' && item(<History size={15} />, 'Versionen …', () => s.set({ history: id }))}
         {(node.kind === 'item' || id !== s.inbox) && item(<Trash2 size={15} />, 'Löschen', () => deleteNode(id, root), node.kind === 'item' ? 'Strg+⇧+⌫' : undefined, true)}

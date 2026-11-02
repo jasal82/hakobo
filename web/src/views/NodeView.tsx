@@ -10,7 +10,8 @@ import { ChevronRight, FilePlus2, FileText, FolderInput, History, Inbox as Inbox
 import { useState } from 'react';
 import { plainText } from '../lib/inline';
 import { clearSelection, completeMany, createChild, createSubpage, deleteMany, extendSelection, indentMany, outdentMany, selectRange, toMarkdown, topLevel, visibleList } from '../lib/outline';
-import { ancestors, store, typesOf, useStore } from '../lib/store';
+import { ancestors, isTable, isViewField, store, typesOf, useStore } from '../lib/store';
+import { TableBlock } from '../components/outline/Table';
 import type { Node } from '../lib/types';
 import { Markdown } from '../components/Markdown';
 import { RichText } from '../components/RichText';
@@ -155,7 +156,8 @@ export function NodeView({ id, inbox }: { id: string; inbox?: boolean }) {
 
   const isRoot = node.kind === 'root';
   const items = node.children.filter((c) => store().nodes[c]?.kind === 'item');
-  const typed = typesOf(node, types).length > 0 || node.fields.some((f) => f.key !== 'tags');
+  const typed = typesOf(node, types).length > 0 || node.fields.some((f) => f.key !== 'tags' && !isViewField(f.key));
+  const table = isTable(node);
 
   const addItem = () => {
     if (isRoot) createSubpage(root);
@@ -171,7 +173,9 @@ export function NodeView({ id, inbox }: { id: string; inbox?: boolean }) {
     <div
       className="view node-view"
       onMouseDown={(e) => {
-        if (!(e.target as HTMLElement).closest('.row-line') && !e.shiftKey && !e.ctrlKey) clearSelection();
+        // Klick neben die Einträge (auch in eine Tabelle) hebt die Auswahl auf.
+        const t = e.target as HTMLElement;
+        if ((!t.closest('.row-line') || t.closest('.ot-wrap')) && !e.shiftKey && !e.ctrlKey) clearSelection();
         // Ziehen über mehrere Einträge wählt sie aus (innerhalb eines Eintrags: Text).
         startDragSelect(e, id, e.currentTarget);
       }}
@@ -274,6 +278,16 @@ export function NodeView({ id, inbox }: { id: string; inbox?: boolean }) {
         <div className={`outline${isRoot ? ' is-root' : ''}`}>
           {inbox ? (
             node.children.map((c) => <NodeRow key={c} id={c} root={id} inbox />)
+          ) : table ? (
+            <>
+              <TableBlock table={id} root={id} />
+              {/* Unterseiten einer Tabellen-Seite stehen darunter. */}
+              {node.children
+                .filter((c) => store().nodes[c]?.kind === 'page')
+                .map((c) => (
+                  <NodeRow key={c} id={c} root={id} />
+                ))}
+            </>
           ) : (
             <Children parent={id} root={id} />
           )}

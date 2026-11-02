@@ -78,13 +78,30 @@ Beim Tippen helfen Vorschläge: `/` für Befehle und Daten, `#` für Tags, `@` f
 | `/erinnerung 15m`, `/erinnerung morgen 8 uhr` | Erinnerung (Desktop-Benachrichtigung) |
 | `/todo` | Kästchen |
 | `/h1`, `/notiz`, `/code`, `/einsortieren` | Überschrift, Notiz, Codeblock, verschieben |
+| `/tabelle` | Kinder als Tabelle zeigen (noch einmal: zurück zur Liste) |
 
 Deutsch und Englisch werden verstanden (`/tomorrow 2pm`, `/every monday`).
+
+### Tabellen
+
+Wie in Workflowy wird jede Zeile mit `/tabelle` (oder „Als Tabelle anzeigen“ im Aktionsmenü) zur Tabelle: Ihre Kinder sind die Zeilen, die erste ist die Kopfzeile. Anders als in Workflowy ist der Text einer Zeile ihre erste Spalte, die Kinder der Zeile sind die weiteren Spalten – aus „Kunde → Ort, Status“ wird so direkt eine Tabelle. Zellen bleiben normale Knoten mit Tags, Links, Daten und Notizen; was darunter verschachtelt ist, zeigt eine Zahl an der Zelle.
+
+| Taste | Wirkung |
+| --- | --- |
+| `Tab` / `Umschalt+Tab` | nächste / vorige Zelle (hinter der letzten: neue Zeile) |
+| `Enter` | neue Zeile darunter |
+| Pfeiltasten am Textrand | Nachbarzelle; über der Kopf- bzw. unter der letzten Zeile zurück in die Gliederung |
+| `Alt+Umschalt+↑/↓` | Zeile verschieben (die Kopfzeile bleibt oben) |
+| `Strg+Umschalt+Entf` | Zeile löschen |
+| `Umschalt+F10` | Menü der Zelle: Zeile und Spalte einfügen, verschieben, sortieren, löschen |
+| `Strg+V` | Bereich aus Excel, Google Sheets, TSV oder einer Markdown-Tabelle einfügen |
+
+Mit der Maus: Zeilen am Griff links ziehen, Spalten am Griff in der Kopfzelle, einzelne Zellen am Griff in der Zelle (auf eine andere Zelle ablegen tauscht beide). Der Rand zwischen zwei Kopfzellen ändert die Spaltenbreite (Doppelklick: wieder automatisch). `+` rechts neben der Kopfzeile fügt eine Spalte an, `+ Zeile` darunter eine Zeile. Im Menü der Zelle lassen sich Zeilen und Spalten außerdem duplizieren und die ganze Tabelle als Markdown, TSV oder HTML kopieren (HTML lässt sich als Tabelle in Word, Mail oder eine Tabellenkalkulation einfügen). Zellen können Todos sein (`Strg+Enter`).
 
 ### Ansichten
 
 - **Inbox**: alles Neue; jede Zeile lässt sich einsortieren (`Strg+M`) oder zuordnen (Tag oder Link vergeben).
-- **Agenda** und **Woche**: Termine und fällige Todos (Wiederholungen aufgelöst), Überfälliges oben, neue Einträge direkt per Doppelklick ins Zeitraster.
+- **Agenda** und **Kalender** (Woche und Monat): Termine und fällige Todos (Wiederholungen aufgelöst), Überfälliges oben; neue, auch mehrtägige Termine per Klick oder Ziehen über Tage bzw. Uhrzeiten.
 - **Todos**: alle offenen Todos nach Fälligkeit (überfällig, heute, morgen, nächste 7 Tage, später), undatierte nach Seite; Filter nach `#tag` und Text.
 - **Tags**: verschachtelter Tag-Baum in der Seitenleiste; ein Tag zeigt alle Einträge mit ihm und seinen Unter-Tags.
 - **Typen**: Tabelle je Typ mit bearbeitbaren Feldern, Typ-Editor für eigene Typen.

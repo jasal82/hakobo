@@ -1055,3 +1055,301 @@ body.is-drag-selecting * {
   -webkit-user-select: none !important;
   cursor: default !important;
 }
+
+/* ---------------------------------------------------------------- Tabellen */
+
+.ot-wrap {
+  margin: 2px 0 6px 8px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.ot {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+.ot-cell {
+  position: relative;
+  min-width: 120px;
+  max-width: 360px;
+  padding: 0;
+  border-right: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: top;
+  text-align: left;
+  font-weight: 400;
+  cursor: text;
+}
+.ot-row > .ot-cell:nth-child(2) {
+  border-left: 1px solid var(--border-subtle);
+}
+.ot-row:first-child > .ot-cell {
+  border-top: 1px solid var(--border-subtle);
+}
+.ot-row:first-child > .ot-cell:nth-child(2) {
+  border-top-left-radius: var(--radius-sm);
+}
+.ot-row:last-child > .ot-cell:nth-child(2) {
+  border-bottom-left-radius: var(--radius-sm);
+}
+.ot-row.is-head > .ot-cell {
+  background: var(--bg-subtle);
+  color: var(--fg-muted);
+  font-weight: 600;
+}
+.ot-cell-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 6px;
+  min-height: 32px;
+  padding: 6px 26px 6px 10px;
+}
+.ot-cell.is-focused {
+  background: var(--bg-subtle);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+.ot-row.is-head > .ot-cell.is-focused {
+  background: var(--bg-muted);
+}
+.ot-cell.is-missing {
+  background-image: repeating-linear-gradient(135deg, transparent 0 6px, var(--bg-subtle) 6px 7px);
+}
+/* Zelle mit verschachteltem Inhalt (wie in Workflowy: Rand links) */
+.ot-cell.has-nested {
+  box-shadow: inset 3px 0 0 var(--border-strong);
+}
+.ot-cell.has-nested.is-focused {
+  box-shadow: inset 3px 0 0 var(--border-strong), inset 0 0 0 1.5px var(--accent);
+}
+.ot-text {
+  min-width: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.ot-text.is-empty {
+  min-width: 20px;
+}
+.ot-cell .title-editor.is-cell {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: inherit;
+}
+.ot-cell .meta-chips {
+  flex-basis: 100%;
+}
+.ot-nested {
+  height: 18px;
+  min-width: 18px;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 99px;
+  background: var(--bg-muted);
+  color: var(--fg-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ot-nested:hover {
+  background: var(--bg-active);
+  color: var(--fg);
+}
+.ot-menu-btn {
+  position: absolute;
+  top: 6px;
+  right: 3px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg-faint);
+  opacity: 0;
+  cursor: pointer;
+}
+.ot-cell:hover .ot-menu-btn,
+.ot-cell.is-focused .ot-menu-btn {
+  opacity: 1;
+}
+.ot-menu-btn:hover {
+  background: var(--bg-active);
+  color: var(--fg);
+}
+.ot-menu .menu {
+  max-height: min(70vh, 560px);
+}
+.ot-body {
+  padding: 0 10px 6px;
+  font-size: 13px;
+  color: var(--fg-muted);
+}
+.ot-handle,
+.ot-add-col {
+  width: 22px;
+  padding: 0;
+  border: 0;
+  vertical-align: middle;
+}
+.ot-grip {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 28px;
+  border-radius: 4px;
+  color: var(--fg-faint);
+  opacity: 0;
+  cursor: grab;
+}
+.ot-row:hover .ot-grip {
+  opacity: 1;
+}
+.ot-grip:hover {
+  background: var(--bg-active);
+  color: var(--fg);
+}
+.ot-add-col {
+  padding-left: 4px;
+  background: transparent !important;
+}
+.ot-add-col .btn {
+  opacity: .5;
+}
+.ot:hover .ot-add-col .btn,
+.ot-add-col .btn:focus-visible {
+  opacity: 1;
+}
+.ot-add-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 4px 0 0 22px;
+  padding: 3px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--fg-subtle);
+  font-size: 12.5px;
+  cursor: pointer;
+  opacity: .7;
+}
+.ot-wrap:hover .ot-add-row,
+.ot-add-row:focus-visible {
+  opacity: 1;
+}
+.ot-add-row:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+/* Ablegen von Zeilen */
+.ot-row.drop-before > .ot-cell {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+.ot-row.drop-after > .ot-cell {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+/* Tabelle ohne Titel: in der Zeile des Aufzählungspunkts, Zellen auf derselben Höhe wie mit Titel
+   (Spalte des Aufzählungspunkts 24px, Abstand sonst 8px). */
+.row-table {
+  flex: 1;
+  min-width: 0;
+  padding-top: 2px;
+}
+.row-table .ot-wrap {
+  margin: 0 0 4px -16px;
+}
+/* Die leere Griffspalte der Kopfzeile liegt neben dem Aufzählungspunkt und darf ihn nicht verdecken. */
+.row-table .ot-row.is-head > .ot-handle {
+  pointer-events: none;
+}
+
+/* Tabellen: Griffe für Spalten (Kopfzeile) und Zellen, Spaltenbreite, Ablegen */
+.ot-cell-inner {
+  padding-left: 14px;
+}
+.ot-grip-col,
+.ot-grip-cell {
+  position: absolute;
+  top: 9px;
+  left: 1px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 12px;
+  height: 16px;
+  border-radius: 3px;
+  color: var(--fg-faint);
+  opacity: 0;
+  cursor: grab;
+}
+.ot-cell:hover > .ot-grip-col,
+.ot-cell:hover > .ot-grip-cell {
+  opacity: 1;
+}
+.ot-grip-col:hover,
+.ot-grip-cell:hover {
+  background: var(--bg-active);
+  color: var(--fg);
+}
+.ot-resize {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  bottom: 0;
+  z-index: 2;
+  width: 7px;
+  cursor: col-resize;
+}
+.ot-resize:hover,
+body.is-col-resizing .ot-resize:hover {
+  background: linear-gradient(to right, transparent 2px, var(--accent) 2px 4px, transparent 4px);
+}
+body.is-col-resizing,
+body.is-col-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+.ot-cell.drop-left {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.ot-cell.drop-right {
+  box-shadow: inset -3px 0 0 var(--accent);
+}
+.ot-cell.drop-cell {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.ot-cell .taskbox {
+  margin: 3px 0 0;
+  align-self: flex-start;
+}
+.ot-cell.is-closed .ot-text {
+  color: var(--fg-faint);
+  text-decoration: line-through;
+}
+/* Griffe: ganze Griffspalte ziehbar, nirgends Textmarkierung beim Greifen */
+.ot-handle,
+.ot-grip,
+.ot-grip-col,
+.ot-grip-cell,
+.ot-resize {
+  user-select: none;
+  -webkit-user-select: none;
+}
+.ot-handle[draggable='true'] {
+  cursor: grab;
+}
+.ot-handle[draggable='true']:hover .ot-grip {
+  background: var(--bg-active);
+  color: var(--fg);
+}
+/* Kleine Griffe in Zellen etwas größer zu treffen */
+.ot-grip-col::after,
+.ot-grip-cell::after {
+  content: '';
+  position: absolute;
+  inset: -4px -3px;
+}

@@ -18,6 +18,7 @@ Editor, mit Obsidian oder auf GitHub lesen und bearbeiten.
 | **Typ** | Ein Tag mit Feldern (z. B. `#meeting` mit Datum, Teilnehmern, Projekt). |
 | **Link / Erwähnung** | `[[Seite]]`, `[[Seite#^id\|Text]]`. Erwähnungen (`@` in der Oberfläche) sind Links auf Personen. |
 | **Inbox** | Die Seite `Inbox.md`. Schnellerfassung landet hier; einsortiert wird später. |
+| **Tabelle** | Ein Knoten mit `layout:: table`: Kinder sind Zeilen, Text und Kinder einer Zeile ihre Zellen. |
 
 Alles ist ein Baum: Wurzel → Seiten (Dateien/Ordner) → Knoten → Unterknoten. In
 jeden Knoten kann man hineinzoomen (Drill-down), egal ob Seite oder Zeile.
@@ -123,6 +124,35 @@ Hakobo schreibt eine Datei nur neu, wenn sie in der App geändert wurde.
 | `repeat` | `daily`, `weekdays`, `weekly`, `every 2 weeks`, `weekly on mon,thu`, `monthly`, `yearly`, `every 3 days`, jeweils optional `until 2026-12-31` | Wiederholung. Erledigen eines wiederkehrenden Todos verschiebt `date` auf den nächsten Termin. |
 | `remind` | `15m`, `1h`, `1d`, `1h30m`, `0`, `2026-10-27 08:00`, mehrere mit Komma | Erinnerung vor Beginn bzw. zu einem festen Zeitpunkt. Ganztägige Einträge rechnen ab der eingestellten Morgenzeit (Standard 09:00). |
 | `done` | `2026-10-26 18:04` | Wann das Todo erledigt wurde (setzt Hakobo). |
+| `layout` | `table` | Zeigt die Kinder als Tabelle (siehe unten). Bei Seiten im Frontmatter: `layout: table`. |
+| `col-widths` | `0,180,240` | Spaltenbreiten einer Tabelle in Pixeln, von links; `0` oder fehlend = automatisch. Setzt Hakobo beim Ziehen am Spaltenrand. |
+
+### Tabellen
+
+Eine Tabelle bleibt eine gewöhnliche Gliederung; `layout:: table` ändert nur
+die Darstellung:
+
+```markdown
+- Kunden
+  layout:: table
+  - Kunde
+    - Ort
+    - Status
+  - ACME
+    - Berlin
+    - aktiv
+  - Foo GmbH
+    - München
+```
+
+- Jedes Kind des Knotens ist eine **Zeile**, das erste die **Kopfzeile**.
+- Spalte 1 ist der Text der Zeile, Spalte 2 ihr erstes Kind, Spalte 3 das
+  zweite usw. Zellen werden nach Position zugeordnet.
+- Kürzere Zeilen haben leere Zellen am Ende (oben „Foo GmbH“ ohne Status);
+  eine leere Zelle mitten in der Zeile ist ein leerer Knoten `-`.
+- Zellen sind normale Knoten mit Text, Feldern, Notiz und eigenen Kindern.
+  Was unter einer Zelle verschachtelt ist, zeigt die Tabelle nicht an.
+- Unterseiten einer Tabellen-Seite gehören nicht zur Tabelle.
 
 ## Tags und Typen
 

@@ -5,7 +5,7 @@
 // Vorschläge beim Tippen: Slash-Befehle, #Tags, @Erwähnungen, [[Links.
 
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
-import { AtSign, Bell, CalendarClock, CalendarDays, CheckSquare, Code2, FileText, FolderInput, Hash, Heading1, Heading2, Heading3, Link2, Plus, Repeat, StickyNote, Text, ZoomIn } from 'lucide-react';
+import { AtSign, Bell, CalendarClock, CalendarDays, CheckSquare, Code2, FileText, FolderInput, Hash, Heading1, Heading2, Heading3, Link2, Plus, Repeat, StickyNote, Table2, Text, ZoomIn } from 'lucide-react';
 import { api } from '../../lib/api';
 import { humanWhen } from '../../lib/dates';
 import { newId } from '../../lib/ids';
@@ -97,6 +97,7 @@ function commands(): Cmd[] {
     { id: 'text', label: 'Normaler Text', words: ['text', 'normal'], icon: <Text size={15} /> },
     { id: 'note', label: 'Notiz', words: ['notiz', 'note', 'beschreibung'], icon: <StickyNote size={15} />, hint: 'Umschalt+Enter' },
     { id: 'code', label: 'Codeblock', words: ['code', 'codeblock', 'snippet'], icon: <Code2 size={15} /> },
+    { id: 'table', label: 'Tabelle', words: ['tabelle', 'table', 'raster', 'grid'], icon: <Table2 size={15} />, hint: 'Kinder als Zeilen' },
     { id: 'move', label: 'Einsortieren …', words: ['einsortieren', 'verschieben', 'move'], icon: <FolderInput size={15} />, hint: 'Strg+M' },
     { id: 'page', label: 'Als Seite auslagern', words: ['seite', 'page', 'auslagern'], icon: <FileText size={15} /> },
     { id: 'zoom', label: 'Hineinzoomen', words: ['zoom', 'öffnen', 'fokus'], icon: <ZoomIn size={15} />, hint: 'Alt+→' },
