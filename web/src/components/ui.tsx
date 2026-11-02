@@ -255,9 +255,10 @@ export function activateKeys(run: () => void) {
 export function RouteLink({ route, children, ...rest }: { route: Route; children: ReactNode } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href' | 'onClick'>) {
   return (
     <a
+      // Links nicht als Adresse ziehen (außer der Aufrufer will es, z. B. Seiten im Baum).
+      draggable={false}
       {...rest}
       href={routeToHash(route)}
-      draggable={false}
       onClick={(e: ReactMouseEvent) => {
         e.preventDefault();
         e.stopPropagation();

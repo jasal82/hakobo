@@ -380,3 +380,11 @@
 .nav-item:focus-within .nav-trailing {
   opacity: .7;
 }
+
+/* Ablegen in der Seitenleiste */
+.nav-item.is-drop,
+.nav-section-head.is-drop {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+  border-radius: var(--radius-sm);
+}

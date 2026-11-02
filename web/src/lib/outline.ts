@@ -345,7 +345,8 @@ export function addTag(id: string, tag: string) {
 }
 
 /** Einsortieren: Knoten ans Ende des Ziels verschieben. */
-export function moveInto(ids: string[], target: string) {
+/** Knoten als letzte Kinder von `target` (Seiten: als Unterseiten). `quiet`: ohne Meldung. */
+export function moveInto(ids: string[], target: string, { quiet = false }: { quiet?: boolean } = {}) {
   const { nodes } = S();
   const t = nodes[target];
   if (!t) return;
@@ -363,9 +364,11 @@ export function moveInto(ids: string[], target: string) {
     }
   }
   if (!ops.length) return;
-  if (S().commit(ops)) {
-    const name = t.kind === 'root' ? 'die oberste Ebene' : `„${t.text || 'Unbenannt'}“`;
-    S().toast(`${ops.length === 1 ? 'Eintrag' : `${ops.length} Einträge`} nach ${name} verschoben`, 'success', {
+  if (S().commit(ops) && !quiet) {
+    const where = t.kind === 'root' ? 'in die oberste Ebene' : `nach „${t.text || 'Unbenannt'}“`;
+    const pages = ops.every((o) => nodes[o.id]?.kind === 'page');
+    const what = ops.length === 1 ? (pages ? 'Seite' : 'Eintrag') : `${ops.length} ${pages ? 'Seiten' : 'Einträge'}`;
+    S().toast(`${what} ${where} verschoben`, 'success', {
       label: 'Öffnen',
       run: () => S().reveal(ids[0]),
     });
@@ -467,6 +470,26 @@ export function indentMany(ids: string[]) {
       const prev = nodes[parent.children[k]];
       if (!prev || prev.kind !== 'item') continue;
       push({ op: 'move', id, parent: prev.id, index: prev.children.filter((c) => nodes[c]?.kind === 'item').length });
+    }
+  });
+  if (ops.length) S().commit(ops, { focusAfter: null });
+}
+
+/** Einträge direkt vor oder hinter `target` einreihen (ihre Reihenfolge bleibt). */
+export function moveBeside(ids: string[], target: string, pos: 'before' | 'after') {
+  const tops = topLevel(ids).filter((id) => id !== target);
+  const ops = simulate((get, push) => {
+    let prev: string | null = null;
+    for (const id of tops) {
+      const nodes = get();
+      const t = nodes[target];
+      const parent = t?.parent ? nodes[t.parent] : undefined;
+      if (!parent || parent.kind === 'root' || nodes[id]?.kind !== 'item') continue;
+      // Index unter den Einträgen ohne den verschobenen selbst (wie beim Verschieben).
+      const items = parent.children.filter((c) => nodes[c]?.kind === 'item' && c !== id);
+      const index = prev ? items.indexOf(prev) + 1 : items.indexOf(target) + (pos === 'after' ? 1 : 0);
+      push({ op: 'move', id, parent: parent.id, index });
+      prev = id;
     }
   });
   if (ops.length) S().commit(ops, { focusAfter: null });

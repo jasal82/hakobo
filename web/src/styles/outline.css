@@ -1020,3 +1020,20 @@ button.ff-value:hover {
   outline-offset: 4px;
   border-radius: var(--radius-sm);
 }
+
+/* Ziehen: ausgewählte Zeilen als Ganzes */
+.row-line.is-selected[draggable='true'] {
+  cursor: grab;
+}
+.drag-ghost {
+  position: fixed;
+  top: -100px;
+  left: -100px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font: 600 12px/1.4 var(--font-sans);
+  white-space: nowrap;
+  pointer-events: none;
+}

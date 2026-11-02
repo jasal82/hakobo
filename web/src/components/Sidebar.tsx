@@ -15,6 +15,7 @@ import { pendingVersion, useUpdate } from '../lib/update';
 import { openUpdates } from './UpdateProgress';
 import { moveFocus, RouteLink } from './ui';
 import { calendarRoute } from '../views/parts/calendar';
+import { endDrag, startDrag, useIntoTarget } from '../lib/drag';
 
 /** Elemente der Seitenleiste, zwischen denen ↑ und ↓ wechseln. */
 const NAV = '[data-nav]';
@@ -71,7 +72,6 @@ function PageItem({ id, depth }: { id: string; depth: number }) {
   const active = useStore((s) => s.route.view === 'node' && s.route.id === id);
   const hasSub = useStore((s) => s.nodes[id]?.children.some((c) => s.nodes[c]?.kind === 'page'));
   const [open, setOpen] = useState(() => localStorage.getItem(`hakobo-tree-${id}`) === '1');
-  if (!node) return null;
   const setOpenSaved = (v: boolean) => {
     setOpen(v);
     try {
@@ -80,9 +80,12 @@ function PageItem({ id, depth }: { id: string; depth: number }) {
       /* egal */
     }
   };
+  // Ablegen: Seiten werden Unterseiten, Einträge landen am Ende der Seite.
+  const drop = useIntoTarget(id, () => hasSub && setOpenSaved(true));
+  if (!node) return null;
   return (
     <>
-      <div className={`nav-item tree-item${active ? ' is-active' : ''}`} style={{ paddingLeft: 8 + depth * 14 }}>
+      <div className={`nav-item tree-item${active ? ' is-active' : ''}${drop.over ? ' is-drop' : ''}`} style={{ paddingLeft: 8 + depth * 14 }} {...drop.props}>
         <button className={`tree-fold${hasSub ? '' : ' is-hidden'}${open ? ' is-open' : ''}`} onClick={() => setOpenSaved(!open)} tabIndex={-1} aria-hidden="true">
           <ChevronRight size={12} />
         </button>
@@ -94,6 +97,9 @@ function PageItem({ id, depth }: { id: string; depth: number }) {
           aria-expanded={hasSub ? open : undefined}
           aria-current={active ? 'page' : undefined}
           onKeyDown={(e) => treeKeys(e, !!hasSub, open, setOpenSaved)}
+          draggable
+          onDragStart={(e) => startDrag(e, [id])}
+          onDragEnd={endDrag}
         >
           <FileText size={14} />
           <span className="truncate">{node.text}</span>
@@ -174,7 +180,8 @@ function TagItem({ t, depth }: { t: TagNode; depth: number }) {
   );
 }
 
-function Section({ title, children, action, id }: { title: string; children: React.ReactNode; action?: React.ReactNode; id: string }) {
+/** `dropInto`: Knoten, unter den Abgelegtes kommt (z. B. die Wurzel für „Seiten“). */
+function Section({ title, children, action, id, dropInto = '' }: { title: string; children: React.ReactNode; action?: React.ReactNode; id: string; dropInto?: string }) {
   const [open, setOpen] = useState(() => localStorage.getItem(`hakobo-sec-${id}`) !== '0');
   const setOpenSaved = (v: boolean) => {
     setOpen(v);
@@ -184,9 +191,10 @@ function Section({ title, children, action, id }: { title: string; children: Rea
       /* egal */
     }
   };
+  const drop = useIntoTarget(dropInto);
   return (
     <section className="nav-section">
-      <div className="nav-section-head">
+      <div className={`nav-section-head${drop.over ? ' is-drop' : ''}`} {...(dropInto ? drop.props : {})}>
         <button data-nav="" data-depth={-1} aria-expanded={open} onClick={() => setOpenSaved(!open)} onKeyDown={(e) => treeKeys(e, true, open, setOpenSaved)}>
           <ChevronRight size={12} className={open ? 'is-open' : ''} />
           {title}
@@ -238,9 +246,13 @@ function SyncStatusLine() {
 export function Sidebar() {
   const route = useStore((s) => s.route);
   const root = useStore((s) => s.root);
+  const inbox = useStore((s) => s.inbox);
   const types = useStore((s) => s.types);
   const nodes = useStore((s) => s.nodes);
   const inboxCount = useInboxCount();
+  // Ablegen auf „Inbox“ (Einträge) und „Notizbuch“ (Seiten in die oberste Ebene)
+  const inboxDrop = useIntoTarget(inbox);
+  const rootDrop = useIntoTarget(root);
   const tagTree = useMemo(() => buildTagTree(nodes), [nodes]);
   const openTodos = useMemo(() => Object.values(nodes).filter((n) => n.kind === 'item' && (n.task === 'open' || n.task === 'doing')).length, [nodes]);
   const todayCount = useMemo(() => {
@@ -270,7 +282,7 @@ export function Sidebar() {
         <kbd>Strg K</kbd>
       </button>
       <nav className="nav-main">
-        <RouteLink route={{ view: 'inbox' }} {...mainLink(is('inbox'))} title="Inbox (Strg+1)">
+        <RouteLink route={{ view: 'inbox' }} {...mainLink(is('inbox'))} className={`${mainLink(is('inbox')).className}${inboxDrop.over ? ' is-drop' : ''}`} title="Inbox (Strg+1)" {...inboxDrop.props}>
           <Inbox size={15} />
           <span>Inbox</span>
           {inboxCount > 0 && <span className="nav-count is-strong">{inboxCount}</span>}
@@ -289,7 +301,13 @@ export function Sidebar() {
           <CalendarRange size={15} />
           <span>Kalender</span>
         </RouteLink>
-        <RouteLink route={{ view: 'node', id: root }} {...mainLink(route.view === 'node' && route.id === root)} title="Notizbuch (Strg+5)">
+        <RouteLink
+          route={{ view: 'node', id: root }}
+          {...mainLink(route.view === 'node' && route.id === root)}
+          className={`${mainLink(route.view === 'node' && route.id === root).className}${rootDrop.over ? ' is-drop' : ''}`}
+          title="Notizbuch (Strg+5)"
+          {...rootDrop.props}
+        >
           <Notebook size={15} />
           <span>Notizbuch</span>
         </RouteLink>
@@ -298,6 +316,7 @@ export function Sidebar() {
         <Section
           id="pages"
           title="Seiten"
+          dropInto={root}
           action={
             <button className="nav-add is-visible" title="Neue Seite" aria-label="Neue Seite" onClick={() => createSubpage(root)}>
               <Plus size={13} />

@@ -4,10 +4,11 @@
 
 // Eine Zeile der Gliederung (rekursiv mit Kindern).
 
-import { memo, useState, type DragEvent, type MouseEvent } from 'react';
+import { memo, useState, type MouseEvent } from 'react';
 import { ChevronRight, CircleCheck, CircleDot, CodeXml, Copy, FileOutput, FileText, FolderInput, History, MoreHorizontal, Plus, StickyNote, Tag, Trash2, ZoomIn } from 'lucide-react';
-import { createSubpage, cycleTask, deleteNode, moveInto, selectRange, toggleSelected, toggleTodo, toPage } from '../../lib/outline';
-import { isAncestor, isCollapsed, store, typesOf, useStore } from '../../lib/store';
+import { canDrop, draggedIds, dropOn, dropPosition, endDrag, startDrag, type DropPos } from '../../lib/drag';
+import { createSubpage, cycleTask, deleteNode, selectRange, toggleSelected, toggleTodo, toPage } from '../../lib/outline';
+import { isCollapsed, store, typesOf, useStore } from '../../lib/store';
 import type { Node } from '../../lib/types';
 import { isCodeNode } from '../../lib/code';
 import { Markdown } from '../Markdown';
@@ -17,43 +18,6 @@ import { BodyEditor } from './BodyEditor';
 import { CodeBlock } from './CodeBlock';
 import { MetaChips, TaskBox } from './fields';
 import { copyLink, TitleEditor } from './TitleEditor';
-
-let dragId: string | null = null;
-
-type DropPos = 'before' | 'after' | 'into';
-
-function dropPosition(e: DragEvent, el: HTMLElement): DropPos {
-  const r = el.getBoundingClientRect();
-  const y = (e.clientY - r.top) / r.height;
-  if (y < 0.3) return 'before';
-  if (y > 0.7) return 'after';
-  return 'into';
-}
-
-function canDrop(drag: string, target: string, pos: DropPos): boolean {
-  const { nodes } = store();
-  const d = nodes[drag];
-  const t = nodes[target];
-  if (!d || !t || drag === target || isAncestor(nodes, drag, target)) return false;
-  const parent = pos === 'into' ? t : nodes[t.parent ?? ''];
-  if (!parent) return false;
-  if (d.kind === 'page') return parent.kind !== 'item' && pos === 'into';
-  return parent.kind !== 'root';
-}
-
-function drop(drag: string, target: string, pos: DropPos) {
-  const s = store();
-  const t = s.nodes[target];
-  if (pos === 'into') {
-    moveInto([drag], target);
-    if (t.kind === 'item') s.setCollapsed(target, false);
-    return;
-  }
-  const parent = s.nodes[t.parent!];
-  const items = parent.children.filter((c) => s.nodes[c]?.kind === 'item' && c !== drag);
-  const idx = items.indexOf(target) + (pos === 'after' ? 1 : 0);
-  s.commit([{ op: 'move', id: drag, parent: parent.id, index: idx }]);
-}
 
 export const Children = memo(function Children({ parent, root }: { parent: string; root: string }) {
   const children = useStore((s) => s.nodes[parent]?.children);
@@ -118,23 +82,39 @@ export const NodeRow = memo(function NodeRow({ id, root, inbox }: { id: string; 
     <div className={`row${flash ? ' is-flash' : ''}${closed ? ' is-closed' : ''}`} data-id={id}>
       <div
         className={`row-line${focused ? ' is-focused' : ''}${selected ? ' is-selected' : ''}${dropAt ? ` drop-${dropAt}` : ''}${heading ? ` is-h${heading}` : ''}${isPage ? ' is-page' : ''}${code ? ' is-code' : ''}`}
+        // Ausgewählte Zeilen lassen sich als Ganzes ziehen, sonst nur am Aufzählungspunkt.
+        draggable={selected || undefined}
+        onDragStart={(e) => {
+          // Markierten Text oder Links im Editor nicht als Zeile ziehen.
+          if (!selected && !(e.target as HTMLElement).closest('.bullet')) return;
+          const sel = store().selection;
+          startDrag(e, selected && sel.length > 1 ? sel : [id]);
+        }}
+        onDragEnd={endDrag}
         onDragOver={(e) => {
-          if (!dragId) return;
+          const ids = draggedIds();
+          if (!ids.length) return;
           const pos = dropPosition(e, e.currentTarget);
-          if (!canDrop(dragId, id, pos)) {
+          if (!canDrop(ids, id, pos)) {
             setDropAt(null);
             return;
           }
           e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
           setDropAt(pos);
         }}
-        onDragLeave={() => setDropAt(null)}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as globalThis.Node | null)) setDropAt(null);
+        }}
         onDrop={(e) => {
           e.preventDefault();
-          const pos = dropAt;
+          // Position aus dem Ereignis selbst (der Zustand von dragover kann noch ausstehen).
+          const pos = dropPosition(e, e.currentTarget);
+          const ids = draggedIds();
           setDropAt(null);
-          if (dragId && pos) drop(dragId, id, pos);
-          dragId = null;
+          endDrag();
+          // In eine Seite: Ziel verschwindet aus dem Blick, daher mit Meldung.
+          if (pos && canDrop(ids, id, pos)) dropOn(ids, id, pos, { quiet: !isPage });
         }}
         onContextMenu={openMenu}
       >
@@ -147,13 +127,8 @@ export const NodeRow = memo(function NodeRow({ id, root, inbox }: { id: string; 
           <a
             className={`bullet${hasKids && collapsed ? ' has-hidden' : ''}${isPage ? ' is-page' : ''}`}
             style={color ? { ['--type-color' as string]: `var(--t-${color})` } : undefined}
+            // Das Ziehen übernimmt die Zeile (bei Auswahl alle ausgewählten).
             draggable
-            onDragStart={(e) => {
-              dragId = id;
-              e.dataTransfer.effectAllowed = 'move';
-              e.dataTransfer.setData('text/plain', node.text);
-            }}
-            onDragEnd={() => (dragId = null)}
             onClick={(e) => {
               e.preventDefault();
               store().zoom(id);
