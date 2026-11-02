@@ -68,7 +68,7 @@ tray-icon = "0.26"
 global-hotkey = "0.9"
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_System_Console", "Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+windows-sys = { version = "0.61", features = ["Win32_System_Console", "Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_Globalization"] }
 tauri-winrt-notification = "0.8"
 
 [target.'cfg(not(windows))'.dependencies]

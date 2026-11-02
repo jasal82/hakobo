@@ -6,6 +6,7 @@
 // Kinder als Zeilen, die erste als Kopfzeile. Spalte 0 ist der Text einer
 // Zeile, Spalte k ihr k-tes Kind. Alles bleibt eine normale Gliederung.
 
+import { compareText, L } from '../i18n';
 import { plainText } from './inline';
 import { clearSelection, simulate } from './outline';
 import { createOp, field, isTable, store, withField, type CellSel } from './store';
@@ -124,7 +125,7 @@ export function toggleTable(id: string) {
   if (!n || n.kind === 'root') return;
   if (isTable(n)) {
     s.commit([{ op: 'update', id, fields: withField(n.fields, 'layout', null) }]);
-    s.toast('Wieder als Liste', 'info');
+    s.toast(L.table.backToList, 'info');
     return;
   }
   const { rows, cols } = tableShape(s.nodes, id);
@@ -164,7 +165,7 @@ export function deleteRows(table: string, r0: number, r1: number) {
     ids.map((id) => ({ op: 'delete', id }) as Op),
     { focusAfter: { id: next, caret: 'end' } },
   );
-  if (ids.length > 1) s.toast(`${ids.length} Zeilen gelöscht`, 'info', { label: 'Rückgängig', run: () => S().undo() });
+  if (ids.length > 1) s.toast(L.table.rowsDeleted(ids.length), 'info', { label: L.common.undo, run: () => S().undo() });
 }
 
 export function deleteRow(table: string, row: number) {
@@ -260,7 +261,7 @@ export function deleteColumns(table: string, c0: number, c1: number) {
   if (ops.length) {
     const n = c1 - c0 + 1;
     s.commit(ops, { focusAfter: { id: itemsOf(s.nodes, table)[0] ?? table, caret: 'end' } });
-    s.toast(n === 1 ? 'Spalte gelöscht' : `${n} Spalten gelöscht`, 'info', { label: 'Rückgängig', run: () => S().undo() });
+    s.toast(L.table.columnsDeleted(n), 'info', { label: L.common.undo, run: () => S().undo() });
   }
 }
 
@@ -382,8 +383,6 @@ export function swapCells(table: string, a: { row: number; col: number }, b: { r
   if (ops.length) s.commit(ops, { focusAfter: moved ? { id: moved, caret: 'end' } : null });
 }
 
-const collator = new Intl.Collator('de', { numeric: true, sensitivity: 'base' });
-
 /** Zeilen (ohne Kopfzeile) nach Spalte `col` sortieren, leere zuletzt. */
 export function sortByColumn(table: string, col: number, dir: 1 | -1) {
   const s = S();
@@ -398,7 +397,7 @@ export function sortByColumn(table: string, col: number, dir: 1 | -1) {
     const ka = key(a);
     const kb = key(b);
     if (!ka !== !kb) return ka ? -1 : 1;
-    return collator.compare(ka, kb) * dir;
+    return compareText(ka, kb) * dir;
   });
   if (sorted.every((r, i) => r === rows[i])) return;
   const ops = simulate((_get, push) => {
@@ -551,8 +550,8 @@ async function writeClipboard(plain: string, html?: string): Promise<boolean> {
 export async function copyTable(table: string, format: ExportFormat) {
   const text = exportTable(table, format);
   const label = { markdown: 'Markdown', tsv: 'TSV', html: 'HTML' }[format];
-  if (await writeClipboard(text, format === 'html' ? text : undefined)) S().toast(`Tabelle als ${label} kopiert`, 'success');
-  else S().toast('Kopieren nicht möglich', 'error');
+  if (await writeClipboard(text, format === 'html' ? text : undefined)) S().toast(L.table.tableCopied(label), 'success');
+  else S().toast(L.table.copyFailed, 'error');
 }
 
 // ---------------------------------------------------------------------------
@@ -628,12 +627,12 @@ export async function copyCells(table: string, rg: CellRange, cut = false) {
   const plain = toTsv(grid);
   lastCopy = { plain, grid: grid.map((r) => r.map((n) => ({ text: n?.text ?? '', task: n?.task ?? null }))) };
   if (!(await writeClipboard(plain, toHtml(grid, rg.r0 === 0)))) {
-    s.toast('Kopieren nicht möglich', 'error');
+    s.toast(L.table.copyFailed, 'error');
     return;
   }
   const n = (rg.r1 - rg.r0 + 1) * (rg.c1 - rg.c0 + 1);
   if (cut) clearCells(table, rg);
-  s.toast(`${n} ${n === 1 ? 'Zelle' : 'Zellen'} ${cut ? 'ausgeschnitten' : 'kopiert'}`, 'success');
+  s.toast(cut ? L.table.cellsCut(n) : L.table.cellsCopied(n), 'success');
 }
 
 /** Text in die Auswahl einfügen: Ein einzelner Wert füllt alle Zellen, ein Bereich beginnt oben links. */

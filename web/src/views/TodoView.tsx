@@ -14,6 +14,7 @@ import type { Node } from '../lib/types';
 import { RichText } from '../components/RichText';
 import { MetaChips, TaskBox } from '../components/outline/fields';
 import { moveFocus } from '../components/ui';
+import { L } from '../i18n';
 
 type Group = { key: string; title: string; tone?: 'danger' | 'warn' | 'accent'; items: Node[] };
 
@@ -32,7 +33,7 @@ function TodoRow({ n }: { n: Node }) {
       <TaskBox node={n} />
       <button className="todo-main" onClick={() => store().reveal(n.id, { edit: true })}>
         <span className="todo-text">
-          <RichText text={n.text || '(ohne Text)'} source={n} />
+          <RichText text={n.text || L.views.todo.noText} source={n} />
         </span>
         <span className="todo-path">{path}</span>
       </button>
@@ -67,16 +68,16 @@ export function TodoView() {
         .map((n) => ({ n, at: parseWhen(field(n, 'done'))?.start ?? null }))
         .filter((x) => !x.at || x.at >= cutoff)
         .sort((a, b) => (b.at?.getTime() ?? 0) - (a.at?.getTime() ?? 0));
-      return [{ key: 'done', title: 'Erledigt (letzte 14 Tage)', items: done.map((x) => x.n) }];
+      return [{ key: 'done', title: L.views.todo.doneRecent, items: done.map((x) => x.n) }];
     }
     const open = todos.filter((n) => n.task === 'open' || n.task === 'doing');
     const g: Record<string, Group> = {
-      overdue: { key: 'overdue', title: 'Überfällig', tone: 'danger', items: [] },
-      doing: { key: 'doing', title: 'In Arbeit', tone: 'accent', items: [] },
-      today: { key: 'today', title: 'Heute', tone: 'warn', items: [] },
-      tomorrow: { key: 'tomorrow', title: 'Morgen', items: [] },
-      week: { key: 'week', title: 'Nächste 7 Tage', items: [] },
-      later: { key: 'later', title: 'Später', items: [] },
+      overdue: { key: 'overdue', title: L.views.todo.overdue, tone: 'danger', items: [] },
+      doing: { key: 'doing', title: L.views.todo.doing, tone: 'accent', items: [] },
+      today: { key: 'today', title: L.common.today, tone: 'warn', items: [] },
+      tomorrow: { key: 'tomorrow', title: L.common.tomorrow, items: [] },
+      week: { key: 'week', title: L.views.todo.next7, items: [] },
+      later: { key: 'later', title: L.views.todo.later, items: [] },
     };
     const undated = new Map<string, Group>();
     for (const n of open) {
@@ -90,14 +91,14 @@ export function TodoView() {
       else {
         const page = pageOf(nodes, n.id);
         const key = page?.id ?? 'none';
-        if (!undated.has(key)) undated.set(key, { key: `p:${key}`, title: page?.text ?? 'Ohne Seite', items: [] });
+        if (!undated.has(key)) undated.set(key, { key: `p:${key}`, title: page?.text ?? L.views.todo.noPage, items: [] });
         undated.get(key)!.items.push(n);
       }
     }
     for (const k of ['overdue', 'today', 'tomorrow', 'week', 'later']) g[k].items.sort((a, b) => (dueOf(a)?.getTime() ?? 0) - (dueOf(b)?.getTime() ?? 0));
     const dated = Object.values(g).filter((x) => x.items.length);
     const rest = [...undated.values()].sort((a, b) => a.title.localeCompare(b.title));
-    for (const r of rest) r.title = `Ohne Datum · ${r.title}`;
+    for (const r of rest) r.title = L.views.todo.undated(r.title);
     return [...dated, ...rest];
   }, [nodes, show, filter]);
 
@@ -109,7 +110,7 @@ export function TodoView() {
     setDraft('');
     try {
       await api.capture(`[] ${t}`);
-      store().toast('Todo in der Inbox angelegt', 'success');
+      store().toast(L.views.todo.created, 'success');
     } catch (e) {
       store().toast((e as Error).message, 'error');
     }
@@ -126,13 +127,13 @@ export function TodoView() {
       <div className="view-inner">
         <div className="view-head">
           <ListTodo size={22} className="faint" />
-          <h1>Todos</h1>
+          <h1>{L.common.todos}</h1>
           <div className="tabs">
             <button className={show === 'open' ? 'is-active' : ''} onClick={() => setShow('open')}>
-              Offen
+              {L.views.todo.open}
             </button>
             <button className={show === 'done' ? 'is-active' : ''} onClick={() => setShow('done')}>
-              Erledigt
+              {L.common.done}
             </button>
           </div>
         </div>
@@ -145,15 +146,15 @@ export function TodoView() {
             }}
           >
             <Plus size={15} className="faint" />
-            <input className="input" placeholder="Neues Todo … /fällig fr #tag" value={draft} onChange={(e) => setDraft(e.target.value)} />
+            <input className="input" placeholder={L.views.todo.newPlaceholder} value={draft} onChange={(e) => setDraft(e.target.value)} />
           </form>
-          <input className="input todo-filter" placeholder="Filtern … #tag oder Text" value={filter} onChange={(e) => setFilter(e.target.value)} />
+          <input className="input todo-filter" placeholder={L.views.todo.filterPlaceholder} value={filter} onChange={(e) => setFilter(e.target.value)} />
         </div>
         {total === 0 && (
           <div className="empty">
             <CheckCircle2 size={28} />
-            <h3>{show === 'open' ? 'Nichts offen' : 'Noch nichts erledigt'}</h3>
-            <p>Todos entstehen mit „[ ]“, Strg+Enter oder „/todo“ in jeder Zeile.</p>
+            <h3>{show === 'open' ? L.views.todo.nothingOpen : L.views.todo.nothingDone}</h3>
+            <p>{L.views.todo.emptyHint}</p>
           </div>
         )}
         {groups.map((g) => (

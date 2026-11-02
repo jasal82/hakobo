@@ -16,6 +16,7 @@ import { openUpdates } from './UpdateProgress';
 import { moveFocus, RouteLink } from './ui';
 import { calendarRoute } from '../views/parts/calendar';
 import { endDrag, startDrag, useIntoTarget } from '../lib/drag';
+import { compareText, L } from '../i18n';
 
 /** Elemente der Seitenleiste, zwischen denen ↑ und ↓ wechseln. */
 const NAV = '[data-nav]';
@@ -105,7 +106,7 @@ function PageItem({ id, depth }: { id: string; depth: number }) {
           <span className="truncate">{node.text}</span>
         </RouteLink>
         {/* Per Tastatur: „Unterseite“ in der Seite selbst oder im Aktionsmenü. */}
-        <button className="nav-add" title="Unterseite anlegen" aria-label="Unterseite anlegen" tabIndex={-1} onClick={() => createSubpage(id)}>
+        <button className="nav-add" title={L.app.sidebar.newSubpage} aria-label={L.app.sidebar.newSubpage} tabIndex={-1} onClick={() => createSubpage(id)}>
           <Plus size={13} />
         </button>
       </div>
@@ -125,7 +126,7 @@ function buildTagTree(nodes: Record<string, Node>): TagNode[] {
   const counts = new Map<string, number>();
   for (const n of Object.values(nodes)) for (const t of n.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
   const root: TagNode = { name: '', full: '', count: 0, children: [] };
-  for (const [tag, count] of [...counts].sort((a, b) => a[0].localeCompare(b[0]))) {
+  for (const [tag, count] of [...counts].sort((a, b) => compareText(a[0], b[0]))) {
     let cur = root;
     const parts = tag.split('/');
     parts.forEach((p, i) => {
@@ -213,7 +214,7 @@ function SettingsButton() {
     <button
       className={`btn btn-ghost btn-icon btn-sm${pending ? ' has-dot' : ''}`}
       onClick={() => (pending ? openUpdates() : store().set({ settingsOpen: true }))}
-      title={pending ? `Einstellungen · Hakobo ${pending} ist verfügbar` : 'Einstellungen (Strg+,)'}
+      title={pending ? L.app.sidebar.updateAvailable(pending) : L.app.sidebar.settings}
     >
       <Settings size={15} />
     </button>
@@ -224,11 +225,12 @@ function SyncStatusLine() {
   const sync = useStore((s) => s.sync);
   const [, tick] = useState(0);
   if (!sync) return null;
-  const label = sync.running ? 'Synchronisiere …' : sync.remote ? (sync.lastError ? 'Sync-Fehler' : `Synchronisiert ${relativeTime(sync.lastSync)}`) : `Lokal · Version ${relativeTime(sync.lastCommit)}`;
+  const t = L.app.sidebar;
+  const label = sync.running ? t.syncing : sync.remote ? (sync.lastError ? t.syncError : t.synced(relativeTime(sync.lastSync))) : t.localVersion(relativeTime(sync.lastCommit));
   return (
     <button
       className={`sync-line${sync.lastError ? ' is-error' : ''}`}
-      title={sync.lastError ?? sync.remote ?? 'Nur lokal versioniert (Git). Remote in den Einstellungen einrichten.'}
+      title={sync.lastError ?? sync.remote ?? t.localOnly}
       onClick={() => {
         if (sync.remote) {
           tick((x) => x + 1);
@@ -238,7 +240,7 @@ function SyncStatusLine() {
     >
       {sync.running ? <RefreshCw size={13} className="spin" /> : sync.remote ? <Cloud size={13} /> : <CloudOff size={13} />}
       <span className="truncate">{label}</span>
-      {sync.pending > 0 && <span className="nav-count" title="Änderungen, die noch nicht als Version festgehalten sind">{sync.pending}</span>}
+      {sync.pending > 0 && <span className="nav-count" title={t.pending}>{sync.pending}</span>}
     </button>
   );
 }
@@ -267,58 +269,59 @@ export function Sidebar() {
     return c;
   }, [nodes]);
   const is = (v: string) => route.view === v;
+  const t = L.app.sidebar;
   const mainLink = (active: boolean) => ({ className: `nav-item nav-link${active ? ' is-active' : ''}`, 'data-nav': '', 'aria-current': active ? ('page' as const) : undefined });
   return (
     <aside
       className="sidebar"
-      aria-label="Seitenleiste"
+      aria-label={t.label}
       onKeyDown={(e) => {
         if ((e.target as HTMLElement).matches(NAV)) moveFocus(e, e.currentTarget, NAV);
       }}
     >
       <button className="nav-search" data-nav="" onClick={() => store().set({ searchOpen: true })}>
         <Search size={14} />
-        <span>Suchen</span>
-        <kbd>Strg K</kbd>
+        <span>{L.common.search}</span>
+        <kbd>{t.searchKey}</kbd>
       </button>
       <nav className="nav-main">
-        <RouteLink route={{ view: 'inbox' }} {...mainLink(is('inbox'))} className={`${mainLink(is('inbox')).className}${inboxDrop.over ? ' is-drop' : ''}`} title="Inbox (Strg+1)" {...inboxDrop.props}>
+        <RouteLink route={{ view: 'inbox' }} {...mainLink(is('inbox'))} className={`${mainLink(is('inbox')).className}${inboxDrop.over ? ' is-drop' : ''}`} title={t.inboxTitle} {...inboxDrop.props}>
           <Inbox size={15} />
-          <span>Inbox</span>
+          <span>{L.common.inbox}</span>
           {inboxCount > 0 && <span className="nav-count is-strong">{inboxCount}</span>}
         </RouteLink>
-        <RouteLink route={{ view: 'agenda' }} {...mainLink(is('agenda'))} title="Agenda (Strg+2)">
+        <RouteLink route={{ view: 'agenda' }} {...mainLink(is('agenda'))} title={t.agendaTitle}>
           <CalendarDays size={15} />
-          <span>Agenda</span>
+          <span>{L.common.agenda}</span>
           {todayCount > 0 && <span className="nav-count">{todayCount}</span>}
         </RouteLink>
-        <RouteLink route={{ view: 'todos' }} {...mainLink(is('todos'))} title="Todos (Strg+3)">
+        <RouteLink route={{ view: 'todos' }} {...mainLink(is('todos'))} title={t.todosTitle}>
           <ListTodo size={15} />
-          <span>Todos</span>
+          <span>{L.common.todos}</span>
           {openTodos > 0 && <span className="nav-count">{openTodos}</span>}
         </RouteLink>
-        <RouteLink route={calendarRoute()} {...mainLink(is('week') || is('month'))} title="Kalender: Woche oder Monat (Strg+4)">
+        <RouteLink route={calendarRoute()} {...mainLink(is('week') || is('month'))} title={t.calendarTitle}>
           <CalendarRange size={15} />
-          <span>Kalender</span>
+          <span>{L.common.calendar}</span>
         </RouteLink>
         <RouteLink
           route={{ view: 'node', id: root }}
           {...mainLink(route.view === 'node' && route.id === root)}
           className={`${mainLink(route.view === 'node' && route.id === root).className}${rootDrop.over ? ' is-drop' : ''}`}
-          title="Notizbuch (Strg+5)"
+          title={t.notebookTitle}
           {...rootDrop.props}
         >
           <Notebook size={15} />
-          <span>Notizbuch</span>
+          <span>{t.notebook}</span>
         </RouteLink>
       </nav>
       <div className="nav-scroll">
         <Section
           id="pages"
-          title="Seiten"
+          title={t.pages}
           dropInto={root}
           action={
-            <button className="nav-add is-visible" title="Neue Seite" aria-label="Neue Seite" onClick={() => createSubpage(root)}>
+            <button className="nav-add is-visible" title={t.newPage} aria-label={t.newPage} onClick={() => createSubpage(root)}>
               <Plus size={13} />
             </button>
           }
@@ -326,7 +329,7 @@ export function Sidebar() {
           <PageTree parent={root} depth={0} />
         </Section>
         {Object.keys(types).length > 0 && (
-          <Section id="types" title="Typen">
+          <Section id="types" title={t.types}>
             {Object.entries(types).map(([key, t]) => (
               <RouteLink key={key} route={{ view: 'type', type: key }} {...mainLink(route.view === 'type' && route.type === key)} data-depth={0}>
                 <span className="type-dot" style={{ ['--type-color' as string]: `var(--t-${t.color ?? 'gray'})` }} />
@@ -337,7 +340,7 @@ export function Sidebar() {
           </Section>
         )}
         {tagTree.length > 0 && (
-          <Section id="tags" title="Tags">
+          <Section id="tags" title={t.tags}>
             <TagTree tags={tagTree} depth={0} />
           </Section>
         )}

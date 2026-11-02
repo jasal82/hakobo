@@ -11,6 +11,7 @@ import { store, useStore } from '../lib/store';
 import type { Node } from '../lib/types';
 import { cssZoom } from '../lib/zoom';
 import { openExternal, openTag } from './RichText';
+import { L } from '../i18n';
 
 /** Großansicht eines Bilds öffnen (siehe ImageViewer). */
 function openImage(el: HTMLElement) {
@@ -117,8 +118,8 @@ export const Markdown = memo(function Markdown({
           e.stopPropagation();
           const code = copy.parentElement?.querySelector('code')?.textContent ?? '';
           void navigator.clipboard.writeText(code).then(
-            () => store().toast('Code kopiert', 'success'),
-            () => store().toast('Kopieren nicht möglich', 'error'),
+            () => store().toast(L.editor.copied(L.editor.code), 'success'),
+            () => store().toast(L.editor.copyFailed, 'error'),
           );
           return;
         }

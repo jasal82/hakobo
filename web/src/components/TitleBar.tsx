@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Copy, Minus, PanelLeft, Plus, Search, Square, X } from 'lucide-react';
 import { desktop, ipc } from '../lib/desktop';
 import { store, useStore } from '../lib/store';
+import { L } from '../i18n';
 
 export function TitleBar() {
   const [max, setMax] = useState(false);
@@ -39,36 +40,36 @@ export function TitleBar() {
               /* egal */
             }
           }}
-          title="Seitenleiste (Strg+\)"
+          title={L.app.titleBar.sidebar}
         >
           <PanelLeft size={15} />
         </button>
-        <button className="btn btn-ghost btn-icon btn-sm" onClick={() => history.back()} title="Zurück (Alt+←)">
+        <button className="btn btn-ghost btn-icon btn-sm" onClick={() => history.back()} title={L.app.titleBar.back}>
           <ArrowLeft size={15} />
         </button>
-        <button className="btn btn-ghost btn-icon btn-sm" onClick={() => history.forward()} title="Vor">
+        <button className="btn btn-ghost btn-icon btn-sm" onClick={() => history.forward()} title={L.app.titleBar.forward}>
           <ArrowRight size={15} />
         </button>
         <span className="tb-brand">Hakobo</span>
       </div>
       <button className="tb-search" onClick={() => store().set({ searchOpen: true })}>
         <Search size={14} />
-        <span>Suchen …</span>
-        <kbd>Strg K</kbd>
+        <span>{L.app.titleBar.search}</span>
+        <kbd>{L.app.titleBar.searchKey}</kbd>
       </button>
       <div className="tb-right">
-        <button className="btn btn-ghost btn-sm" onClick={() => store().set({ captureOpen: true })} title="Schnell erfassen (Strg+N)">
-          <Plus size={15} /> Erfassen
+        <button className="btn btn-ghost btn-sm" onClick={() => store().set({ captureOpen: true })} title={L.app.titleBar.captureTitle}>
+          <Plus size={15} /> {L.app.titleBar.capture}
         </button>
         {isWin && (
           <div className="win-controls">
-            <button onClick={() => ipc('minimize')} aria-label="Minimieren">
+            <button onClick={() => ipc('minimize')} aria-label={L.app.titleBar.minimize}>
               <Minus size={15} />
             </button>
-            <button onClick={() => ipc('maximize')} aria-label={max ? 'Wiederherstellen' : 'Maximieren'}>
+            <button onClick={() => ipc('maximize')} aria-label={max ? L.app.titleBar.restore : L.app.titleBar.maximize}>
               {max ? <Copy size={13} style={{ transform: 'scaleX(-1)' }} /> : <Square size={12} />}
             </button>
-            <button className="win-close" onClick={() => ipc('close')} aria-label="Schließen">
+            <button className="win-close" onClick={() => ipc('close')} aria-label={L.common.close}>
               <X size={16} />
             </button>
           </div>

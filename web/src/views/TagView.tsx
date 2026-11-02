@@ -6,6 +6,7 @@
 
 import { useMemo, useState } from 'react';
 import { ChevronRight, FileText, Hash, Search, Table2, Wand2 } from 'lucide-react';
+import { compareText, L } from '../i18n';
 import { plainText } from '../lib/inline';
 import { pageOf, store, useStore } from '../lib/store';
 import type { Node } from '../lib/types';
@@ -53,7 +54,7 @@ function TagRow({ n, page }: { n: Node; page: Node | undefined }) {
       {path && <div className="tg-path">{path}</div>}
       <div className="tg-line">
         {isPage ? <FileText size={14} className="tg-page-icon" /> : n.task ? <TaskBox node={n} /> : <span className="tg-bullet" />}
-        <span className="tg-text">{n.text ? <RichText text={n.text} source={n} /> : <span className="faint">(leer)</span>}</span>
+        <span className="tg-text">{n.text ? <RichText text={n.text} source={n} /> : <span className="faint">{L.types.empty}</span>}</span>
         {!isPage && <MetaChips node={n} />}
       </div>
       {n.body && <div className="tg-body">{plainText(n.body.split('\n').find((l) => l.trim() && !l.startsWith('```')) ?? '').slice(0, 180)}</div>}
@@ -82,7 +83,7 @@ export function TagView({ tag }: { tag: string }) {
         if (next) counts.set(next, (counts.get(next) ?? 0) + 1);
       }
     }
-    return [...counts].sort((a, b) => a[0].localeCompare(b[0]));
+    return [...counts].sort((a, b) => compareText(a[0], b[0]));
   }, [nodes, t]);
 
   const groups = useMemo(() => {
@@ -133,15 +134,15 @@ export function TagView({ tag }: { tag: string }) {
               );
             })}
           </h1>
-          <span className="tg-count">{all.length === 1 ? '1 Eintrag' : `${all.length} Einträge`}</span>
+          <span className="tg-count">{L.types.tag.count(all.length)}</span>
           <span className="spacer" />
           {isType ? (
             <button className="btn btn-sm" onClick={() => store().navigate({ view: 'type', type: t })}>
-              <Table2 size={14} /> Als Tabelle
+              <Table2 size={14} /> {L.types.tag.asTable}
             </button>
           ) : (
-            <button className="btn btn-ghost btn-sm" onClick={() => setEditor(true)} title="Felder für diesen Tag festlegen">
-              <Wand2 size={14} /> Zum Typ machen …
+            <button className="btn btn-ghost btn-sm" onClick={() => setEditor(true)} title={L.types.tag.makeTypeTitle}>
+              <Wand2 size={14} /> {L.types.tag.makeType}
             </button>
           )}
         </div>
@@ -161,37 +162,37 @@ export function TagView({ tag }: { tag: string }) {
         <div className="tg-filters">
           <div className="tabs">
             <button className={filter === 'all' ? 'is-active' : ''} onClick={() => setFilter('all')}>
-              Alle
+              {L.types.tag.all}
             </button>
             <button className={filter === 'open' ? 'is-active' : ''} onClick={() => setFilter('open')}>
-              Offen {openCount > 0 && <span className="faint">{openCount}</span>}
+              {L.types.tag.open} {openCount > 0 && <span className="faint">{openCount}</span>}
             </button>
             <button className={filter === 'done' ? 'is-active' : ''} onClick={() => setFilter('done')}>
-              Erledigt {doneCount > 0 && <span className="faint">{doneCount}</span>}
+              {L.common.done} {doneCount > 0 && <span className="faint">{doneCount}</span>}
             </button>
           </div>
           <label className="tg-search">
             <Search size={14} />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filtern …" />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={L.types.filter} />
           </label>
         </div>
 
         {all.length === 0 ? (
           <div className="empty">
             <Hash size={28} />
-            <h3>Noch nichts mit #{t}</h3>
-            <p>Tags schreibst du direkt in den Text, z. B. „Idee #{t}“ – nach dem # schlägt Hakobo vorhandene Tags vor. Verschachteln mit „/“: #{t}/unterthema.</p>
+            <h3>{L.types.tag.nothing(t)}</h3>
+            <p>{L.types.tag.help(t)}</p>
           </div>
         ) : shown === 0 ? (
           <div className="empty">
-            <h3>Keine Treffer für diesen Filter</h3>
+            <h3>{L.types.tag.noMatches}</h3>
           </div>
         ) : (
           groups.map((g) => (
             <section key={g.page?.id ?? 'none'} className="tg-group">
               <h2 className="tg-group-head">
                 <FileText size={13} />
-                {g.page ? <RouteLink route={{ view: 'node', id: g.page.id }}>{g.page.path ?? g.page.text}</RouteLink> : 'Ohne Seite'}
+                {g.page ? <RouteLink route={{ view: 'node', id: g.page.id }}>{g.page.path ?? g.page.text}</RouteLink> : L.types.tag.noPage}
                 <span className="faint">{g.items.length}</span>
               </h2>
               {g.items.map((n) => (

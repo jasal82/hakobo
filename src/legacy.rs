@@ -29,9 +29,9 @@ pub fn take_over_config(legacy: &Path, config: &Path) -> Result<bool> {
         return Ok(false);
     }
     if crate::instance::find(legacy).is_some() {
-        bail!("Sqizzo heißt jetzt Hakobo und läuft noch. Bitte Sqizzo beenden (Infobereich → Beenden) und Hakobo erneut starten.");
+        bail!(crate::tr!("Sqizzo heißt jetzt Hakobo und läuft noch. Bitte Sqizzo beenden (Infobereich → Beenden) und Hakobo erneut starten.", "Sqizzo is now called Hakobo and is still running. Please quit Sqizzo (tray icon → Quit) and start Hakobo again."));
     }
-    std::fs::rename(legacy, config).with_context(|| format!("Die Einstellungen aus {} konnten nicht übernommen werden", legacy.display()))?;
+    std::fs::rename(legacy, config).with_context(|| crate::tr!("Die Einstellungen aus {} konnten nicht übernommen werden", "Could not take over the settings from {}", legacy.display()))?;
     for name in ["sqizzo.log", "sqizzo-icon.png"] {
         let _ = std::fs::remove_file(config.join(name));
     }

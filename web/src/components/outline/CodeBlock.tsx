@@ -18,16 +18,17 @@ import { createAfter, nextVisible, prevVisible } from '../../lib/outline';
 import { store, useStore } from '../../lib/store';
 import { Popover, useScrollActive, type Anchor } from '../ui';
 import { imageFiles } from '../../lib/images';
+import { L } from '../../i18n';
 
 /** Klickposition, an die der Cursor beim Öffnen des Editors springt. */
 let pendingClick: { id: string; x: number; y: number } | null = null;
 
-export async function copyText(text: string, what = 'Code') {
+export async function copyText(text: string, what = L.editor.code) {
   try {
     await navigator.clipboard.writeText(text);
-    store().toast(`${what} kopiert`, 'success');
+    store().toast(L.editor.copied(what), 'success');
   } catch {
-    store().toast('Kopieren nicht möglich', 'error');
+    store().toast(L.editor.copyFailed, 'error');
   }
 }
 
@@ -45,7 +46,7 @@ export function LanguagePicker({ anchor, current, onPick, onClose }: { anchor: A
     const all = languageOptions();
     const l = q.trim().toLowerCase();
     const hits = l ? all.filter((o) => o.label.toLowerCase().includes(l) || o.id.includes(l)) : all.slice(0, 26);
-    return [...hits.slice(0, 60), { label: 'Ohne Sprache', id: '' }];
+    return [...hits.slice(0, 60), { label: L.editor.noLanguage, id: '' }];
   }, [q]);
   return (
     <Popover anchor={anchor} onClose={onClose} width={240} className="lang-picker">
@@ -53,7 +54,7 @@ export function LanguagePicker({ anchor, current, onPick, onClose }: { anchor: A
         <input
           className="input"
           autoFocus
-          placeholder="Sprache suchen …"
+          placeholder={L.editor.searchLanguage}
           value={q}
           onChange={(e) => {
             setQ(e.target.value);
@@ -102,9 +103,9 @@ function CodeHeader({ id, lang, guessed, code }: { id: string; lang: string; gue
           const r = e.currentTarget.getBoundingClientRect();
           setPicker({ left: r.left, top: r.top, bottom: r.bottom });
         }}
-        title="Sprache wählen"
+        title={L.editor.chooseLanguage}
       >
-        {lang ? languageLabel(lang) : guessed ? `${languageLabel(guessed)}?` : 'Sprache'}
+        {lang ? languageLabel(lang) : guessed ? `${languageLabel(guessed)}?` : L.editor.language}
         <ChevronDown size={12} />
       </button>
       <button
@@ -115,7 +116,7 @@ function CodeHeader({ id, lang, guessed, code }: { id: string; lang: string; gue
           setCopied(true);
           window.setTimeout(() => setCopied(false), 1200);
         }}
-        title="Code kopieren"
+        title={L.editor.copyCode}
       >
         {copied ? <Check size={13} /> : <Copy size={13} />}
       </button>
@@ -169,7 +170,7 @@ export function CodeBlock({ id, root, focused }: { id: string; root: string; foc
             store().setFocus({ id, caret: 'end' });
           }}
         >
-          {block.code ? <HighlightedCode code={block.code} lang={block.lang || guessed || ''} /> : <span className="faint">Code …</span>}
+          {block.code ? <HighlightedCode code={block.code} lang={block.lang || guessed || ''} /> : <span className="faint">{L.editor.codePlaceholder}</span>}
         </pre>
       )}
     </div>
@@ -219,7 +220,7 @@ function CodeEditor({ id, root, lang, guessed, code }: { id: string; root: strin
         bracketMatching(),
         closeBrackets(),
         syntaxHighlighting(classHighlighter),
-        placeholder('Code …'),
+        placeholder(L.editor.codePlaceholder),
         languageConf.current.of([]),
         indentConf.current.of(indentUnit.of(indentFor(lang || guessed || '', code))),
         EditorState.tabSize.of(4),

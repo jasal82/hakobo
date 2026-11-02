@@ -254,11 +254,11 @@ enum Unsupported {
 impl Unsupported {
     fn message(&self) -> String {
         match self {
-            Unsupported::Debug => "Entwicklungsversion – Updates bitte aus dem Quellcode bauen.".into(),
-            Unsupported::NoExe(e) => format!("Die Programmdatei wurde nicht gefunden ({e})."),
-            Unsupported::NotPackaged => "Dieses Programm stammt nicht aus einem Hakobo-Paket – bitte manuell aktualisieren.".into(),
-            Unsupported::ReadOnly(dir) => format!("Keine Schreibrechte im Programmordner {} – bitte manuell aktualisieren.", dir.display()),
-            Unsupported::NoPackage => "Für dieses System gibt es kein passendes Paket – bitte manuell aktualisieren.".into(),
+            Unsupported::Debug => crate::tr!("Entwicklungsversion – Updates bitte aus dem Quellcode bauen.", "Development build – please build updates from source."),
+            Unsupported::NoExe(e) => crate::tr!("Die Programmdatei wurde nicht gefunden ({e}).", "The program file was not found ({e})."),
+            Unsupported::NotPackaged => crate::tr!("Dieses Programm stammt nicht aus einem Hakobo-Paket – bitte manuell aktualisieren.", "This program was not installed from a Hakobo package – please update manually."),
+            Unsupported::ReadOnly(dir) => crate::tr!("Keine Schreibrechte im Programmordner {} – bitte manuell aktualisieren.", "No write access to the program folder {} – please update manually.", dir.display()),
+            Unsupported::NoPackage => crate::tr!("Für dieses System gibt es kein passendes Paket – bitte manuell aktualisieren.", "There is no matching package for this system – please update manually."),
         }
     }
 }
@@ -358,8 +358,8 @@ pub fn status() -> UpdateStatus {
                 out.can_install = true;
                 out.download_size = a.size;
                 out.install_note = match t.method {
-                    Method::Installer => "Das Installationsprogramm der neuen Version wird heruntergeladen und ausgeführt.".into(),
-                    Method::Replace => format!("Die Programmdatei in {} wird ersetzt.", t.dir.display()),
+                    Method::Installer => crate::tr!("Das Installationsprogramm der neuen Version wird heruntergeladen und ausgeführt.", "The installer of the new version will be downloaded and run."),
+                    Method::Replace => crate::tr!("Die Programmdatei in {} wird ersetzt.", "The program file in {} will be replaced.", t.dir.display()),
                 };
             }
             Err(e) => out.install_note = e.message(),
@@ -435,11 +435,11 @@ fn fetch_release() -> Result<Release> {
         .set("Accept", "application/vnd.github+json")
         .call()
         .map_err(|e| match e {
-            ureq::Error::Status(404, _) => anyhow!("Es wurde noch keine Version veröffentlicht."),
-            ureq::Error::Status(403 | 429, _) => anyhow!("GitHub lehnt die Abfrage gerade ab (Abfragelimit) – bitte später erneut versuchen."),
-            e => anyhow!("GitHub ist nicht erreichbar ({e})."),
+            ureq::Error::Status(404, _) => anyhow!(crate::tr!("Es wurde noch keine Version veröffentlicht.", "No version has been published yet.")),
+            ureq::Error::Status(403 | 429, _) => anyhow!(crate::tr!("GitHub lehnt die Abfrage gerade ab (Abfragelimit) – bitte später erneut versuchen.", "GitHub is refusing the request right now (rate limit) – please try again later.")),
+            e => anyhow!(crate::tr!("GitHub ist nicht erreichbar ({e}).", "GitHub is not reachable ({e}).")),
         })?;
-    resp.into_json().context("Die Antwort von GitHub ist unverständlich")
+    resp.into_json().with_context(|| crate::tr!("Die Antwort von GitHub ist unverständlich", "The response from GitHub could not be understood"))
 }
 
 // ---------------------------------------------------------------------------
@@ -449,15 +449,15 @@ fn fetch_release() -> Result<Release> {
 /// Startet die Installation im Hintergrund – nur eine zugleich und nur für ein Update, das sich
 /// installieren lässt. Die Oberfläche verfolgt sie über [`status`].
 pub fn start_install() -> Result<(), String> {
-    let local = LOCAL.get().ok_or("Nur in der lokalen App verfügbar.")?;
+    let local = LOCAL.get().ok_or_else(|| crate::tr!("Nur in der lokalen App verfügbar.", "Only available in the desktop app."))?;
     {
         let mut s = STATE.lock();
         if s.phase.busy() {
-            return Err("Das Update wird bereits installiert.".into());
+            return Err(crate::tr!("Das Update wird bereits installiert.", "The update is already being installed."));
         }
-        let r = s.release.as_ref().ok_or("Bitte zuerst nach Updates suchen.")?;
+        let r = s.release.as_ref().ok_or_else(|| crate::tr!("Bitte zuerst nach Updates suchen.", "Please check for updates first."))?;
         if !r.is_update() {
-            return Err("Hakobo ist bereits auf dem neuesten Stand.".into());
+            return Err(crate::tr!("Hakobo ist bereits auf dem neuesten Stand.", "Hakobo is already up to date."));
         }
         plan(r).map_err(|e| e.message())?;
         s.phase = Phase::Downloading;
@@ -485,7 +485,7 @@ fn run_install(local: &Local) {
     std::thread::sleep(Duration::from_millis(800));
     if let Err(e) = command.spawn() {
         let program = command.get_program().to_string_lossy().to_string();
-        fail(format!("{program} konnte nicht gestartet werden ({e}). Bitte Hakobo beenden und neu starten."));
+        fail(crate::tr!("{program} konnte nicht gestartet werden ({e}). Bitte Hakobo beenden und neu starten.", "{program} could not be started ({e}). Please quit and restart Hakobo."));
         return;
     }
     tracing::info!("Update wird abgeschlossen, Hakobo startet neu");
@@ -509,7 +509,7 @@ fn fail(message: String) {
 /// Version startet – bzw. das Setup, das installiert und sie dann startet. Der Aufrufer beendet
 /// dieses Programm.
 fn install(work: &Path) -> Result<Command> {
-    let release = STATE.lock().release.clone().context("Bitte zuerst nach Updates suchen.")?;
+    let release = STATE.lock().release.clone().with_context(|| crate::tr!("Bitte zuerst nach Updates suchen.", "Please check for updates first."))?;
     let (target, asset) = plan(&release).map_err(|e| anyhow!(e.message()))?;
     let _ = std::fs::remove_dir_all(work);
     std::fs::create_dir_all(work)?;
@@ -538,13 +538,13 @@ fn expected_sha256(r: &Release, a: &Asset) -> Result<String> {
                 .assets
                 .iter()
                 .find(|x| x.name == "SHA256SUMS.txt")
-                .context("Für das Paket ist keine Prüfsumme veröffentlicht – Update abgebrochen.")?;
+                .with_context(|| crate::tr!("Für das Paket ist keine Prüfsumme veröffentlicht – Update abgebrochen.", "No checksum is published for the package – update cancelled."))?;
             let text = agent(&sums.browser_download_url, Duration::from_secs(60))?.get(&sums.browser_download_url).call()?.into_string()?;
-            sum_for(&text, &a.name).context("Das Paket fehlt in SHA256SUMS.txt – Update abgebrochen.")?
+            sum_for(&text, &a.name).with_context(|| crate::tr!("Das Paket fehlt in SHA256SUMS.txt – Update abgebrochen.", "The package is missing from SHA256SUMS.txt – update cancelled."))?
         }
     };
     if hex.len() != 64 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
-        bail!("Die veröffentlichte Prüfsumme ist ungültig – Update abgebrochen.");
+        bail!(crate::tr!("Die veröffentlichte Prüfsumme ist ungültig – Update abgebrochen.", "The published checksum is invalid – update cancelled."));
     }
     Ok(hex)
 }
@@ -561,7 +561,7 @@ fn download(a: &Asset, file: &Path, expected: &str) -> Result<()> {
     let resp = agent(&a.browser_download_url, Duration::from_secs(3600))?
         .get(&a.browser_download_url)
         .call()
-        .map_err(|e| anyhow!("Der Download ist fehlgeschlagen ({e})."))?;
+        .map_err(|e| anyhow!(crate::tr!("Der Download ist fehlgeschlagen ({e}).", "The download failed ({e}).")))?;
     STATE.lock().total = resp.header("Content-Length").and_then(|l| l.parse().ok()).unwrap_or(a.size);
     let mut reader = resp.into_reader();
     let mut out = File::create(file)?;
@@ -569,7 +569,7 @@ fn download(a: &Asset, file: &Path, expected: &str) -> Result<()> {
     let mut buf = vec![0u8; 256 * 1024];
     let mut done = 0u64;
     loop {
-        let n = reader.read(&mut buf).context("Der Download wurde unterbrochen")?;
+        let n = reader.read(&mut buf).with_context(|| crate::tr!("Der Download wurde unterbrochen", "The download was interrupted"))?;
         if n == 0 {
             break;
         }
@@ -583,7 +583,7 @@ fn download(a: &Asset, file: &Path, expected: &str) -> Result<()> {
     let got: String = hash.finalize().iter().map(|b| format!("{b:02x}")).collect();
     if got != expected {
         let _ = std::fs::remove_file(file);
-        bail!("Die Prüfsumme des Downloads stimmt nicht – Update abgebrochen.");
+        bail!(crate::tr!("Die Prüfsumme des Downloads stimmt nicht – Update abgebrochen.", "The checksum of the download does not match – update cancelled."));
     }
     Ok(())
 }
@@ -596,7 +596,7 @@ fn files_to_replace() -> Vec<&'static str> {
 /// Entpackt die genannten Dateien aus der obersten Ebene des Pakets (zip oder tar.gz) – sonst
 /// nichts, damit ein Paket nirgends außer in `dest` schreiben kann. Das Programm muss enthalten sein.
 fn unpack(package: &Path, dest: &Path, names: &[&str]) -> Result<()> {
-    let damaged = || "Das Paket ist beschädigt";
+    let damaged = || crate::tr!("Das Paket ist beschädigt", "The package is damaged");
     std::fs::create_dir_all(dest)?;
     if package.extension().is_some_and(|e| e == "zip") {
         let mut zip = zip::ZipArchive::new(File::open(package)?).with_context(damaged)?;
@@ -618,7 +618,7 @@ fn unpack(package: &Path, dest: &Path, names: &[&str]) -> Result<()> {
         }
     }
     if !dest.join(PROGRAM).is_file() {
-        bail!("Das Paket enthält {PROGRAM} nicht – Update abgebrochen.");
+        bail!(crate::tr!("Das Paket enthält {PROGRAM} nicht – Update abgebrochen.", "The package does not contain {PROGRAM} – update cancelled."));
     }
     Ok(())
 }

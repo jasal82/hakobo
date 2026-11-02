@@ -50,12 +50,12 @@ fn entry(v: &Vault, n: &Node, when: When, today: NaiveDate, recurring: Option<&R
     Entry {
         id: n.id.clone(),
         value: when.format(),
-        human: when.human_de(today),
+        human: when.human(today),
         when,
         kind: if n.task.is_some() { "todo" } else { "event" },
         task: n.task,
         overdue,
-        repeat: recurring.map(|r| r.human_de()),
+        repeat: recurring.map(|r| r.human()),
         text: n.text.clone(),
         page: page.map(|p| p.text.clone()).unwrap_or_default(),
         page_id: page.map(|p| p.id.clone()).unwrap_or_default(),
@@ -174,7 +174,7 @@ pub fn reminders(v: &Vault, settings: &Settings, after: NaiveDateTime, until: Na
                         key: format!("{}|{}|{}", n.id, occ.format(), at.format("%Y-%m-%d %H:%M")),
                         id: n.id.clone(),
                         text: crate::search::plain_text(&n.text),
-                        human: occ.human_de(today),
+                        human: occ.human(today),
                         at,
                         todo: n.task.is_some(),
                     });

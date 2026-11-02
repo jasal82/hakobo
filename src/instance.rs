@@ -65,9 +65,9 @@ pub fn request(i: &Instance, method: &str, path: &str, body: Option<&Value>) -> 
         Ok(r) => Ok(r.into_json::<Value>().unwrap_or(Value::Null)),
         Err(ureq::Error::Status(_, r)) => {
             let v: Value = r.into_json().unwrap_or(Value::Null);
-            Err(anyhow!("{}", v["error"].as_str().unwrap_or("Fehler der laufenden App")))
+            Err(anyhow!("{}", v["error"].as_str().map(str::to_string).unwrap_or_else(|| crate::tr!("Fehler der laufenden App", "Error in the running app"))))
         }
-        Err(e) => Err(anyhow!("Laufende App nicht erreichbar: {e}")),
+        Err(e) => Err(anyhow!(crate::tr!("Laufende App nicht erreichbar: {e}", "Running app not reachable: {e}"))),
     }
 }
 

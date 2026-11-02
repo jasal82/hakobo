@@ -66,11 +66,11 @@ fn skip_ws(s: &str, from: usize) -> usize {
 }
 
 fn due_human(w: &When, now: NaiveDateTime) -> String {
-    format!("Fällig: {}", w.human_de(now.date()))
+    crate::tr!("Fällig: {}", "Due: {}", w.human(now.date()))
 }
 
 fn date_human(w: &When, now: NaiveDateTime) -> String {
-    format!("Termin: {}", w.human_de(now.date()))
+    crate::tr!("Termin: {}", "Date: {}", w.human(now.date()))
 }
 
 /// Versteht einen Befehl wie `fällig fr`, `termin morgen 14-15 uhr`,
@@ -121,7 +121,7 @@ pub fn parse_command(input: &str, now: NaiveDateTime) -> Option<CommandResult> {
             }
         }
         let (r, n) = best?;
-        return Some(CommandResult { kind: CommandKind::Remind, field: "remind", value: r.format(), human: format!("Erinnerung: {}", r.human_de()), consumed: arg_start + n, date: None });
+        return Some(CommandResult { kind: CommandKind::Remind, field: "remind", value: r.format(), human: crate::tr!("Erinnerung: {}", "Reminder: {}", r.human()), consumed: arg_start + n, date: None });
     }
     // Ohne Befehlswort: direkt ein Datum (`/morgen`, `/fr 14 uhr`, `/27.10.`).
     let (when, n) = parse_natural_prefix(input, now)?;
@@ -154,7 +154,7 @@ fn repeat_result(input: &str, rep: Repeat, mut consumed: usize, now: NaiveDateTi
         rep.next_after(&anchor, yesterday).unwrap_or(today)
     };
     let start = When { start: first, start_time: time.and_then(|t| t.start_time), end_date: None, end_time: time.and_then(|t| t.end_time) };
-    let mut human = format!("Wiederholung: {}", rep.human_de());
+    let mut human = crate::tr!("Wiederholung: {}", "Repeats: {}", rep.human());
     if let Some(t) = start.start_time {
         human.push_str(&format!(", {}", t.format("%H:%M")));
     }
@@ -243,9 +243,10 @@ pub fn parse(input: &str, now: NaiveDateTime) -> Captured {
     }
     // Zusammenfassung: Bei Todos heißt das Datum „Fällig“.
     if c.task.is_some() && !kept_due {
+        let date_prefix = crate::tr!("Termin: ", "Date: ");
         for s in c.summary.iter_mut() {
-            if let Some(r) = s.strip_prefix("Termin: ") {
-                *s = format!("Fällig: {r}");
+            if let Some(r) = s.strip_prefix(date_prefix.as_str()) {
+                *s = crate::tr!("Fällig: {r}", "Due: {r}");
             }
         }
     }

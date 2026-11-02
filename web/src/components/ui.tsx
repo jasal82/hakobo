@@ -9,6 +9,7 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cssZoom } from '../lib/zoom';
 import { routeToHash, store, type Route } from '../lib/store';
+import { L } from '../i18n';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex], [contenteditable="true"]';
 
@@ -119,7 +120,7 @@ export function Dialog({
         {title !== undefined && (
           <div className="dialog-header">
             <h2>{title}</h2>
-            <button className="btn btn-ghost btn-icon btn-sm" onClick={onClose} aria-label="Schließen">
+            <button className="btn btn-ghost btn-icon btn-sm" onClick={onClose} aria-label={L.common.close}>
               <X size={16} />
             </button>
           </div>

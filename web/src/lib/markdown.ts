@@ -13,6 +13,7 @@ import { classHighlighter, highlightCode } from '@lezer/highlight';
 import { findLanguage, guessLanguage, languageLabel } from './code';
 import { fileUrl, splitAlt } from './images';
 import { linkKey, parseLinkInner } from './inline';
+import { L } from '../i18n';
 
 const md = new Marked({ gfm: true, breaks: true, async: false });
 
@@ -31,9 +32,9 @@ md.use({
       seen.set(href, k + 1);
       const src = fileUrl(href) ?? href;
       return (
-        `<span class="md-img" tabindex="0" role="button" aria-label="${attr(alt || 'Bild')} öffnen" data-src="${attr(href)}" data-k="${k}"${width ? ` style="width:${width}px"` : ''}>` +
+        `<span class="md-img" tabindex="0" role="button" aria-label="${attr(L.lib.markdown.openImage(alt || L.lib.markdown.image))}" data-src="${attr(href)}" data-k="${k}"${width ? ` style="width:${width}px"` : ''}>` +
         `<img src="${attr(src)}" alt="${attr(alt)}"${title ? ` title="${attr(title)}"` : ''} draggable="false">` +
-        `<span class="md-img-resize" title="Ziehen: Breite · Doppelklick: automatisch"></span></span>`
+        `<span class="md-img-resize" title="${attr(L.lib.markdown.resize)}"></span></span>`
       );
     },
   },
@@ -146,8 +147,8 @@ export function enhance(root: HTMLElement, e: Enhancer) {
       const btn = document.createElement('button');
       btn.className = 'md-copy';
       btn.type = 'button';
-      btn.title = 'Code kopieren';
-      btn.textContent = 'Kopieren';
+      btn.title = L.lib.markdown.copyCode;
+      btn.textContent = L.common.copy;
       pre.append(btn);
     }
     if (!lang || el.dataset.hl) return;

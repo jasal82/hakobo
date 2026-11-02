@@ -8,6 +8,7 @@ import { useEffect, useRef } from 'react';
 import { plainText } from '../../lib/inline';
 import { ancestors, typesOf, useStore } from '../../lib/store';
 import type { Node, Types } from '../../lib/types';
+import { L } from '../../i18n';
 
 /** Typfarbe eines Knotens als CSS-Wert (erster Typ mit Farbe). */
 export function nodeColor(n: Node | undefined, types: Types): string | undefined {
@@ -32,7 +33,7 @@ export function minutesOf(t: string | null | undefined): number {
 
 /** Titel eines Knotens für Pfadangaben. */
 export function crumbTitle(n: Node): string {
-  return n.kind === 'item' ? plainText(n.text, false) || 'Unbenannt' : n.text;
+  return n.kind === 'item' ? plainText(n.text, false) || L.common.untitled : n.text;
 }
 
 /** Pfad eines Knotens (optional erst ab einem Vorfahren). */

@@ -15,6 +15,7 @@ import { RichText } from '../components/RichText';
 import { TaskBox } from '../components/outline/fields';
 import { activateKeys, moveFocus, Popover, type Anchor } from '../components/ui';
 import { hhmm, minutesOf, nodeColor } from './parts/common';
+import { L, locale } from '../i18n';
 import { anchorOf, CalendarSwitch, isAllDayish, isClosed, isoWeek, mondayOf, monthKey, NewEventPopover, orderedRange, parseMonthKey, rememberMode, useAgenda, useTooltip, type EventDraft } from './parts/calendar';
 
 /** Höhe der Datumszeile, einer Termin-Zeile und des Abstands (px). */
@@ -117,7 +118,7 @@ function DayPopover({ anchor, day, segs, onClose, onNew }: { anchor: Anchor; day
           <span className="menu-icon">
             <Plus size={14} />
           </span>
-          <span className="menu-label">Neuer Termin</span>
+          <span className="menu-label">{L.views.calendar.newEvent}</span>
         </button>
       </div>
     </Popover>
@@ -192,7 +193,7 @@ export function MonthView({ month }: { month?: string }) {
     else store().navigate({ view: 'month', month: monthKey(new Date(first.getFullYear(), first.getMonth() + offset, 1)) });
   };
   const thisMonth = sameMonth(today, first);
-  const title = first.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+  const title = first.toLocaleDateString(locale(), { month: 'long', year: 'numeric' });
 
   // ---- Neue Termine -------------------------------------------------------
 
@@ -309,13 +310,13 @@ export function MonthView({ month }: { month?: string }) {
         <span className="spacer" />
         <CalendarSwitch mode="month" day={cursorDate} />
         <div className="wk-nav">
-          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => go(-1)} aria-label="Voriger Monat" title="Voriger Monat (Bild↑)">
+          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => go(-1)} aria-label={L.views.calendar.prevMonth} title={L.views.calendar.withKey(L.views.calendar.prevMonth, true)}>
             <ChevronLeft size={16} />
           </button>
           <button className="btn btn-sm" onClick={() => go(null)} disabled={thisMonth}>
-            Heute
+            {L.common.today}
           </button>
-          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => go(1)} aria-label="Nächster Monat" title="Nächster Monat (Bild↓)">
+          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => go(1)} aria-label={L.views.calendar.nextMonth} title={L.views.calendar.withKey(L.views.calendar.nextMonth, false)}>
             <ChevronRight size={16} />
           </button>
         </div>
@@ -327,13 +328,14 @@ export function MonthView({ month }: { month?: string }) {
       )}
 
       <div className="mo-weekdays" aria-hidden="true">
-        <span className="mo-kw-head">KW</span>
-        {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((w) => (
-          <span key={w}>{w}</span>
+        <span className="mo-kw-head">{L.views.calendar.weekShort}</span>
+        {/* Montag zuerst */}
+        {[1, 2, 3, 4, 5, 6, 0].map((i) => (
+          <span key={i}>{L.dates.weekdaysShort[i]}</span>
         ))}
       </div>
 
-      <div className="mo-grid" ref={gridRef} role="grid" aria-label={`${title}: Pfeiltasten wählen einen Tag, Umschalt mehrere, Enter legt einen Termin an`} style={{ gridTemplateRows: `repeat(${weeks}, minmax(0, 1fr))` }}>
+      <div className="mo-grid" ref={gridRef} role="grid" aria-label={L.views.calendar.gridLabel(title)} style={{ gridTemplateRows: `repeat(${weeks}, minmax(0, 1fr))` }}>
         {rows.map((row) => {
           // Läuft eine Zeile über, bleibt die letzte für „+ weitere“.
           const overflow = row.segs.some((g) => g.lane >= lanes);
@@ -342,7 +344,7 @@ export function MonthView({ month }: { month?: string }) {
           const monday = row.days[0];
           return (
             <div className="mo-week" role="row" key={isoDate(monday)}>
-              <button className="mo-kw" tabIndex={-1} title="Diese Woche ansehen" onClick={() => store().navigate({ view: 'week', start: isoDate(monday) })}>
+              <button className="mo-kw" tabIndex={-1} title={L.views.calendar.viewWeek} onClick={() => store().navigate({ view: 'week', start: isoDate(monday) })}>
                 {isoWeek(monday)}
               </button>
               <div className="mo-days">
@@ -361,9 +363,9 @@ export function MonthView({ month }: { month?: string }) {
                       onMouseDown={(ev) => drag(ev, iso)}
                       onFocus={() => setCursor(iso)}
                       onKeyDown={(ev) => cellKeys(ev, d)}
-                      title="Klicken oder über mehrere Tage ziehen: neuer Termin"
+                      title={L.views.calendar.clickOrDrag}
                     >
-                      <span className="mo-date">{d.getDate() === 1 ? d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' }) : d.getDate()}</span>
+                      <span className="mo-date">{d.getDate() === 1 ? d.toLocaleDateString(locale(), { day: 'numeric', month: 'short' }) : d.getDate()}</span>
                     </div>
                   );
                 })}
@@ -386,7 +388,7 @@ export function MonthView({ month }: { month?: string }) {
                           setMore({ anchor: anchorOf(ev.currentTarget), day: d, segs: all });
                         }}
                       >
-                        +{list.length} weitere
+                        {L.views.calendar.more(list.length)}
                       </button>
                     ) : null,
                   )}

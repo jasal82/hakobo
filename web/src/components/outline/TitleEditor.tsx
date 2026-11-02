@@ -35,6 +35,7 @@ import { followLinkAt } from '../RichText';
 import { toggleTable } from '../../lib/table';
 import { attachImages, chooseImages, pastedImages } from '../../lib/images';
 import { useSuggest } from './suggest';
+import { L } from '../../i18n';
 
 /** ``` bzw. ```rust am Zeilenanfang macht die Zeile zum Codeblock. */
 const FENCE_START = /^(?:```|~~~)\s*([\w+#.-]*)\s*$/;
@@ -275,7 +276,7 @@ export function TitleEditor({
       }
       if (k === 'o') {
         s.commitTitle(id);
-        if (!followLinkAt(node, t, start)) s.toast('Hier gibt es keinen Link zum Öffnen', 'info');
+        if (!followLinkAt(node, t, start)) s.toast(L.editor.noLinkHere, 'info');
         return done();
       }
     }
@@ -344,7 +345,7 @@ export async function copyLink(id: string) {
   if (!n) return;
   const link = n.kind === 'page' ? `[[${n.text}]]` : (await api.link(id)).link;
   await navigator.clipboard.writeText(link);
-  store().toast('Link kopiert – mit Strg+V in einen Knoten einfügen', 'success');
+  store().toast(L.editor.linkCopied, 'success');
 }
 
 /** Mehrzeiliges Einfügen: jede Zeile wird ein Knoten (Einrückung → Ebenen). */

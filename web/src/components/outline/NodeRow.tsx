@@ -16,6 +16,7 @@ import { Markdown } from '../Markdown';
 import { attachImages, chooseImages, hasFiles, imageFiles, insertImageNodes, setImageWidth } from '../../lib/images';
 import { caretFromClick, RichText } from '../RichText';
 import { Popover, type Anchor } from '../ui';
+import { L } from '../../i18n';
 import { BodyEditor } from './BodyEditor';
 import { CodeBlock } from './CodeBlock';
 import { MetaChips, TaskBox } from './fields';
@@ -89,14 +90,14 @@ export const NodeRow = memo(function NodeRow({ id, root, inbox }: { id: string; 
   const dropFiles = (e: DragEvent) => {
     const files = imageFiles(e.dataTransfer);
     if (!files.length) {
-      store().toast('Nur Bilder lassen sich hier ablegen', 'info');
+      store().toast(L.editor.onlyImages, 'info');
       return;
     }
     const pos = filePos(e);
     if (pos === 'into') {
       if (!isPage) void attachImages(id, files);
       // In eine Seite (z. B. in der Notizbuch-Ansicht): als neue Einträge am Ende
-      else void insertImageNodes(id, undefined, files).then((ids) => ids && store().toast(`In „${node.text}“ eingefügt`, 'success', { label: 'Öffnen', run: () => store().reveal(ids[0]) }));
+      else void insertImageNodes(id, undefined, files).then((ids) => ids && store().toast(L.outline.row.insertedInto(node.text), 'success', { label: L.common.open, run: () => store().reveal(ids[0]) }));
       return;
     }
     const parent = node.parent ? store().nodes[node.parent] : undefined;
@@ -172,7 +173,7 @@ export const NodeRow = memo(function NodeRow({ id, root, inbox }: { id: string; 
       >
         <span className="row-gutter">
           {hasKids && (
-            <button className={`row-fold${collapsed ? '' : ' is-open'}`} onMouseDown={(e) => e.preventDefault()} onClick={() => store().setCollapsed(id, !collapsed)} aria-label={collapsed ? 'Aufklappen' : 'Zuklappen'}>
+            <button className={`row-fold${collapsed ? '' : ' is-open'}`} onMouseDown={(e) => e.preventDefault()} onClick={() => store().setCollapsed(id, !collapsed)} aria-label={collapsed ? L.outline.row.expand : L.outline.row.collapse}>
               <ChevronRight size={14} />
             </button>
           )}
@@ -185,7 +186,7 @@ export const NodeRow = memo(function NodeRow({ id, root, inbox }: { id: string; 
               e.preventDefault();
               store().zoom(id);
             }}
-            title={isPage ? 'Seite öffnen' : 'Hineinzoomen'}
+            title={isPage ? L.outline.row.openPage : L.outline.row.zoomIn}
           >
             {isPage ? <FileText size={14} /> : <span className="dot" />}
           </a>
@@ -201,25 +202,25 @@ export const NodeRow = memo(function NodeRow({ id, root, inbox }: { id: string; 
             {code ? (
               <CodeBlock id={id} root={root} focused={focused} />
             ) : focused ? (
-              <TitleEditor id={id} root={root} placeholder={isPage ? 'Seitentitel' : table ? 'Titel der Tabelle' : undefined} />
+              <TitleEditor id={id} root={root} placeholder={isPage ? L.outline.row.pageTitle : table ? L.outline.row.tableTitle : undefined} />
             ) : (
-              <div className={`row-text${node.text ? '' : ' is-empty'}`}>{node.text ? <RichText text={node.text} source={node} /> : table ? <span className="faint">Tabelle</span> : '​'}</div>
+              <div className={`row-text${node.text ? '' : ' is-empty'}`}>{node.text ? <RichText text={node.text} source={node} /> : table ? <span className="faint">{L.outline.row.table}</span> : '​'}</div>
             )}
             {!isPage && !code && <MetaChips node={node} />}
           </div>
         )}
         <span className="row-actions">
           {inbox && !isPage && !code && (
-            <button className="btn btn-ghost btn-sm" onMouseDown={(e) => e.preventDefault()} onClick={() => store().set({ move: { ids: [id] } })} title="Einsortieren (Strg+M)">
-              <FolderInput size={14} /> Einsortieren
+            <button className="btn btn-ghost btn-sm" onMouseDown={(e) => e.preventDefault()} onClick={() => store().set({ move: { ids: [id] } })} title={L.outline.row.moveTitle}>
+              <FolderInput size={14} /> {L.outline.row.move}
             </button>
           )}
           {inbox && !isPage && !code && (
-            <button className="btn btn-ghost btn-sm" onMouseDown={(e) => e.preventDefault()} onClick={() => store().set({ assign: { id } })} title="Zuordnen: Tag oder Link vergeben">
-              <Tag size={14} /> Zuordnen
+            <button className="btn btn-ghost btn-sm" onMouseDown={(e) => e.preventDefault()} onClick={() => store().set({ assign: { id } })} title={L.outline.row.assignTitle}>
+              <Tag size={14} /> {L.outline.row.assign}
             </button>
           )}
-          <button className="btn btn-ghost btn-icon btn-sm" onMouseDown={(e) => e.preventDefault()} onClick={openMenu} aria-label="Aktionen" title="Aktionen (Umschalt+F10)" aria-haspopup="menu">
+          <button className="btn btn-ghost btn-icon btn-sm" onMouseDown={(e) => e.preventDefault()} onClick={openMenu} aria-label={L.outline.row.actions} title={L.outline.row.actionsTitle} aria-haspopup="menu">
             <MoreHorizontal size={15} />
           </button>
         </span>
@@ -258,6 +259,8 @@ export const NodeRow = memo(function NodeRow({ id, root, inbox }: { id: string; 
 export function RowMenu({ node, root, anchor, onClose }: { node: Node; root: string; anchor: Anchor; onClose: () => void }) {
   const s = store();
   const id = node.id;
+  const m = L.outline.menu;
+  const k = L.outline.keys;
   const item = (icon: React.ReactNode, label: string, run: () => void, hint?: string, danger?: boolean) => (
     <button
       className={`menu-item${danger ? ' is-danger' : ''}`}
@@ -278,22 +281,22 @@ export function RowMenu({ node, root, anchor, onClose }: { node: Node; root: str
   return (
     <Popover anchor={anchor} onClose={onClose} width={240}>
       <div className="menu" role="menu">
-        {item(<ZoomIn size={15} />, node.kind === 'page' ? 'Seite öffnen' : 'Hineinzoomen', () => s.zoom(id), 'Alt+→')}
-        {code && item(<CodeXml size={15} />, 'Sprache …', () => codeButton('.code-lang')?.click())}
-        {code && item(<Copy size={15} />, 'Code kopieren', () => codeButton('.code-copy')?.click())}
-        {node.kind === 'item' && item(<StickyNote size={15} />, node.body ? 'Notiz bearbeiten' : 'Notiz hinzufügen', () => s.set({ bodyEdit: id }), 'Umschalt+↵')}
-        {!code && (node.kind === 'item' || node.kind === 'page') && item(<ImagePlus size={15} />, 'Bild einfügen …', () => void chooseImages(id), '/bild')}
-        {node.kind === 'item' && item(node.task ? <CircleCheck size={15} /> : <CircleDot size={15} />, node.task ? (node.task === 'done' ? 'Wieder öffnen' : 'Erledigen') : 'Als Todo', () => (node.task ? cycleTask(id) : toggleTodo(id)), 'Strg+↵')}
-        {node.task && node.kind === 'item' && item(<CircleDot size={15} />, 'Kein Todo mehr', () => toggleTodo(id))}
-        {item(<FolderInput size={15} />, 'Einsortieren …', () => s.set({ move: { ids: [id] } }), 'Strg+M')}
-        {node.kind === 'item' && item(<Tag size={15} />, 'Zuordnen …', () => s.set({ assign: { id } }))}
-        {item(<Copy size={15} />, 'Link kopieren', () => void copyLink(id), 'Strg+L')}
-        {node.kind === 'item' && item(<FileOutput size={15} />, 'Als Seite auslagern', () => void toPage(id))}
-        {!code && id !== s.inbox && item(isTable(node) ? <List size={15} /> : <Table2 size={15} />, isTable(node) ? 'Als Liste anzeigen' : 'Als Tabelle anzeigen', () => toggleTable(id), '/tabelle')}
-        {isTable(node) && node.kind === 'item' && !node.text.trim() && item(<Type size={15} />, 'Titel hinzufügen', () => s.setFocus({ id, caret: 'end' }))}
-        {node.kind === 'page' && item(<Plus size={15} />, 'Unterseite anlegen', () => createSubpage(id))}
-        {node.kind === 'page' && item(<History size={15} />, 'Versionen …', () => s.set({ history: id }))}
-        {(node.kind === 'item' || id !== s.inbox) && item(<Trash2 size={15} />, 'Löschen', () => deleteNode(id, root), node.kind === 'item' ? 'Strg+⇧+⌫' : undefined, true)}
+        {item(<ZoomIn size={15} />, node.kind === 'page' ? L.outline.row.openPage : L.outline.row.zoomIn, () => s.zoom(id), k.altRight)}
+        {code && item(<CodeXml size={15} />, m.language, () => codeButton('.code-lang')?.click())}
+        {code && item(<Copy size={15} />, m.copyCode, () => codeButton('.code-copy')?.click())}
+        {node.kind === 'item' && item(<StickyNote size={15} />, node.body ? m.editNote : m.addNote, () => s.set({ bodyEdit: id }), k.shiftEnter)}
+        {!code && (node.kind === 'item' || node.kind === 'page') && item(<ImagePlus size={15} />, m.insertImage, () => void chooseImages(id), m.imageCmd)}
+        {node.kind === 'item' && item(node.task ? <CircleCheck size={15} /> : <CircleDot size={15} />, node.task ? (node.task === 'done' ? m.reopen : m.complete) : m.makeTodo, () => (node.task ? cycleTask(id) : toggleTodo(id)), k.ctrlEnter)}
+        {node.task && node.kind === 'item' && item(<CircleDot size={15} />, m.noTodo, () => toggleTodo(id))}
+        {item(<FolderInput size={15} />, m.move, () => s.set({ move: { ids: [id] } }), k.ctrlM)}
+        {node.kind === 'item' && item(<Tag size={15} />, m.assign, () => s.set({ assign: { id } }))}
+        {item(<Copy size={15} />, m.copyLink, () => void copyLink(id), k.ctrlL)}
+        {node.kind === 'item' && item(<FileOutput size={15} />, m.toPage, () => void toPage(id))}
+        {!code && id !== s.inbox && item(isTable(node) ? <List size={15} /> : <Table2 size={15} />, isTable(node) ? m.showAsList : m.showAsTable, () => toggleTable(id), m.tableCmd)}
+        {isTable(node) && node.kind === 'item' && !node.text.trim() && item(<Type size={15} />, m.addTitle, () => s.setFocus({ id, caret: 'end' }))}
+        {node.kind === 'page' && item(<Plus size={15} />, m.newSubpage, () => createSubpage(id))}
+        {node.kind === 'page' && item(<History size={15} />, m.versions, () => s.set({ history: id }))}
+        {(node.kind === 'item' || id !== s.inbox) && item(<Trash2 size={15} />, L.common.delete, () => deleteNode(id, root), node.kind === 'item' ? k.ctrlShiftBackspace : undefined, true)}
       </div>
     </Popover>
   );

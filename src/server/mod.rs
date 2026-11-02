@@ -115,7 +115,7 @@ async fn guard(State(state): State<AppState>, req: Request, next: Next) -> Respo
         let host = req.headers().get(header::HOST).and_then(|h| h.to_str().ok()).unwrap_or("");
         let hostname = host.rsplit_once(':').map(|(h, _)| h).unwrap_or(host);
         if !matches!(hostname, "127.0.0.1" | "localhost" | "[::1]") {
-            return (StatusCode::FORBIDDEN, "Zugriff nur lokal erlaubt").into_response();
+            return (StatusCode::FORBIDDEN, crate::tr!("Zugriff nur lokal erlaubt", "Access is only allowed locally")).into_response();
         }
     }
     let Some(token) = state.token.clone() else { return next.run(req).await };
@@ -136,9 +136,9 @@ async fn guard(State(state): State<AppState>, req: Request, next: Next) -> Respo
         return next.run(req).await;
     }
     if uri.path().starts_with("/api") {
-        return ApiError(StatusCode::UNAUTHORIZED, "Nicht angemeldet".into()).into_response();
+        return ApiError(StatusCode::UNAUTHORIZED, crate::tr!("Nicht angemeldet", "Not signed in")).into_response();
     }
-    (StatusCode::UNAUTHORIZED, axum::response::Html(LOGIN_PAGE)).into_response()
+    (StatusCode::UNAUTHORIZED, axum::response::Html(login_page())).into_response()
 }
 
 fn authorized(headers: &HeaderMap, token: &str) -> bool {
@@ -155,9 +155,21 @@ fn authorized(headers: &HeaderMap, token: &str) -> bool {
         .any(|c| c.trim() == format!("{COOKIE}={token}"))
 }
 
-const LOGIN_PAGE: &str = r#"<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hakobo – Anmeldung</title>
+const LOGIN_PAGE: &str = r#"<!doctype html><html lang="{lang}"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{title}</title>
 <style>body{font:14px/1.5 system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#f4f4f2;color:#1c1917}form{background:#fff;padding:2rem;border:1px solid #e6e4e0;border-radius:12px;box-shadow:0 12px 28px -10px rgba(28,25,23,.2);width:min(360px,90vw)}h1{font-size:1.15rem;font-weight:600;margin:0 0 .25rem}p{color:#6b665f;margin:0 0 1.25rem}input{width:100%;box-sizing:border-box;padding:.6rem .75rem;border:1px solid #d3d0ca;border-radius:7px;background:#fff;font:inherit}input:focus{outline:none;border-color:#16946a;box-shadow:0 0 0 3px rgba(22,148,106,.28)}button{margin-top:1rem;width:100%;padding:.6rem;border:0;border-radius:7px;background:#1c1917;color:#fff;font:inherit;font-weight:500;cursor:pointer}@media(prefers-color-scheme:dark){body{background:#111;color:#ecebe8}form{background:#181818;border-color:#2a2a2a}p{color:#94918b}input{background:#111;border-color:#3a3a3a;color:inherit}button{background:#ecebe8;color:#181818}}</style>
-<form method="get" action="/"><h1>Hakobo</h1><p>Bitte das Zugangstoken eingeben, das beim Start des Servers angezeigt wurde.</p><input name="token" type="password" autofocus placeholder="Zugangstoken" autocomplete="current-password"><button>Anmelden</button></form></html>"#;
+<form method="get" action="/"><h1>Hakobo</h1><p>{intro}</p><input name="token" type="password" autofocus placeholder="{token}" autocomplete="current-password"><button>{submit}</button></form></html>"#;
+
+/// Anmeldeseite in der Sprache der Einstellungen.
+fn login_page() -> String {
+    let en = crate::i18n::is_en();
+    let pick = |de: &'static str, e: &'static str| if en { e } else { de };
+    LOGIN_PAGE
+        .replace("{lang}", pick("de", "en"))
+        .replace("{title}", pick("Hakobo – Anmeldung", "Hakobo – Sign in"))
+        .replace("{intro}", pick("Bitte das Zugangstoken eingeben, das beim Start des Servers angezeigt wurde.", "Please enter the access token shown when the server started."))
+        .replace("{token}", pick("Zugangstoken", "Access token"))
+        .replace("{submit}", pick("Anmelden", "Sign in"))
+}
 
 async fn static_handler(uri: Uri) -> Response {
     let path = uri.path().trim_start_matches('/');
@@ -178,7 +190,7 @@ async fn static_handler(uri: Uri) -> Response {
             .header(header::CACHE_CONTROL, "no-cache")
             .body(Body::from(file.data.into_owned()))
             .expect("Antwort"),
-        None => (StatusCode::NOT_FOUND, "Die Weboberfläche ist nicht eingebettet. Bitte `npm run build` ausführen und neu kompilieren.").into_response(),
+        None => (StatusCode::NOT_FOUND, crate::tr!("Die Weboberfläche ist nicht eingebettet. Bitte `npm run build` ausführen und neu kompilieren.", "The web interface is not embedded. Please run `npm run build` and recompile.")).into_response(),
     }
 }
 

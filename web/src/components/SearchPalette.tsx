@@ -17,20 +17,9 @@ import { RichText } from './RichText';
 import { MetaChips, TaskBox } from './outline/fields';
 import { NodeIcon, nodeTitle, PathLine, pathTitles, pushRecent, readRecent, trackRecent, useListKeys } from './search/common';
 import { Dialog, Highlighted, useScrollActive } from './ui';
+import { L } from '../i18n';
 
 trackRecent();
-
-const QUERY_HINTS: [string, string, string][] = [
-  ['#', '#tag', 'mit Tag (auch Unter-Tags)'],
-  ['-#', '-#tag', 'ohne Tag'],
-  ['is:open ', 'is:open', 'offene Todos'],
-  ['is:done ', 'is:done', 'erledigte Todos'],
-  ['has:date ', 'has:date', 'mit Datum'],
-  ['date:heute ', 'date:heute', 'heute fällig'],
-  ['date:woche ', 'date:woche', 'nächste 7 Tage'],
-  ['in:', 'in:Seite', 'unterhalb einer Seite'],
-  ['"', '"genaue Phrase"', 'wörtlich'],
-];
 
 function emptyHit(id: string): Hit {
   return { id, score: 0, titleRanges: [], pathRanges: [], snippet: null, matchedTags: [] };
@@ -39,7 +28,7 @@ function emptyHit(id: string): Hit {
 async function copyLinkTo(id: string) {
   const link = await linkTextFor(store().nodes, id, api.link);
   await navigator.clipboard.writeText(link);
-  store().toast(`Link kopiert: ${link}`, 'success');
+  store().toast(L.dialogs.search.linkCopied(link), 'success');
 }
 
 export function SearchPalette() {
@@ -139,7 +128,7 @@ export function SearchPalette() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Suchen … z. B. rechnung #kunde is:open"
+              placeholder={L.dialogs.search.placeholder}
               spellCheck={false}
               autoComplete="off"
             />
@@ -149,7 +138,7 @@ export function SearchPalette() {
             {!q.trim() && (
               <>
                 <div className="sp-hints">
-                  {QUERY_HINTS.map(([insert, label, title]) => (
+                  {L.dialogs.search.hints.map(([insert, label, title]) => (
                     <button key={label} className="chip sp-hint" title={title} onMouseDown={(e) => e.preventDefault()} onClick={() => insertHint(insert)}>
                       {label}
                     </button>
@@ -157,7 +146,7 @@ export function SearchPalette() {
                 </div>
                 {list.length > 0 && (
                   <div className="menu-section">
-                    <Clock size={11} /> Zuletzt geöffnet
+                    <Clock size={11} /> {L.dialogs.search.recent}
                   </div>
                 )}
               </>
@@ -167,34 +156,34 @@ export function SearchPalette() {
             ))}
             {q.trim() && !loading && !list.length && !error && (
               <div className="sp-empty">
-                <b>Keine Treffer.</b>
-                <span>Tipp: Wörter dürfen unvollständig sein („rech kund“), Tippfehler werden toleriert, Filter wie #tag oder is:open grenzen ein.</span>
+                <b>{L.dialogs.search.noHits}</b>
+                <span>{L.dialogs.search.noHitsTip}</span>
               </div>
             )}
             {error && <div className="sp-empty is-error">{error}</div>}
-            {!q.trim() && !list.length && <div className="sp-empty">Tippen, um Seiten, Einträge, Notizen und Code zu durchsuchen.</div>}
+            {!q.trim() && !list.length && <div className="sp-empty">{L.dialogs.search.prompt}</div>}
           </div>
           <div className="sp-foot">
             <span>
               <kbd>↑</kbd>
-              <kbd>↓</kbd> wählen
+              <kbd>↓</kbd> {L.dialogs.search.keySelect}
             </span>
             <span>
-              <kbd>↵</kbd> öffnen
+              <kbd>↵</kbd> {L.dialogs.search.keyOpen}
             </span>
             <span>
-              <kbd>Strg</kbd>
-              <kbd>↵</kbd> hineinzoomen
+              <kbd>{L.dialogs.keyCtrl}</kbd>
+              <kbd>↵</kbd> {L.dialogs.search.keyZoom}
             </span>
             <span>
               <kbd>Alt</kbd>
-              <kbd>↵</kbd> Link kopieren
+              <kbd>↵</kbd> {L.dialogs.search.keyCopyLink}
             </span>
             <span className="spacer" />
-            {q.trim() && list.length > 0 && <span className="faint">{list.length >= 60 ? '60+' : list.length} Treffer</span>}
+            {q.trim() && list.length > 0 && <span className="faint">{L.dialogs.search.results(Math.min(list.length, 60), list.length >= 60)}</span>}
           </div>
         </div>
-        <div className="sp-preview">{current ? <Preview id={current.id} onOpen={open} /> : <div className="sp-preview-empty">Keine Vorschau</div>}</div>
+        <div className="sp-preview">{current ? <Preview id={current.id} onOpen={open} /> : <div className="sp-preview-empty">{L.dialogs.search.noPreview}</div>}</div>
       </div>
     </Dialog>
   );
@@ -233,7 +222,7 @@ const HitRow = memo(function HitRow({
       </span>
       <span className="sp-main">
         <span className="sp-title">
-          {title ? <Highlighted text={title} ranges={hit.titleRanges} /> : <span className="faint">(leer)</span>}
+          {title ? <Highlighted text={title} ranges={hit.titleRanges} /> : <span className="faint">{L.dialogs.search.empty}</span>}
           {date && <span className={`chip sp-date${u === 'overdue' ? ' is-overdue' : u === 'today' ? ' is-today' : u === 'soon' ? ' is-soon' : ''}`}>{humanWhen(date)}</span>}
         </span>
         <PathLine parts={pathTitles(nodes, node.id)} ranges={hit.pathRanges} />
@@ -271,7 +260,7 @@ function PreviewChildren({ ids, nodes, depth, budget, onOpen }: { ids: string[];
       <div key={id} className="pv-child">
         <div className={`pv-line${closed ? ' is-closed' : ''}`} onClick={() => onOpen(id)}>
           <span className="pv-bullet">{n.kind === 'page' ? <FileText size={12} /> : n.task ? <span className={`pv-box is-${n.task}`} /> : <span className={`pv-dot${kids.length ? ' has-kids' : ''}`} />}</span>
-          <span className="pv-text">{n.text ? <RichText text={n.text} source={n} /> : <span className="faint">(leer)</span>}</span>
+          <span className="pv-text">{n.text ? <RichText text={n.text} source={n} /> : <span className="faint">{L.dialogs.search.empty}</span>}</span>
           {(field(n, 'date') ?? field(n, 'due')) && <span className="chip pv-date">{humanWhen(field(n, 'date') ?? field(n, 'due'))}</span>}
         </div>
         {depth < 1 && kids.length > 0 && n.kind === 'item' && (
@@ -308,7 +297,7 @@ function Preview({ id, onOpen }: { id: string; onOpen: (id: string, zoom?: boole
       <div className="pv-head">
         {n.kind === 'item' && n.task && <TaskBox node={n} size={17} />}
         {n.kind === 'page' && <FileText size={18} className="pv-page-icon" />}
-        <h2 className={n.task === 'done' || n.task === 'cancelled' ? 'is-closed' : undefined}>{n.text ? <RichText text={n.text} source={n} /> : <span className="faint">{isCodeNode(n) ? 'Codeblock' : 'Ohne Titel'}</span>}</h2>
+        <h2 className={n.task === 'done' || n.task === 'cancelled' ? 'is-closed' : undefined}>{n.text ? <RichText text={n.text} source={n} /> : <span className="faint">{isCodeNode(n) ? L.dialogs.search.codeBlock : L.common.noTitle}</span>}</h2>
       </div>
       {n.kind !== 'root' && (
         <div className="pv-meta">
@@ -330,19 +319,19 @@ function Preview({ id, onOpen }: { id: string; onOpen: (id: string, zoom?: boole
       {total > 0 && (
         <div className="pv-kids">
           <PreviewChildren ids={n.children} nodes={nodes} depth={0} budget={budget} onOpen={(cid) => onOpen(cid)} />
-          {budget.left <= 0 && <div className="pv-more">… weitere Einträge</div>}
+          {budget.left <= 0 && <div className="pv-more">{L.dialogs.search.moreEntries}</div>}
         </div>
       )}
-      {!n.body && !total && <div className="pv-empty">Keine Notiz und keine Unterpunkte.</div>}
+      {!n.body && !total && <div className="pv-empty">{L.dialogs.search.noContent}</div>}
       <div className="pv-foot">
         {backlinks > 0 && (
           <span className="pv-backlinks">
-            <Link2 size={13} /> {backlinks} {backlinks === 1 ? 'Verweis' : 'Verweise'}
+            <Link2 size={13} /> {L.dialogs.search.backlinks(backlinks)}
           </span>
         )}
         <span className="spacer" />
         <button className="btn btn-ghost btn-sm" onMouseDown={(e) => e.preventDefault()} onClick={() => onOpen(id, true)}>
-          Hineinzoomen <ArrowRight size={14} />
+          {L.dialogs.search.zoomIn} <ArrowRight size={14} />
         </button>
       </div>
     </div>

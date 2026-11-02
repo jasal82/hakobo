@@ -7,6 +7,8 @@
 // `window.__hakoboCapture.show()` auf.
 
 import { loadZoom } from '../lib/zoom';
+import { loadLanguage } from '../lib/language';
+import { L, useLang } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { CircleCheck, GripHorizontal } from 'lucide-react';
 import { CaptureBox, type Captured } from '../components/CaptureBox';
@@ -18,18 +20,22 @@ export function CaptureApp() {
   const [success, setSuccess] = useState<Captured | null>(null);
   const timer = useRef<number | undefined>(undefined);
   const toasts = useStore((s) => s.toasts);
+  // Neuaufbau beim Sprachwechsel (siehe App.tsx).
+  const lang = useLang();
 
   useEffect(() => {
     // Notizbuch laden (Typen und Knoten für Vorschläge und Linktexte).
     void store().init();
     void loadZoom();
+    void loadLanguage();
     window.__hakoboCapture = {
       show: () => {
         window.clearTimeout(timer.current);
         setSuccess(null);
         setResetKey((k) => k + 1);
-        // Schriftgröße könnte sich im Hauptfenster geändert haben.
+        // Schriftgröße und Sprache könnten sich im Hauptfenster geändert haben.
         void loadZoom();
+        void loadLanguage();
       },
     };
     return () => {
@@ -56,17 +62,17 @@ export function CaptureApp() {
 
   return (
     <div className="capture-app" onMouseDown={(e) => e.target === e.currentTarget && hide()}>
-      <div className="capture-card">
-        <div className="capture-grip" onMouseDown={() => ipc('drag')} title="Verschieben">
+      <div className="capture-card" key={lang}>
+        <div className="capture-grip" onMouseDown={() => ipc('drag')} title={L.capture.drag}>
           <GripHorizontal size={14} />
-          <span>Schnell erfassen</span>
+          <span>{L.capture.title}</span>
         </div>
         {success ? (
           <div className="capture-success">
             <CircleCheck size={20} />
             <div>
               <div className="capture-success-title">
-                {success.place}: <b>{success.text || 'Eintrag'}</b>
+                {success.place}: <b>{success.text || L.common.entry}</b>
               </div>
               {success.summary.length > 0 && <div className="capture-success-sub">{success.summary.join(' · ')}</div>}
             </div>

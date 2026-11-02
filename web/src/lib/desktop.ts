@@ -4,6 +4,8 @@
 
 // Anbindung an die Desktop-Hülle (WebView mit `window.ipc`).
 
+import { L } from '../i18n';
+
 declare global {
   interface Window {
     __HAKOBO_DESKTOP__?: { platform: string; window: 'main' | 'capture' };
@@ -24,4 +26,5 @@ export function ipc(msg: string): boolean {
 }
 
 export const isMac = /Mac/.test(navigator.platform);
-export const mod = isMac ? '⌘' : 'Strg';
+/** Name der Strg-Taste für die Anzeige (macOS: ⌘). */
+export const mod = () => (isMac ? '⌘' : L.lib.keys.ctrl);

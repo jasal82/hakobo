@@ -11,6 +11,7 @@
 
 import { create } from 'zustand';
 import { api } from './api';
+import { L } from '../i18n';
 import { extractTags } from './inline';
 import { newId } from './ids';
 import type { Field, Node, Op, Patch, ServerEvent, Snapshot, SyncStatus, Task, Types } from './types';
@@ -205,8 +206,8 @@ export function applyLocal(base: Record<string, Node>, ops: Op[]): { nodes: Reco
     switch (op.op) {
       case 'create': {
         const p = nodes[op.parent];
-        if (!p) throw new Error('Übergeordneter Knoten fehlt');
-        if (nodes[op.id]) throw new Error('ID schon vergeben');
+        if (!p) throw new Error(L.lib.store.parentMissing);
+        if (nodes[op.id]) throw new Error(L.lib.store.idTaken);
         const kind = op.page ? 'page' : 'item';
         const n: Node = {
           id: op.id,
@@ -237,7 +238,7 @@ export function applyLocal(base: Record<string, Node>, ops: Op[]): { nodes: Reco
       }
       case 'update': {
         const n = nodes[op.id];
-        if (!n) throw new Error('Knoten fehlt');
+        if (!n) throw new Error(L.lib.store.nodeMissing);
         const before: Op = { op: 'update', id: op.id };
         const next: Node = { ...n };
         if (op.text !== undefined) {
@@ -265,7 +266,7 @@ export function applyLocal(base: Record<string, Node>, ops: Op[]): { nodes: Reco
       case 'move': {
         const n = nodes[op.id];
         const target = nodes[op.parent];
-        if (!n || !target || !n.parent) throw new Error('Knoten fehlt');
+        if (!n || !target || !n.parent) throw new Error(L.lib.store.nodeMissing);
         const old = nodes[n.parent];
         const oldIndex = old.children.indexOf(op.id);
         nodes[old.id] = { ...old, children: old.children.filter((c) => c !== op.id) };
@@ -457,7 +458,7 @@ export const useStore = create<Store>()((set, get) => {
       get().applyServer(patch);
     } catch (e) {
       inflight = false;
-      get().toast(`Änderung nicht gespeichert: ${(e as Error).message}`, 'error');
+      get().toast(L.lib.store.notSaved((e as Error).message), 'error');
       await get().reload();
     }
     if (queue.length) void pump();
@@ -562,7 +563,7 @@ export const useStore = create<Store>()((set, get) => {
       try {
         applySnapshot(await api.snapshot());
       } catch (e) {
-        get().toast(`Neu laden fehlgeschlagen: ${(e as Error).message}`, 'error');
+        get().toast(L.lib.store.reloadFailed((e as Error).message), 'error');
       }
     },
 
@@ -601,7 +602,7 @@ export const useStore = create<Store>()((set, get) => {
           break;
         case 'sync':
           set({ sync: e.status });
-          if (e.status.lastError && !e.status.running) get().toast(`Synchronisation: ${e.status.lastError}`, 'error');
+          if (e.status.lastError && !e.status.running) get().toast(L.lib.store.syncFailed(e.status.lastError), 'error');
           break;
         case 'navigate':
           get().reveal(e.id, { edit: true });
@@ -684,7 +685,7 @@ export const useStore = create<Store>()((set, get) => {
       if (t === undefined) return;
       delete pendingTitles[id];
       const n = get().nodes[id];
-      const title = t.trim() || 'Unbenannt';
+      const title = t.trim() || L.common.untitled;
       if (n) enqueue([{ op: 'update', id, text: title }], new Set([id]));
     },
 

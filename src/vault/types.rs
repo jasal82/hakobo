@@ -62,9 +62,9 @@ impl TypesFile {
         let text = match std::fs::read_to_string(&path) {
             Ok(t) => t,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(TypesFile::default()),
-            Err(e) => return Err(e).with_context(|| format!("{} konnte nicht gelesen werden", path.display())),
+            Err(e) => return Err(e).with_context(|| crate::tr!("{} konnte nicht gelesen werden", "{} could not be read", path.display())),
         };
-        let mut file: TypesFile = toml::from_str(&text).with_context(|| format!("{} ist fehlerhaft", FILE))?;
+        let mut file: TypesFile = toml::from_str(&text).with_context(|| crate::tr!("{} ist fehlerhaft", "{} contains errors", FILE))?;
         file.normalize();
         Ok(file)
     }

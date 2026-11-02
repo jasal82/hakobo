@@ -15,29 +15,36 @@ import { ancestors, field, isViewField, store, typesOf, useStore } from '../../l
 import type { FieldDef, Hit, Node, ParseResult } from '../../lib/types';
 import { Highlighted, Popover, useScrollActive, type Anchor } from '../ui';
 import { RichText } from '../RichText';
+import { L } from '../../i18n';
 
-const BUILTIN: Record<string, FieldDef> = {
-  date: { key: 'date', label: 'Datum', kind: 'date' },
-  repeat: { key: 'repeat', label: 'Wiederholung', kind: 'repeat' },
-  remind: { key: 'remind', label: 'Erinnerung', kind: 'remind' },
-  done: { key: 'done', label: 'Erledigt', kind: 'text' },
-};
+/** Eingebaute Felder (Schlüssel und Art sind Dateiformat, nur die Beschriftung wechselt). */
+function builtin(): Record<string, FieldDef> {
+  const f = L.outline.fields;
+  return {
+    date: { key: 'date', label: f.date, kind: 'date' },
+    repeat: { key: 'repeat', label: f.repeat, kind: 'repeat' },
+    remind: { key: 'remind', label: f.remind, kind: 'remind' },
+    done: { key: 'done', label: f.done, kind: 'text' },
+  };
+}
 
 /** Feld-Definitionen eines Knotens: eingebaute, aus Typen, dann freie Felder. */
 export function fieldDefs(n: Node, types = store().types): FieldDef[] {
   const out: FieldDef[] = [];
+  const BUILTIN = builtin();
+  const due = L.outline.fields.due;
   const seen = new Set<string>();
   const push = (d: FieldDef) => {
     if (seen.has(d.key.toLowerCase())) return;
     seen.add(d.key.toLowerCase());
     out.push(d);
   };
-  for (const t of typesOf(n, types)) for (const f of types[t].fields) push(f.key === 'date' && n.task ? { ...f, label: 'Fällig' } : f);
+  for (const t of typesOf(n, types)) for (const f of types[t].fields) push(f.key === 'date' && n.task ? { ...f, label: due } : f);
   for (const f of n.fields) {
     // `layout` und `col-widths` (Tabelle) steuern nur die Darstellung.
     if (f.key === 'tags' || isViewField(f.key)) continue;
     const b = BUILTIN[f.key.toLowerCase()];
-    push(b ? { ...b, label: f.key === 'date' && n.task ? 'Fällig' : b.label } : { key: f.key, label: f.key, kind: 'text' });
+    push(b ? { ...b, label: f.key === 'date' && n.task ? due : b.label } : { key: f.key, label: f.key, kind: 'text' });
   }
   return out;
 }
@@ -70,6 +77,8 @@ function valueLabel(v: string): string {
 export function MetaChips({ node }: { node: Node }) {
   const types = useStore((s) => s.types);
   const [edit, setEdit] = useState<{ def: FieldDef; anchor: Anchor } | null>(null);
+  const BUILTIN = builtin();
+  const t = L.outline.fields;
   const open = (def: FieldDef) => (e: React.MouseEvent) => {
     e.stopPropagation();
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -83,15 +92,15 @@ export function MetaChips({ node }: { node: Node }) {
   if (!date && !repeat && !remind && !shown.length && !edit) return null;
   return (
     <span className="meta-chips">
-      {date && <DateChip value={date} task={node.task} onClick={open({ ...BUILTIN.date, label: node.task ? 'Fällig' : 'Datum' })} />}
+      {date && <DateChip value={date} task={node.task} onClick={open({ ...BUILTIN.date, label: node.task ? t.due : t.date })} />}
       {repeat && (
-        <button className="chip" onClick={open(BUILTIN.repeat)} title="Wiederholung">
+        <button className="chip" onClick={open(BUILTIN.repeat)} title={t.repeat}>
           <Repeat />
           {humanRepeat(repeat)}
         </button>
       )}
       {remind && (
-        <button className="chip" onClick={open(BUILTIN.remind)} title="Erinnerung">
+        <button className="chip" onClick={open(BUILTIN.remind)} title={t.remind}>
           <Bell />
           {humanRemind(remind)}
         </button>
@@ -99,7 +108,7 @@ export function MetaChips({ node }: { node: Node }) {
       {shown.map((d) => (
         <button key={d.key} className="chip chip-field" onClick={open(d)} title={d.label}>
           <span className="chip-key">{d.label}</span>
-          {d.kind === 'checkbox' ? (field(node, d.key) === 'true' ? 'ja' : 'nein') : valueLabel(field(node, d.key) ?? '')}
+          {d.kind === 'checkbox' ? (field(node, d.key) === 'true' ? t.yes : t.no) : valueLabel(field(node, d.key) ?? '')}
         </button>
       ))}
       {edit && <FieldPopover node={node} def={edit.def} anchor={edit.anchor} onClose={() => setEdit(null)} />}
@@ -113,6 +122,8 @@ export function FieldsForm({ node }: { node: Node }) {
   const defs = fieldDefs(node, types).filter((d) => d.key !== 'done');
   const [edit, setEdit] = useState<{ def: FieldDef; anchor: Anchor } | null>(null);
   const [adding, setAdding] = useState<Anchor | null>(null);
+  const BUILTIN = builtin();
+  const t = L.outline.fields;
   const open = (def: FieldDef) => (e: React.MouseEvent) => {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setEdit({ def, anchor: { left: r.left, top: r.top, bottom: r.bottom } });
@@ -131,7 +142,7 @@ export function FieldsForm({ node }: { node: Node }) {
               </label>
             ) : (
               <button className={`ff-value${v ? '' : ' is-empty'}`} onClick={open(d)}>
-                {v ? <FieldValue def={d} value={v} node={node} /> : <span className="faint">leer</span>}
+                {v ? <FieldValue def={d} value={v} node={node} /> : <span className="faint">{t.empty}</span>}
               </button>
             )}
           </div>
@@ -141,7 +152,7 @@ export function FieldsForm({ node }: { node: Node }) {
         {builtinsMissing.map((k) => (
           <button key={k} className="btn btn-ghost btn-sm" onClick={open(BUILTIN[k])}>
             {k === 'date' ? <CalendarClock size={14} /> : k === 'repeat' ? <Repeat size={14} /> : <Bell size={14} />}
-            {k === 'date' && node.task ? 'Fällig' : BUILTIN[k].label}
+            {k === 'date' && node.task ? t.due : BUILTIN[k].label}
           </button>
         ))}
         <button
@@ -151,7 +162,7 @@ export function FieldsForm({ node }: { node: Node }) {
             setAdding({ left: r.left, top: r.top, bottom: r.bottom });
           }}
         >
-          <Plus size={14} /> Feld
+          <Plus size={14} /> {t.addField}
         </button>
       </div>
       {edit && <FieldPopover node={node} def={edit.def} anchor={edit.anchor} onClose={() => setEdit(null)} />}
@@ -191,9 +202,9 @@ function NewFieldPopover({ node, anchor, onClose }: { node: Node; anchor: Anchor
           onClose();
         }}
       >
-        <div className="fp-title">Neues Feld</div>
-        <input className="input" autoFocus placeholder="Name, z. B. kunde" value={key} onChange={(e) => setKey(e.target.value.trim())} />
-        <div className="fp-hint">Buchstaben, Ziffern, - und _. Für feste Felder einen Typ anlegen.</div>
+        <div className="fp-title">{L.outline.fields.newField}</div>
+        <input className="input" autoFocus placeholder={L.outline.fields.newFieldPlaceholder} value={key} onChange={(e) => setKey(e.target.value.trim())} />
+        <div className="fp-hint">{L.outline.fields.newFieldHint}</div>
       </form>
     </Popover>
   );
@@ -227,7 +238,7 @@ export function FieldPopover({ node, def, anchor, onClose }: { node: Node; def: 
               <span className="menu-icon">
                 <X size={14} />
               </span>
-              <span className="menu-label">Leeren</span>
+              <span className="menu-label">{L.outline.fields.clear}</span>
             </button>
           )}
         </div>
@@ -262,43 +273,44 @@ function PlainInput({ def, current, onSave }: { def: FieldDef; current: string; 
       <div className="fp-actions">
         {current && (
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => onSave(null)}>
-            <Trash2 size={14} /> Entfernen
+            <Trash2 size={14} /> {L.common.remove}
           </button>
         )}
         <span className="spacer" />
-        <button className="btn btn-primary btn-sm">Übernehmen</button>
+        <button className="btn btn-primary btn-sm">{L.outline.fields.apply}</button>
       </div>
     </form>
   );
 }
 
-const QUICK: Record<string, [string, string][]> = {
-  date: [
-    ['heute', 'Heute'],
-    ['morgen', 'Morgen'],
-    ['nächste woche', 'Nächste Woche'],
-    ['in 1 monat', 'In 1 Monat'],
-  ],
-  repeat: [
-    ['täglich', 'Täglich'],
-    ['werktags', 'Werktags'],
-    ['wöchentlich', 'Wöchentlich'],
-    ['monatlich', 'Monatlich'],
-    ['jährlich', 'Jährlich'],
-  ],
-  remind: [
-    ['0', 'Zu Beginn'],
-    ['10m', '10 Min.'],
-    ['1h', '1 Std.'],
-    ['1d', '1 Tag'],
-  ],
-};
-
-const PLACEHOLDER: Record<string, string> = {
-  date: 'z. B. morgen 14 uhr, fr, 27.10. 10-11',
-  repeat: 'z. B. jeden montag, alle 2 wochen',
-  remind: 'z. B. 15m, 1h, morgen 8 uhr',
-};
+/** Schnellwahl: Eingabe für den Server (versteht Deutsch und Englisch) und Beschriftung. */
+function quick(kind: 'date' | 'repeat' | 'remind'): [string, string][] {
+  const q = L.outline.fields.quick;
+  switch (kind) {
+    case 'date':
+      return [
+        ['heute', L.common.today],
+        ['morgen', L.common.tomorrow],
+        ['nächste woche', q.nextWeek],
+        ['in 1 monat', q.inOneMonth],
+      ];
+    case 'repeat':
+      return [
+        ['täglich', q.daily],
+        ['werktags', q.weekdays],
+        ['wöchentlich', q.weekly],
+        ['monatlich', q.monthly],
+        ['jährlich', q.yearly],
+      ];
+    case 'remind':
+      return [
+        ['0', q.atStart],
+        ['10m', q.min10],
+        ['1h', q.hour1],
+        ['1d', q.day1],
+      ];
+  }
+}
 
 /** Eingabe in natürlicher Sprache mit Live-Vorschau des Servers. */
 export function ParsedInput({ kind, current, onSave, task }: { kind: 'date' | 'repeat' | 'remind'; current: string; onSave: (v: string | null) => void; task?: boolean }) {
@@ -322,6 +334,7 @@ export function ParsedInput({ kind, current, onSave, task }: { kind: 'date' | 'r
     const res = await api.parse(kind, text);
     if (res) onSave(res.value);
   };
+  const t = L.outline.fields;
   const currentHuman = kind === 'date' ? humanWhen(current) : kind === 'repeat' ? humanRepeat(current) : humanRemind(current);
   return (
     <form
@@ -331,11 +344,11 @@ export function ParsedInput({ kind, current, onSave, task }: { kind: 'date' | 'r
         if (r?.complete) onSave(r.value);
       }}
     >
-      {current && <div className="fp-current">Aktuell: {currentHuman}</div>}
-      <input className="input" autoFocus placeholder={PLACEHOLDER[kind]} value={q} onChange={(e) => setQ(e.target.value)} />
-      <div className={`fp-preview${r?.complete ? ' is-ok' : q ? ' is-bad' : ''}`}>{q ? (r?.complete ? `↵ ${r.human}` : r ? `… ${r.human}` : 'Nicht erkannt') : kind === 'date' && task ? 'Fälligkeit des Todos' : ' '}</div>
+      {current && <div className="fp-current">{t.current(currentHuman)}</div>}
+      <input className="input" autoFocus placeholder={t.placeholder[kind]} value={q} onChange={(e) => setQ(e.target.value)} />
+      <div className={`fp-preview${r?.complete ? ' is-ok' : q ? ' is-bad' : ''}`}>{q ? (r?.complete ? `↵ ${r.human}` : r ? `… ${r.human}` : t.notRecognized) : kind === 'date' && task ? t.dueOfTodo : ' '}</div>
       <div className="fp-quick">
-        {QUICK[kind].map(([v, label]) => (
+        {quick(kind).map(([v, label]) => (
           <button type="button" key={v} className="chip" onClick={() => void pick(v)}>
             {label}
           </button>
@@ -344,7 +357,7 @@ export function ParsedInput({ kind, current, onSave, task }: { kind: 'date' | 'r
       {current && (
         <div className="fp-actions">
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => onSave(null)}>
-            <Trash2 size={14} /> Entfernen
+            <Trash2 size={14} /> {L.common.remove}
           </button>
         </div>
       )}
@@ -391,7 +404,7 @@ function RefInput({ def, node, current, onSave }: { def: FieldDef; node: Node; c
           {values.map((v) => (
             <span className="chip" key={v}>
               <RichText text={v} source={node} />
-              <button className="chip-x" onClick={() => remove(v)} aria-label="Entfernen">
+              <button className="chip-x" onClick={() => remove(v)} aria-label={L.common.remove}>
                 <X size={12} />
               </button>
             </span>
@@ -401,7 +414,7 @@ function RefInput({ def, node, current, onSave }: { def: FieldDef; node: Node; c
       <input
         className="input"
         autoFocus
-        placeholder={def.target ? `${store().types[def.target]?.label ?? def.target} suchen …` : 'Suchen …'}
+        placeholder={def.target ? L.outline.fields.searchType(store().types[def.target]?.label ?? def.target) : L.outline.fields.search}
         value={q}
         onChange={(e) => setQ(e.target.value)}
         onKeyDown={(e) => {
@@ -431,7 +444,7 @@ function RefInput({ def, node, current, onSave }: { def: FieldDef; node: Node; c
             </button>
           );
         })}
-        {!hits.length && <div className="menu-empty">Nichts gefunden</div>}
+        {!hits.length && <div className="menu-empty">{L.outline.fields.nothingFound}</div>}
       </div>
     </div>
   );
@@ -450,8 +463,8 @@ export function TaskBox({ node, size = 16, tabIndex }: { node: Node; size?: numb
         e.stopPropagation();
         store().commit([{ op: 'update', id: node.id, task: t === 'done' || t === 'cancelled' ? 'open' : 'done' }]);
       }}
-      aria-label={t === 'done' ? 'Wieder öffnen' : 'Erledigen'}
-      title={field(node, 'repeat') ? `Wiederholt sich: ${humanRepeat(field(node, 'repeat')!)}` : undefined}
+      aria-label={t === 'done' ? L.outline.fields.reopen : L.outline.fields.complete}
+      title={field(node, 'repeat') ? L.outline.fields.repeats(humanRepeat(field(node, 'repeat')!)) : undefined}
     >
       {t === 'done' && <Check size={size - 4} strokeWidth={3} />}
       {t === 'cancelled' && <X size={size - 4} strokeWidth={3} />}

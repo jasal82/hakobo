@@ -16,6 +16,7 @@ import { typeHome } from '../../lib/outline';
 import { ancestors, store, whenSaved } from '../../lib/store';
 import type { CommandResult, Hit, Node } from '../../lib/types';
 import { caretAnchor, Highlighted, Popover, useScrollActive, type Anchor } from '../ui';
+import { L, lang } from '../../i18n';
 
 export type TriggerKind = 'slash' | 'tag' | 'mention' | 'link';
 
@@ -80,31 +81,69 @@ interface Cmd {
   capture?: boolean;
 }
 
+/**
+ * Suchwörter der Befehle – Deutsch und Englisch gelten immer, unabhängig von
+ * der Sprache der Oberfläche. Die Wörter mit Argument (`termin`, `due` …)
+ * versteht auch der Server (src/capture.rs).
+ */
+const WORDS: Record<string, { de: string[]; en: string[] }> = {
+  today: { de: ['heute'], en: ['today'] },
+  tomorrow: { de: ['morgen'], en: ['tomorrow'] },
+  nextweek: { de: ['nächste woche', 'naechste woche'], en: ['next week'] },
+  date: { de: ['termin', 'datum', 'am', 'um'], en: ['date', 'event'] },
+  due: { de: ['fällig', 'faellig', 'bis'], en: ['due', 'deadline'] },
+  repeat: { de: ['wiederholung', 'wdh', 'jeden', 'alle'], en: ['repeat', 'every'] },
+  remind: { de: ['erinnerung', 'alarm'], en: ['remind', 'reminder'] },
+  todo: { de: ['todo', 'aufgabe'], en: ['todo', 'task'] },
+  h1: { de: ['h1', 'überschrift'], en: ['h1', 'heading'] },
+  h2: { de: ['h2', 'überschrift'], en: ['h2', 'heading'] },
+  h3: { de: ['h3', 'überschrift'], en: ['h3', 'heading'] },
+  text: { de: ['text', 'normal'], en: ['text', 'normal', 'paragraph'] },
+  note: { de: ['notiz', 'beschreibung'], en: ['note', 'description'] },
+  code: { de: ['code', 'codeblock'], en: ['code', 'codeblock', 'snippet'] },
+  image: { de: ['bild', 'foto', 'grafik', 'datei'], en: ['image', 'picture', 'photo', 'file'] },
+  table: { de: ['tabelle', 'raster'], en: ['table', 'grid'] },
+  move: { de: ['einsortieren', 'verschieben'], en: ['move'] },
+  page: { de: ['seite', 'auslagern'], en: ['page'] },
+  zoom: { de: ['zoom', 'öffnen', 'fokus'], en: ['zoom', 'open', 'focus'] },
+  type: { de: ['typ'], en: ['type'] },
+};
+
+/** Suchwörter eines Befehls, die der gewählten Sprache zuerst. */
+function words(id: string, extra: string[] = []): string[] {
+  const w = WORDS[id];
+  const [first, second] = lang() === 'en' ? [w.en, w.de] : [w.de, w.en];
+  return [...new Set([...extra, ...first, ...second])];
+}
+
 function commands(): Cmd[] {
   const types = store().types;
+  const t = L.outline.suggest.cmd;
+  const ins = L.outline.suggest.insert;
+  const keys = L.outline.keys;
   const base: Cmd[] = [
-    { id: 'today', label: 'Heute', words: ['heute', 'today'], icon: <CalendarDays size={15} />, capture: true },
-    { id: 'tomorrow', label: 'Morgen', words: ['morgen', 'tomorrow'], icon: <CalendarDays size={15} />, capture: true },
-    { id: 'nextweek', label: 'Nächste Woche', words: ['nächste woche', 'naechste woche', 'next week'], icon: <CalendarDays size={15} />, capture: true },
-    { id: 'date', label: 'Termin …', words: ['termin', 'datum', 'date', 'am', 'um'], icon: <CalendarClock size={15} />, hint: 'morgen 14-15 uhr', insert: 'termin ', capture: true },
-    { id: 'due', label: 'Fällig …', words: ['fällig', 'faellig', 'due', 'bis', 'deadline'], icon: <CheckSquare size={15} />, hint: 'fr, 30.10.', insert: 'fällig ', capture: true },
-    { id: 'repeat', label: 'Wiederholung …', words: ['wiederholung', 'wdh', 'repeat', 'jeden', 'alle'], icon: <Repeat size={15} />, hint: 'jeden montag', insert: 'wdh ', capture: true },
-    { id: 'remind', label: 'Erinnerung …', words: ['erinnerung', 'remind', 'alarm'], icon: <Bell size={15} />, hint: '15m, 1h', insert: 'erinnerung ', capture: true },
-    { id: 'todo', label: 'Todo', words: ['todo', 'aufgabe', 'task'], icon: <CheckSquare size={15} />, capture: true },
-    { id: 'h1', label: 'Überschrift 1', words: ['h1', 'überschrift', 'heading'], icon: <Heading1 size={15} /> },
-    { id: 'h2', label: 'Überschrift 2', words: ['h2', 'überschrift', 'heading'], icon: <Heading2 size={15} /> },
-    { id: 'h3', label: 'Überschrift 3', words: ['h3', 'überschrift', 'heading'], icon: <Heading3 size={15} /> },
-    { id: 'text', label: 'Normaler Text', words: ['text', 'normal'], icon: <Text size={15} /> },
-    { id: 'note', label: 'Notiz', words: ['notiz', 'note', 'beschreibung'], icon: <StickyNote size={15} />, hint: 'Umschalt+Enter' },
-    { id: 'code', label: 'Codeblock', words: ['code', 'codeblock', 'snippet'], icon: <Code2 size={15} /> },
-    { id: 'image', label: 'Bild …', words: ['bild', 'image', 'foto', 'grafik', 'datei'], icon: <ImagePlus size={15} />, hint: 'aus einer Datei' },
-    { id: 'table', label: 'Tabelle', words: ['tabelle', 'table', 'raster', 'grid'], icon: <Table2 size={15} />, hint: 'Kinder als Zeilen' },
-    { id: 'move', label: 'Einsortieren …', words: ['einsortieren', 'verschieben', 'move'], icon: <FolderInput size={15} />, hint: 'Strg+M' },
-    { id: 'page', label: 'Als Seite auslagern', words: ['seite', 'page', 'auslagern'], icon: <FileText size={15} /> },
-    { id: 'zoom', label: 'Hineinzoomen', words: ['zoom', 'öffnen', 'fokus'], icon: <ZoomIn size={15} />, hint: 'Alt+→' },
+    { id: 'today', label: t.today, words: words('today'), icon: <CalendarDays size={15} />, capture: true },
+    { id: 'tomorrow', label: t.tomorrow, words: words('tomorrow'), icon: <CalendarDays size={15} />, capture: true },
+    { id: 'nextweek', label: t.nextweek, words: words('nextweek'), icon: <CalendarDays size={15} />, capture: true },
+    { id: 'date', label: t.date, words: words('date'), icon: <CalendarClock size={15} />, hint: t.dateHint, insert: ins.date, capture: true },
+    { id: 'due', label: t.due, words: words('due'), icon: <CheckSquare size={15} />, hint: t.dueHint, insert: ins.due, capture: true },
+    { id: 'repeat', label: t.repeat, words: words('repeat'), icon: <Repeat size={15} />, hint: t.repeatHint, insert: ins.repeat, capture: true },
+    { id: 'remind', label: t.remind, words: words('remind'), icon: <Bell size={15} />, hint: t.remindHint, insert: ins.remind, capture: true },
+    { id: 'todo', label: t.todo, words: words('todo'), icon: <CheckSquare size={15} />, capture: true },
+    { id: 'h1', label: t.h1, words: words('h1'), icon: <Heading1 size={15} /> },
+    { id: 'h2', label: t.h2, words: words('h2'), icon: <Heading2 size={15} /> },
+    { id: 'h3', label: t.h3, words: words('h3'), icon: <Heading3 size={15} /> },
+    { id: 'text', label: t.text, words: words('text'), icon: <Text size={15} /> },
+    { id: 'note', label: t.note, words: words('note'), icon: <StickyNote size={15} />, hint: keys.shiftEnterText },
+    { id: 'code', label: t.code, words: words('code'), icon: <Code2 size={15} /> },
+    { id: 'image', label: t.image, words: words('image'), icon: <ImagePlus size={15} />, hint: t.imageHint },
+    { id: 'table', label: t.table, words: words('table'), icon: <Table2 size={15} />, hint: t.tableHint },
+    { id: 'move', label: t.move, words: words('move'), icon: <FolderInput size={15} />, hint: keys.ctrlM },
+    { id: 'page', label: t.page, words: words('page'), icon: <FileText size={15} /> },
+    { id: 'zoom', label: t.zoom, words: words('zoom'), icon: <ZoomIn size={15} />, hint: keys.altRight },
   ];
-  for (const [key, t] of Object.entries(types)) {
-    base.push({ id: `type:${key}`, label: `Typ: ${t.label}`, words: [key, t.label.toLowerCase(), 'typ'], icon: <span className="type-dot" style={{ ['--type-color' as string]: `var(--t-${t.color ?? 'gray'})` }} />, capture: true });
+  for (const [key, ty] of Object.entries(types)) {
+    base.push({ id: `type:${key}`, label: t.type(ty.label), words: words('type', [key, ty.label.toLowerCase()]), icon: <span className="type-dot" style={{ ['--type-color' as string]: `var(--t-${ty.color ?? 'gray'})` }} />, capture: true });
   }
   return base;
 }
@@ -196,8 +235,8 @@ export function useSuggestions(trigger: Trigger | null, ctx: SuggestContext): { 
             list.push({
               key: cmd.id,
               icon: cmd.icon,
-              label: cmd.id === 'code' && arg ? `Codeblock (${languageLabel(arg)})` : cmd.label,
-              hint: cmd.id === 'code' && !arg ? '/code rust' : cmd.hint,
+              label: cmd.id === 'code' && arg ? L.outline.suggest.cmd.codeWith(languageLabel(arg)) : cmd.label,
+              hint: cmd.id === 'code' && !arg ? L.outline.suggest.cmd.codeHint : cmd.hint,
               run: async () => {
                 if (cmd.insert) return c().replace('/' + cmd.insert);
                 const rest = c().without();
@@ -223,7 +262,7 @@ export function useSuggestions(trigger: Trigger | null, ctx: SuggestContext): { 
               },
             });
           }
-          if (!list.length && q) list.push({ key: 'none', label: <span className="subtle">Kein Befehl – Datum z. B. „/morgen 14 uhr“</span>, run: () => null });
+          if (!list.length && q) list.push({ key: 'none', label: <span className="subtle">{L.outline.suggest.noCommand}</span>, run: () => null });
           finish(list);
           return;
         }
@@ -238,7 +277,7 @@ export function useSuggestions(trigger: Trigger | null, ctx: SuggestContext): { 
             run: () => c().replace(`#${t.tag} `),
           }));
           const q = query.replace(/\/+$/, '');
-          if (q && !tags.some((t) => t.tag === q.toLowerCase())) list.push({ key: 'new', icon: <Plus size={15} />, label: `Neuer Tag #${q}`, run: () => c().replace(`#${q} `) });
+          if (q && !tags.some((t) => t.tag === q.toLowerCase())) list.push({ key: 'new', icon: <Plus size={15} />, label: L.outline.suggest.newTag(q), run: () => c().replace(`#${q} `) });
           finish(list);
           return;
         }
@@ -252,7 +291,7 @@ export function useSuggestions(trigger: Trigger | null, ctx: SuggestContext): { 
           if (kind === 'mention') {
             const people = await api.search(`#person ${query}`, 8, ac.signal);
             for (const h of people.hits) {
-              const it = hitItem(h, link, 'Personen');
+              const it = hitItem(h, link, L.outline.suggest.people);
               if (it && it.key !== c().nodeId) {
                 list.push(it);
                 seen.add(h.id);
@@ -263,7 +302,7 @@ export function useSuggestions(trigger: Trigger | null, ctx: SuggestContext): { 
             const all = await api.search(kind === 'link' ? query || 'is:page' : query, 10, ac.signal);
             for (const h of all.hits) {
               if (seen.has(h.id) || h.id === c().nodeId) continue;
-              const it = hitItem(h, link, kind === 'mention' ? 'Weitere' : undefined);
+              const it = hitItem(h, link, kind === 'mention' ? L.outline.suggest.more : undefined);
               if (it) list.push(it);
             }
           }
@@ -272,7 +311,7 @@ export function useSuggestions(trigger: Trigger | null, ctx: SuggestContext): { 
             list.push({
               key: 'new-person',
               icon: <Plus size={15} />,
-              label: `Neue Person „${q}“`,
+              label: L.outline.suggest.newPerson(q),
               hint: typeHome('person')?.text,
               run: async () => {
                 const home = await ensureTypeHome('person');
@@ -286,9 +325,9 @@ export function useSuggestions(trigger: Trigger | null, ctx: SuggestContext): { 
             });
           }
           if (q && kind === 'link' && !list.some((i) => store().nodes[i.key]?.kind === 'page' && store().nodes[i.key]?.text.toLowerCase() === q.toLowerCase())) {
-            list.push({ key: 'new-page', icon: <Link2 size={15} />, label: `Link auf „${q}“ (neue Seite)`, run: () => c().replace(`[[${q}]]`) });
+            list.push({ key: 'new-page', icon: <Link2 size={15} />, label: L.outline.suggest.newPage(q), run: () => c().replace(`[[${q}]]`) });
           }
-          if (!list.length) list.push({ key: 'none', label: <span className="subtle">{q ? 'Nichts gefunden' : 'Namen eingeben …'}</span>, run: () => null });
+          if (!list.length) list.push({ key: 'none', label: <span className="subtle">{q ? L.outline.suggest.nothingFound : L.outline.suggest.typeName}</span>, run: () => null });
           finish(list);
         }
       } catch {
@@ -324,7 +363,7 @@ export function SuggestMenu({ anchor, items, active, onPick, onHover, loading, f
   return (
     <Popover anchor={anchor} width={360} className="suggest">
       <div className="menu" ref={ref}>
-        {!items.length && loading && <div className="menu-empty">Suche …</div>}
+        {!items.length && loading && <div className="menu-empty">{L.outline.suggest.searching}</div>}
         {items.map((it, i) => {
           const head = it.section && it.section !== lastSection ? <div className="menu-section">{it.section}</div> : null;
           lastSection = it.section;
@@ -480,7 +519,7 @@ export function useSuggest(o: UseSuggestOptions) {
         loading={loading}
         onPick={(i) => void pick(i)}
         onHover={setActive}
-        footer={trigger?.kind === 'slash' ? 'Datum direkt eingeben: /morgen 14 uhr · /fällig fr · /jeden montag' : undefined}
+        footer={trigger?.kind === 'slash' ? L.outline.suggest.footer : undefined}
       />
     ) : null;
 

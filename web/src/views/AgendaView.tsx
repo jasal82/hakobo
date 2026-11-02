@@ -15,6 +15,7 @@ import { TaskBox } from '../components/outline/fields';
 import { activateKeys, moveFocus } from '../components/ui';
 import { hhmm, hiddenTags, nodeColor, pathOf, useReloadOnChange } from './parts/common';
 import { isClosed } from './parts/calendar';
+import { L } from '../i18n';
 
 function readNum(key: string, fallback: number): number {
   try {
@@ -39,10 +40,10 @@ function timeLabel(e: AgendaEntry, today: Date): string {
   const multi = w.endDate && w.endDate !== w.start;
   if (multi) {
     const end = parseIsoDate(w.endDate!);
-    return `bis ${end ? dayLabel(end, today) : w.endDate}${w.endTime ? ` ${hhmm(w.endTime)}` : ''}`;
+    return `${L.views.agenda.until(end ? dayLabel(end, today) : w.endDate!)}${w.endTime ? ` ${hhmm(w.endTime)}` : ''}`;
   }
   if (w.startTime) return w.endTime ? `${hhmm(w.startTime)}–${hhmm(w.endTime)}` : hhmm(w.startTime);
-  return e.kind === 'event' ? 'ganztägig' : '';
+  return e.kind === 'event' ? L.views.agenda.allDay : '';
 }
 
 // ---------------------------------------------------------------------------
@@ -73,8 +74,8 @@ function QuickAdd({ onAdded, placeholder }: { onAdded: () => void; placeholder: 
     setBusy(true);
     try {
       const r = await api.capture(text);
-      store().toast(`In der Inbox: ${r.node?.text ?? text}${r.summary.length ? ` · ${r.summary.join(' · ')}` : ''}`, 'success', {
-        label: 'Öffnen',
+      store().toast(L.views.agenda.addedToInbox(`${r.node?.text ?? text}${r.summary.length ? ` · ${r.summary.join(' · ')}` : ''}`), 'success', {
+        label: L.common.open,
         run: () => store().reveal(r.id),
       });
       setText('');
@@ -91,7 +92,7 @@ function QuickAdd({ onAdded, placeholder }: { onAdded: () => void; placeholder: 
       <input className="ag-quick-input" value={text} placeholder={placeholder} onChange={(e) => setText(e.target.value)} disabled={busy} />
       {preview && (preview.summary.length > 0 || preview.task) && (
         <div className="ag-quick-preview">
-          {preview.task && <span className="chip">Todo</span>}
+          {preview.task && <span className="chip">{L.views.agenda.todoChip}</span>}
           {preview.summary.map((s) => (
             <span className="chip is-soon" key={s}>
               {s}
@@ -133,7 +134,7 @@ function EntryRow({ e, today, showDate }: { e: AgendaEntry; today: Date; showDat
         <span className="ag-text">{node ? <RichText text={node.text} source={node} /> : <RichText text={e.text} />}</span>
         <span className="ag-meta">
           {e.repeat && (
-            <span className="ag-repeat" title="Wiederholung">
+            <span className="ag-repeat" title={L.views.agenda.repeat}>
               <Repeat size={12} /> {e.repeat}
             </span>
           )}
@@ -206,7 +207,7 @@ export function AgendaView() {
     >
       <div className="view-inner">
         <div className="view-head">
-          <h1>Agenda</h1>
+          <h1>{L.common.agenda}</h1>
           <div className="tabs" role="tablist">
             {[7, 14, 30].map((n) => (
               <button
@@ -217,7 +218,7 @@ export function AgendaView() {
                   writeLocal('hakobo-agenda-days', String(n));
                 }}
               >
-                {n} Tage
+                {L.views.agenda.days(n)}
               </button>
             ))}
           </div>
@@ -230,11 +231,11 @@ export function AgendaView() {
                 writeLocal('hakobo-agenda-done', e.target.checked ? '1' : '0');
               }}
             />
-            Erledigte
+            {L.views.agenda.showDone}
           </label>
         </div>
 
-        <QuickAdd onAdded={() => void load()} placeholder="Neuer Termin oder Todo … z. B. „Zahnarzt /morgen 14 uhr“ oder „[] Bericht /fällig fr“" />
+        <QuickAdd onAdded={() => void load()} placeholder={L.views.agenda.quickPlaceholder} />
 
         {error && (
           <div className="ag-error">
@@ -250,7 +251,7 @@ export function AgendaView() {
         {data && data.overdue.length > 0 && (
           <section className="ag-day is-overdue">
             <h2 className="ag-day-head">
-              <CircleAlert size={15} /> Überfällig <span className="ag-count">{data.overdue.length}</span>
+              <CircleAlert size={15} /> {L.views.agenda.overdue} <span className="ag-count">{data.overdue.length}</span>
             </h2>
             {data.overdue.map((e) => (
               <EntryRow key={`${e.id}|${e.value}`} e={e} today={today} showDate />
@@ -268,7 +269,7 @@ export function AgendaView() {
                   {longDayLabel(g.date, today)}
                   {g.entries.length > 0 && <span className="ag-count">{g.entries.length}</span>}
                 </h2>
-                {g.entries.length ? g.entries.map((e) => <EntryRow key={`${e.id}|${e.value}`} e={e} today={today} />) : <div className="ag-nothing">Nichts geplant</div>}
+                {g.entries.length ? g.entries.map((e) => <EntryRow key={`${e.id}|${e.value}`} e={e} today={today} />) : <div className="ag-nothing">{L.views.agenda.nothingPlanned}</div>}
               </section>
             );
           })}
@@ -276,9 +277,11 @@ export function AgendaView() {
         {data && total === 0 && data.overdue.length === 0 && (
           <div className="empty ag-empty">
             <CalendarClock size={28} />
-            <h3>Keine Termine und fälligen Todos</h3>
+            <h3>{L.views.agenda.emptyTitle}</h3>
             <p>
-              Termine entstehen, sobald ein Eintrag ein Datum bekommt – im Text mit <kbd>/morgen 14 uhr</kbd>, <kbd>/fällig fr</kbd> oder <kbd>/jeden montag</kbd>.
+              {L.views.agenda.emptyBefore} <kbd>{L.views.agenda.emptyExamples[0]}</kbd>, <kbd>{L.views.agenda.emptyExamples[1]}</kbd>
+              {L.views.agenda.emptyOr}
+              <kbd>{L.views.agenda.emptyExamples[2]}</kbd>.
             </p>
           </div>
         )}

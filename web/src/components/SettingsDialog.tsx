@@ -33,24 +33,38 @@ import { fileSize } from './UpdateProgress';
 import { openExternal } from './RichText';
 import { api, type Info as AppInfo } from '../lib/api';
 import { formatDateTime, relativeTime } from '../lib/dates';
+import { L, setLangSetting, storedLangSetting, systemLang, useLang, type Lang, type Messages } from '../i18n';
 import { store, useStore } from '../lib/store';
 import type { Settings } from '../lib/types';
 import { Dialog } from './ui';
-import { HotkeyInput } from './settings/HotkeyInput';
+import { HotkeyInput, hotkeyParts } from './settings/HotkeyInput';
 import { ShortcutTable } from './Shortcuts';
 import { applyTheme, type Theme } from './settings/theme';
 
 type Tab = 'general' | 'capture' | 'reminders' | 'sync' | 'vault' | 'updates' | 'about';
 
-const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
-  { id: 'general', label: 'Allgemein', icon: <Monitor size={15} /> },
-  { id: 'capture', label: 'Schnellerfassung', icon: <Keyboard size={15} /> },
-  { id: 'reminders', label: 'Erinnerungen', icon: <Bell size={15} /> },
-  { id: 'sync', label: 'Versionen & Sync', icon: <GitBranch size={15} /> },
-  { id: 'vault', label: 'Notizbuch', icon: <Notebook size={15} /> },
-  { id: 'updates', label: 'Updates', icon: <ArrowDownToLine size={15} /> },
-  { id: 'about', label: 'Über Hakobo', icon: <Info size={15} /> },
+/** Bereiche; die Beschriftung kommt beim Rendern aus `L.settings.tabs`. */
+const TABS: { id: Tab; icon: ReactNode }[] = [
+  { id: 'general', icon: <Monitor size={15} /> },
+  { id: 'capture', icon: <Keyboard size={15} /> },
+  { id: 'reminders', icon: <Bell size={15} /> },
+  { id: 'sync', icon: <GitBranch size={15} /> },
+  { id: 'vault', icon: <Notebook size={15} /> },
+  { id: 'updates', icon: <ArrowDownToLine size={15} /> },
+  { id: 'about', icon: <Info size={15} /> },
 ];
+
+/** Namen der Sprachen in der eigenen Sprache (in jeder Oberflächensprache gleich). */
+const LANG_NAMES: Record<Lang, string> = { de: 'Deutsch', en: 'English' };
+
+/** Text mit Auszeichnungen aus den Sprachdateien: `{Taste}` → <kbd>, `Code` (Backticks) → <code>. */
+function rich(text: string): ReactNode {
+  return text.split(/(\{[^}]+\}|`[^`]+`)/).map((part, i) => {
+    if (part.length > 2 && part[0] === '{' && part[part.length - 1] === '}') return <kbd key={i}>{part.slice(1, -1)}</kbd>;
+    if (part.length > 2 && part[0] === '`' && part[part.length - 1] === '`') return <code key={i}>{part.slice(1, -1)}</code>;
+    return part;
+  });
+}
 
 const DEFAULT_HOTKEY = 'Ctrl+Shift+Space';
 
@@ -102,6 +116,9 @@ function Notice({ kind = 'info', children }: { kind?: 'info' | 'warning' | 'erro
 }
 
 export function SettingsDialog() {
+  // Der Dialog liegt außerhalb des Teils, den App.tsx beim Sprachwechsel neu
+  // aufbaut; so bleibt er offen und rendert hier selbst in der neuen Sprache.
+  useLang();
   const [tab, setTab] = useState<Tab>(() => (sessionStorage.getItem('hakobo-settings-tab') as Tab) || 'general');
   const [settings, setSettings] = useState<Settings | null>(null);
   const [vaultPath, setVaultPath] = useState('');
@@ -134,6 +151,9 @@ export function SettingsDialog() {
       setDefaultVault(r.defaultVault);
       // Gespeichertes Farbschema dieses Rechners gilt auch für die Oberfläche.
       if (r.settings.theme) applyTheme(r.settings.theme);
+      // Ebenso die Sprache – nur wenn sie von der zuletzt übernommenen abweicht.
+      const language = r.settings.language ?? 'system';
+      if (language !== storedLangSetting()) setLangSetting(language);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -219,17 +239,17 @@ export function SettingsDialog() {
   };
 
   return (
-    <Dialog title="Einstellungen" onClose={close} width={760} className="settings-dialog">
+    <Dialog title={L.settings.title} onClose={close} width={760} className="settings-dialog">
       <div className="set-layout">
         <nav className="set-nav">
           {tabs.map((t) => (
             <button key={t.id} className={`set-nav-item${active === t.id ? ' is-active' : ''}`} onClick={() => setTab(t.id)}>
               {t.icon}
-              <span>{t.label}</span>
-              {t.id === 'updates' && updatePending && <i className="nav-dot" aria-label="Neue Version verfügbar" />}
+              <span>{L.settings.tabs[t.id]}</span>
+              {t.id === 'updates' && updatePending && <i className="nav-dot" aria-label={L.settings.newVersionDot} />}
             </button>
           ))}
-          <div className="set-status">{saving ? 'Speichert …' : settings ? 'Änderungen werden sofort gespeichert' : ''}</div>
+          <div className="set-status">{saving ? L.settings.saving : settings ? L.settings.savedInstantly : ''}</div>
         </nav>
         <div className="set-content">
           {error && (
@@ -271,29 +291,24 @@ type TabProps = { settings: Settings; update: (p: Partial<Settings>, immediate?:
 function ZoomRow() {
   const zoom = useZoom();
   const pct = Math.round(zoom * 100);
+  const t = L.settings.zoom;
   return (
-    <Row
-      label="Schriftgröße"
-      note={
-        <>
-          Vergrößert Text und Bedienelemente der ganzen App, auch das Erfassungsfenster. Schneller geht es mit <kbd>Strg</kbd> <kbd>+</kbd> / <kbd>−</kbd>, <kbd>Strg</kbd> <kbd>0</kbd> oder <kbd>Strg</kbd> + Mausrad.
-        </>
-      }
-    >
+    <Row label={t.label} note={rich(t.note)}>
       <div className="zoom-ctl">
-        <ResetButton show={zoom !== 1} onClick={() => setZoom(1)} title="Auf 100 % zurücksetzen" />
-        <button className="btn btn-icon btn-sm" onClick={() => stepZoom(-1)} disabled={zoom <= ZOOM_STEPS[0] + 0.001} aria-label="Kleiner">
+        <ResetButton show={zoom !== 1} onClick={() => setZoom(1)} title={t.reset} />
+        <button className="btn btn-icon btn-sm" onClick={() => stepZoom(-1)} disabled={zoom <= ZOOM_STEPS[0] + 0.001} aria-label={t.smaller}>
           <Minus size={14} />
         </button>
-        <select className="select zoom-select" value={ZOOM_STEPS.includes(zoom) ? String(zoom) : 'custom'} onChange={(e) => setZoom(Number(e.target.value))} aria-label="Schriftgröße">
-          {!ZOOM_STEPS.includes(zoom) && <option value="custom">{pct} %</option>}
+        <select className="select zoom-select" value={ZOOM_STEPS.includes(zoom) ? String(zoom) : 'custom'} onChange={(e) => setZoom(Number(e.target.value))} aria-label={t.label}>
+          {!ZOOM_STEPS.includes(zoom) && <option value="custom">{t.percent(pct)}</option>}
           {ZOOM_STEPS.map((s) => (
             <option key={s} value={String(s)}>
-              {Math.round(s * 100)} %{s === 1 ? ' (Standard)' : ''}
+              {t.percent(Math.round(s * 100))}
+              {s === 1 ? t.defaultSuffix : ''}
             </option>
           ))}
         </select>
-        <button className="btn btn-icon btn-sm" onClick={() => stepZoom(1)} disabled={zoom >= ZOOM_STEPS[ZOOM_STEPS.length - 1] - 0.001} aria-label="Größer">
+        <button className="btn btn-icon btn-sm" onClick={() => stepZoom(1)} disabled={zoom >= ZOOM_STEPS[ZOOM_STEPS.length - 1] - 0.001} aria-label={t.larger}>
           <Plus size={14} />
         </button>
       </div>
@@ -302,19 +317,43 @@ function ZoomRow() {
 }
 
 function GeneralTab({ settings, update }: TabProps) {
-  const choose = (t: Theme) => {
-    applyTheme(t);
-    update({ theme: t });
+  const t = L.settings.general;
+  const choose = (theme: Theme) => {
+    applyTheme(theme);
+    update({ theme });
   };
   const options: { id: Theme; label: string; icon: ReactNode }[] = [
-    { id: 'system', label: 'System', icon: <Monitor size={16} /> },
-    { id: 'light', label: 'Hell', icon: <Sun size={16} /> },
-    { id: 'dark', label: 'Dunkel', icon: <Moon size={16} /> },
+    { id: 'system', label: t.themeSystem, icon: <Monitor size={16} /> },
+    { id: 'light', label: t.themeLight, icon: <Sun size={16} /> },
+    { id: 'dark', label: t.themeDark, icon: <Moon size={16} /> },
+  ];
+  const language = settings.language ?? 'system';
+  const chooseLanguage = (l: Settings['language']) => {
+    // Sofort speichern: Die App übernimmt bei jeder Einstellungsänderung (auch
+    // aus anderen Fenstern) die gespeicherte Sprache – ein verzögertes Speichern
+    // könnte die eben gewählte kurz zurückdrehen.
+    update({ language: l }, true);
+    setLangSetting(l);
+  };
+  const languages: { id: Settings['language']; label: string; lang?: Lang; icon?: ReactNode }[] = [
+    { id: 'system', label: t.languageSystem, icon: <Monitor size={16} /> },
+    { id: 'de', label: LANG_NAMES.de, lang: 'de' },
+    { id: 'en', label: LANG_NAMES.en, lang: 'en' },
   ];
   return (
     <section className="set-section">
-      <h3>Darstellung</h3>
-      <Row label="Farbschema" hint="„System“ folgt der Einstellung von Windows.">
+      <h3>{t.appearance}</h3>
+      <Row label={t.language} hint={t.languageHint(t.languageNames[systemLang()])}>
+        <div className="set-segment" role="radiogroup" aria-label={t.language}>
+          {languages.map((o) => (
+            <button key={o.id} role="radio" lang={o.lang} aria-checked={language === o.id} className={language === o.id ? 'is-active' : ''} onClick={() => chooseLanguage(o.id)}>
+              {o.icon}
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </Row>
+      <Row label={t.theme} hint={t.themeHint}>
         <div className="set-segment" role="radiogroup">
           {options.map((o) => (
             <button key={o.id} role="radio" aria-checked={settings.theme === o.id} className={settings.theme === o.id ? 'is-active' : ''} onClick={() => choose(o.id)}>
@@ -325,11 +364,11 @@ function GeneralTab({ settings, update }: TabProps) {
         </div>
       </Row>
       <ZoomRow />
-      <h3>Programm</h3>
-      <Row label="Beim Schließen im Infobereich weiterlaufen" hint="Nötig, damit Tastenkürzel und Erinnerungen auch bei geschlossenem Fenster funktionieren.">
+      <h3>{t.program}</h3>
+      <Row label={t.closeToTray} hint={t.closeToTrayHint}>
         <Toggle checked={settings.closeToTray} onChange={(v) => update({ closeToTray: v })} />
       </Row>
-      <Row label="Mit Windows starten" hint="Hakobo startet unsichtbar im Infobereich, damit die Schnellerfassung sofort bereitsteht.">
+      <Row label={t.autostart} hint={t.autostartHint}>
         <Toggle checked={settings.autostart} onChange={(v) => update({ autostart: v }, true)} />
       </Row>
     </section>
@@ -338,67 +377,55 @@ function GeneralTab({ settings, update }: TabProps) {
 
 function CaptureTab({ settings, setHotkey }: { settings: Settings; setHotkey: (hk: string) => void }) {
   const desktop = useDesktop();
+  const t = L.settings.capture;
   return (
     <section className="set-section">
-      <h3>Globales Tastenkürzel</h3>
-      <p className="set-text">Öffnet von überall ein kleines Fenster, in das du eine Idee, ein Todo oder einen Termin tippst. Der Eintrag landet in der Inbox – einsortieren kannst du ihn später.</p>
-      <Row label="Tastenkürzel" hint="Klicken und die gewünschte Kombination drücken. Esc bricht ab.">
+      <h3>{t.globalHotkey}</h3>
+      <p className="set-text">{t.intro}</p>
+      <Row label={t.hotkey} hint={t.hotkeyHint}>
         <div className="set-inline">
-          <ResetButton show={settings.hotkey !== DEFAULT_HOTKEY} onClick={() => setHotkey(DEFAULT_HOTKEY)} title="Standard wiederherstellen (Strg+Umschalt+Leertaste)" />
+          <ResetButton show={settings.hotkey !== DEFAULT_HOTKEY} onClick={() => setHotkey(DEFAULT_HOTKEY)} title={t.restoreDefault(hotkeyParts(DEFAULT_HOTKEY).join('+'))} />
           <HotkeyInput value={settings.hotkey} onChange={setHotkey} />
         </div>
       </Row>
-      {desktop === false && <Notice kind="warning">Das Tastenkürzel wirkt nur in der Desktop-App, nicht im Browser.</Notice>}
-      <h3>So schreibst du schnell</h3>
+      {desktop === false && <Notice kind="warning">{t.desktopOnly}</Notice>}
+      <h3>{t.howTo}</h3>
       <div className="set-examples">
-        <div>
-          <code>Zahnarzt /morgen 14 uhr</code>
-          <span>Termin morgen um 14 Uhr</span>
-        </div>
-        <div>
-          <code>[] Bericht /fällig fr #arbeit</code>
-          <span>Todo, fällig Freitag, mit Tag</span>
-        </div>
-        <div>
-          <code>Jour fixe /jeden montag 9 uhr</code>
-          <span>Wiederkehrender Termin</span>
-        </div>
-        <div>
-          <code>Anruf /fr 10 uhr /erinnerung 15m</code>
-          <span>Mit Erinnerung 15 Minuten vorher</span>
-        </div>
-        <div>
-          <code>Feedback an @Anna</code>
-          <span>Erwähnung einer Person</span>
-        </div>
+        {t.examples.map(([code, what]) => (
+          <div key={code}>
+            <code>{code}</code>
+            <span>{what}</span>
+          </div>
+        ))}
       </div>
-      <h3>Von der Kommandozeile</h3>
-      <pre className="set-code">hakobo add "Zahnarzt /morgen 14 uhr"{'\n'}hakobo add --to Projekte "Idee für später"</pre>
-      <p className="set-text subtle">Läuft die App, landet der Eintrag sofort in der geöffneten Inbox; sonst schreibt der Befehl direkt ins Notizbuch.</p>
+      <h3>{t.fromCli}</h3>
+      <pre className="set-code">{t.cliExample}</pre>
+      <p className="set-text subtle">{t.cliNote}</p>
     </section>
   );
 }
 
 function RemindersTab({ settings, update }: TabProps) {
   const minutes = [5, 10, 15, 30, 60];
+  const t = L.settings.reminders;
   return (
     <section className="set-section">
-      <h3>Standard-Erinnerungen</h3>
-      <Row label="Termine mit Uhrzeit" hint="Gilt, wenn ein Termin keine eigene Erinnerung hat.">
+      <h3>{t.defaults}</h3>
+      <Row label={t.events} hint={t.eventsHint}>
         <select
           className="select set-select"
           value={settings.eventReminderMinutes ?? 'off'}
           onChange={(e) => update({ eventReminderMinutes: e.target.value === 'off' ? null : Number(e.target.value) })}
         >
-          <option value="off">Keine Erinnerung</option>
+          <option value="off">{t.off}</option>
           {minutes.map((m) => (
             <option key={m} value={m}>
-              {m === 60 ? '1 Stunde vorher' : `${m} Minuten vorher`}
+              {m === 60 ? t.hourBefore : t.minutesBefore(m)}
             </option>
           ))}
         </select>
       </Row>
-      <Row label="Ganztägige Todos und Termine" hint="Erinnert am Morgen des Tages, z. B. an fällige Todos ohne Uhrzeit.">
+      <Row label={t.allDay} hint={t.allDayHint}>
         <div className="set-inline">
           <Toggle checked={settings.allDayReminders} onChange={(v) => update({ allDayReminders: v })} />
           <input
@@ -407,15 +434,13 @@ function RemindersTab({ settings, update }: TabProps) {
             value={settings.allDayTime}
             disabled={!settings.allDayReminders}
             onChange={(e) => e.target.value && update({ allDayTime: e.target.value })}
-            aria-label="Uhrzeit der Morgenerinnerung"
+            aria-label={t.allDayTime}
           />
         </div>
       </Row>
-      <h3>Pro Eintrag</h3>
-      <p className="set-text">
-        Eine eigene Erinnerung setzt du mit <code>/erinnerung 15m</code>, <code>/erinnerung 1h</code> oder <code>/erinnerung morgen 8 uhr</code>. Sie steht dann als Feld <code>remind::</code> im Eintrag und ersetzt den Standard.
-      </p>
-      <p className="set-text subtle">Erinnerungen erscheinen als Windows-Benachrichtigung, solange Hakobo läuft (auch im Infobereich). Ein Klick öffnet den Eintrag.</p>
+      <h3>{t.perEntry}</h3>
+      <p className="set-text">{rich(t.perEntryText)}</p>
+      <p className="set-text subtle">{t.notifications}</p>
     </section>
   );
 }
@@ -470,36 +495,37 @@ function SyncTab({ settings, update }: TabProps) {
     }
   };
 
+  const t = L.settings.sync;
   const delays: [number, string][] = [
-    [10, '10 Sekunden'],
-    [30, '30 Sekunden'],
-    [60, '1 Minute'],
-    [300, '5 Minuten'],
+    [10, t.seconds(10)],
+    [30, t.seconds(30)],
+    [60, t.minutes(1)],
+    [300, t.minutes(5)],
   ];
   const intervals: [number, string][] = [
-    [1, 'jede Minute'],
-    [5, 'alle 5 Minuten'],
-    [15, 'alle 15 Minuten'],
-    [60, 'stündlich'],
+    [1, t.everyMinutes(1)],
+    [5, t.everyMinutes(5)],
+    [15, t.everyMinutes(15)],
+    [60, t.hourly],
   ];
   const running = !!sync?.running || busy !== null;
 
   return (
     <section className="set-section">
-      <h3>Versionen</h3>
+      <h3>{t.versions}</h3>
       <div className="set-card">
         <GitBranch size={18} className="set-card-icon" />
         <div>
-          <div className="set-card-title">Jede Änderung wird automatisch als Version gesichert</div>
+          <div className="set-card-title">{t.autoVersions}</div>
           <div className="set-row-hint">
-            Letzte Version: {sync?.lastCommit ? `${relativeTime(sync.lastCommit)} (${formatDateTime(sync.lastCommit)})` : 'in dieser Sitzung noch keine'}
-            {sync && sync.pending > 0 && ` · ${sync.pending} ${sync.pending === 1 ? 'Seite wartet' : 'Seiten warten'} auf die nächste Version`}
+            {t.lastVersion(sync?.lastCommit ? `${relativeTime(sync.lastCommit)} (${formatDateTime(sync.lastCommit)})` : t.noVersionYet)}
+            {sync && sync.pending > 0 && t.pending(sync.pending)}
           </div>
         </div>
       </div>
-      <Row label="Version anlegen nach" hint="So lange wartet Hakobo nach der letzten Änderung. Spätestens nach 5 Minuten wird immer gesichert.">
+      <Row label={t.commitAfter} hint={t.commitAfterHint}>
         <select className="select set-select" value={settings.commitDelaySecs} onChange={(e) => update({ commitDelaySecs: Number(e.target.value) })}>
-          {delays.some(([v]) => v === settings.commitDelaySecs) ? null : <option value={settings.commitDelaySecs}>{settings.commitDelaySecs} Sekunden</option>}
+          {delays.some(([v]) => v === settings.commitDelaySecs) ? null : <option value={settings.commitDelaySecs}>{t.seconds(settings.commitDelaySecs)}</option>}
           {delays.map(([v, l]) => (
             <option key={v} value={v}>
               {l}
@@ -507,53 +533,54 @@ function SyncTab({ settings, update }: TabProps) {
           ))}
         </select>
       </Row>
-      <p className="set-text subtle">Ältere Fassungen einer Seite findest du über das Menü der Seite → „Versionen“.</p>
+      <p className="set-text subtle">{t.olderVersions}</p>
 
-      <h3>Synchronisation</h3>
+      <h3>{t.sync}</h3>
       {gitCli === false && (
         <Notice kind="warning">
-          <TriangleAlert size={15} /> Für die Synchronisation muss Git installiert sein (
+          <TriangleAlert size={15} /> {t.gitMissingBefore}
           <a href="https://git-scm.com" target="_blank" rel="noreferrer">
             git-scm.com
           </a>
-          ). Die lokalen Versionen funktionieren auch ohne.
+          {t.gitMissingAfter}
         </Notice>
       )}
       <div className={`set-card${sync?.lastError ? ' is-error' : ''}`}>
         {remote ? <Cloud size={18} className="set-card-icon" /> : <CloudOff size={18} className="set-card-icon" />}
         <div className="set-card-main">
-          <div className="set-card-title">{running ? 'Synchronisiere …' : remote ? 'Mit Remote verbunden' : 'Nur auf diesem Rechner'}</div>
+          <div className="set-card-title">{running ? t.syncing : remote ? t.connected : t.localOnly}</div>
           <div className="set-row-hint">
             {remote ? (
               <>
                 <span className="mono">{remote}</span>
                 <br />
-                Zuletzt synchronisiert: {sync?.lastSync ? `${relativeTime(sync.lastSync)} (${formatDateTime(sync.lastSync)})` : 'noch nie'}
+                {t.lastSync(sync?.lastSync ? `${relativeTime(sync.lastSync)} (${formatDateTime(sync.lastSync)})` : t.never)}
               </>
             ) : (
-              'Trage ein Git-Repository ein, um das Notizbuch mit anderen Rechnern abzugleichen.'
+              t.noRemote
             )}
           </div>
           {sync?.lastError && !running && <div className="set-card-error">{sync.lastError}</div>}
           {sync && sync.resolved.length > 0 && (
             <div className="set-row-hint">
-              Automatisch zusammengeführt: <span className="mono">{sync.resolved.join(', ')}</span>
+              {t.merged}
+              <span className="mono">{sync.resolved.join(', ')}</span>
             </div>
           )}
         </div>
         {remote && (
           <button className="btn btn-sm" disabled={running} onClick={() => void run('sync', api.syncNow)}>
-            <RefreshCw size={14} className={running ? 'spin' : undefined} /> Jetzt synchronisieren
+            <RefreshCw size={14} className={running ? 'spin' : undefined} /> {t.syncNow}
           </button>
         )}
       </div>
 
       <label className="field set-field">
-        Remote-Adresse
+        {t.remote}
         <div className="set-inline">
           <input
             className="input mono"
-            placeholder="z. B. git@github.com:name/notizen.git"
+            placeholder={t.remotePlaceholder}
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             onKeyDown={(e) => {
@@ -562,14 +589,14 @@ function SyncTab({ settings, update }: TabProps) {
             spellCheck={false}
           />
           <button className="btn btn-primary" disabled={!url.trim() || url.trim() === remote || running} onClick={() => void run('connect', () => api.setRemote(url.trim()))}>
-            {busy === 'connect' ? 'Verbinde …' : remote ? 'Ändern' : 'Verbinden'}
+            {busy === 'connect' ? t.connecting : remote ? t.change : t.connect}
           </button>
           {remote && (
             <button
               className="btn btn-danger"
               disabled={running}
               onClick={() => {
-                if (confirm('Verbindung zum Remote trennen? Die Notizen und Versionen auf diesem Rechner bleiben erhalten.'))
+                if (confirm(t.disconnectConfirm))
                   void run('disconnect', async () => {
                     const s = await api.setRemote(null);
                     setUrl('');
@@ -577,13 +604,11 @@ function SyncTab({ settings, update }: TabProps) {
                   });
               }}
             >
-              Trennen
+              {t.disconnect}
             </button>
           )}
         </div>
-        <span className="field-hint">
-          Hakobo nutzt die installierte Git-Kommandozeile mit deinen vorhandenen Anmeldedaten (SSH-Schlüssel oder Git Credential Manager für HTTPS). Beim ersten Verbinden werden die Notizen von hier und vom Remote zusammengeführt.
-        </span>
+        <span className="field-hint">{t.remoteHint}</span>
       </label>
       {err && (
         <Notice kind="error">
@@ -591,11 +616,11 @@ function SyncTab({ settings, update }: TabProps) {
         </Notice>
       )}
 
-      <Row label="Automatisch synchronisieren" hint="Holt und überträgt Änderungen regelmäßig und kurz nach jeder neuen Version.">
+      <Row label={t.auto} hint={t.autoHint}>
         <div className="set-inline">
           <Toggle checked={settings.syncEnabled} onChange={(v) => update({ syncEnabled: v })} />
           <select className="select set-select" value={settings.syncIntervalMinutes} disabled={!settings.syncEnabled} onChange={(e) => update({ syncIntervalMinutes: Number(e.target.value) })}>
-            {intervals.some(([v]) => v === settings.syncIntervalMinutes) ? null : <option value={settings.syncIntervalMinutes}>alle {settings.syncIntervalMinutes} Minuten</option>}
+            {intervals.some(([v]) => v === settings.syncIntervalMinutes) ? null : <option value={settings.syncIntervalMinutes}>{t.everyMinutes(settings.syncIntervalMinutes)}</option>}
             {intervals.map(([v, l]) => (
               <option key={v} value={v}>
                 {l}
@@ -605,12 +630,10 @@ function SyncTab({ settings, update }: TabProps) {
         </div>
       </Row>
 
-      <h3>Zweites Gerät einrichten</h3>
-      <p className="set-text">
-        Auf dem anderen Rechner entweder in einem neuen, leeren Notizbuch hier dieselbe Remote-Adresse eintragen – oder im Terminal:
-      </p>
-      <pre className="set-code">hakobo clone git@github.com:name/notizen.git</pre>
-      <p className="set-text subtle">Gleichzeitige Änderungen an derselben Seite werden zeilenweise zusammengeführt, ohne Konfliktmarker. Im ungünstigsten Fall stehen beide Fassungen einer Zeile untereinander.</p>
+      <h3>{t.secondDevice}</h3>
+      <p className="set-text">{t.secondDeviceText}</p>
+      <pre className="set-code">{t.cloneExample}</pre>
+      <p className="set-text subtle">{t.mergeNote}</p>
     </section>
   );
 }
@@ -619,14 +642,15 @@ function VaultTab({ settings, vaultPath, defaultVault, restart, update }: TabPro
   const [path, setPath] = useState(settings.vault ?? '');
   const [err, setErr] = useState<string | null>(null);
   const configured = settings.vault ?? '';
+  const t = L.settings.vault;
   return (
     <section className="set-section">
-      <h3>Aktuelles Notizbuch</h3>
+      <h3>{t.current}</h3>
       <div className="set-card">
         <FolderOpen size={18} className="set-card-icon" />
         <div className="set-card-main">
           <div className="set-card-title mono set-path">{vaultPath}</div>
-          <div className="set-row-hint">Ein normaler Ordner mit Markdown-Dateien und Git-Verlauf. Du kannst ihn auch mit einem Editor oder Obsidian öffnen.</div>
+          <div className="set-row-hint">{t.currentHint}</div>
         </div>
         <button
           className="btn btn-sm"
@@ -637,37 +661,40 @@ function VaultTab({ settings, vaultPath, defaultVault, restart, update }: TabPro
             )
           }
         >
-          Im Explorer öffnen
+          {t.openFolder}
         </button>
       </div>
       {err && <Notice kind="error">{err}</Notice>}
 
-      <h3>Anderen Ordner verwenden</h3>
+      <h3>{t.other}</h3>
       <label className="field set-field">
-        Ordner
+        {t.folder}
         <div className="set-inline">
           <input className="input mono" placeholder={defaultVault} value={path} onChange={(e) => setPath(e.target.value)} spellCheck={false} />
           <button className="btn" disabled={path.trim() === configured} onClick={() => update({ vault: path.trim() || null }, true)}>
-            Übernehmen
+            {t.apply}
           </button>
         </div>
         <span className="field-hint">
-          Leer lassen für den Standardordner <span className="mono">{defaultVault}</span>. Ein neuer Ordner wird beim nächsten Start angelegt; er wird automatisch versioniert.
+          {t.defaultBefore}
+          <span className="mono">{defaultVault}</span>
+          {t.defaultAfter}
         </span>
       </label>
-      {restart && <Notice kind="info">Wirksam nach einem Neustart von Hakobo.</Notice>}
+      {restart && <Notice kind="info">{t.restart}</Notice>}
     </section>
   );
 }
 
-const CLI: [string, string][] = [
-  ['hakobo add "…"', 'In die Inbox erfassen (mit /Befehlen)'],
-  ['hakobo agenda', 'Termine und fällige Todos'],
-  ['hakobo search "…"', 'Fuzzy-Suche mit Filtern'],
-  ['hakobo inbox', 'Inbox anzeigen'],
-  ['hakobo sync', 'Jetzt synchronisieren'],
-  ['hakobo clone <url>', 'Notizbuch auf ein weiteres Gerät holen'],
-  ['hakobo serve', 'Als Server für den Browser starten'],
+/** Befehle der Kommandozeile; die Beschreibung steht in `L.settings.about.cliCommands`. */
+const CLI: [string, keyof Messages['settings']['about']['cliCommands']][] = [
+  ['hakobo add "…"', 'add'],
+  ['hakobo agenda', 'agenda'],
+  ['hakobo search "…"', 'search'],
+  ['hakobo inbox', 'inbox'],
+  ['hakobo sync', 'sync'],
+  ['hakobo clone <url>', 'clone'],
+  ['hakobo serve', 'serve'],
 ];
 
 /** Versionshinweise von GitHub (Markdown); Links öffnen im Browser. */
@@ -695,34 +722,35 @@ function UpdatesTab({ settings, update }: TabProps) {
   const busy = isBusy(u);
   const skipped = !!u.latest && settings.skippedVersion === u.latest;
   const published = unix(u.publishedAt);
+  const t = L.settings.updates;
 
   const runCheck = async () => {
     setActionError(null);
     try {
       await check();
     } catch (e) {
-      setActionError(`Prüfung fehlgeschlagen: ${(e as Error).message}`);
+      setActionError(t.checkFailed((e as Error).message));
     }
   };
   const startInstall = async () => {
-    if (!confirm(`Hakobo ${u.latest} installieren?\n\nHakobo wird für das Update beendet und startet danach von selbst neu. Deine Notizen bleiben, wie sie sind.`)) return;
+    if (!confirm(t.installConfirm(u.latest ?? ''))) return;
     setActionError(null);
     try {
       await install();
     } catch (e) {
-      setActionError(`Update nicht möglich: ${(e as Error).message}`);
+      setActionError(t.installFailed((e as Error).message));
     }
   };
 
   return (
     <section className="set-section">
-      <h3>Version</h3>
+      <h3>{t.version}</h3>
       <Row
         label={`Hakobo ${u.current}`}
-        hint={u.checkedAt ? `Zuletzt geprüft ${relativeTime(unix(u.checkedAt))}` : 'Noch nicht nach Updates gesucht'}
+        hint={u.checkedAt ? t.checkedAgo(relativeTime(unix(u.checkedAt))) : t.neverChecked}
       >
         <button className="btn btn-sm" onClick={() => void runCheck()} disabled={checking || busy}>
-          <RefreshCw size={14} className={checking ? 'spin' : undefined} /> Jetzt prüfen
+          <RefreshCw size={14} className={checking ? 'spin' : undefined} /> {t.checkNow}
         </button>
       </Row>
       {actionError && (
@@ -737,56 +765,53 @@ function UpdatesTab({ settings, update }: TabProps) {
       )}
       {!u.checkError && u.latest && !u.available && (
         <Notice kind="success">
-          <CircleCheck size={15} /> Hakobo ist auf dem neuesten Stand.
+          <CircleCheck size={15} /> {t.upToDate}
         </Notice>
       )}
       {u.available && u.latest && (
         <div className="update-card">
           <div className="update-head">
             <span className="update-badge">
-              <ArrowDownToLine size={14} /> Neue Version {u.latest}
+              <ArrowDownToLine size={14} /> {t.newVersion(u.latest)}
             </span>
-            {published && <span className="subtle">veröffentlicht am {formatDateTime(published).split(' ')[0]}</span>}
+            {published && <span className="subtle">{t.publishedOn(new Date(published * 1000))}</span>}
           </div>
           {u.notes && <ReleaseNotes text={u.notes} />}
           {u.phase === 'failed' && (
             <Notice kind="error">
-              <TriangleAlert size={15} /> Das Update ist fehlgeschlagen: {u.error} Die bisherige Version ist unverändert.
+              <TriangleAlert size={15} /> {t.failed(u.error ?? '')}
             </Notice>
           )}
-          <p className="update-how">{u.canInstall ? `${u.installNote} Download: ${fileSize(u.downloadSize)}.` : u.installNote}</p>
+          <p className="update-how">{u.canInstall ? t.installNoteWithSize(u.installNote, fileSize(u.downloadSize)) : u.installNote}</p>
           <div className="update-actions">
             {u.canInstall && (
               <button className="btn btn-accent" onClick={() => void startInstall()} disabled={busy}>
-                <ArrowDownToLine size={15} /> {u.phase === 'failed' ? 'Erneut versuchen' : 'Jetzt aktualisieren'}
+                <ArrowDownToLine size={15} /> {u.phase === 'failed' ? L.common.retry : t.installNow}
               </button>
             )}
             {u.releaseUrl && (
               <button className={u.canInstall ? 'btn' : 'btn btn-accent'} onClick={() => openExternal(u.releaseUrl)}>
-                <ExternalLink size={14} /> {u.canInstall ? 'Auf GitHub ansehen' : 'Zum Download auf GitHub'}
+                <ExternalLink size={14} /> {u.canInstall ? t.viewOnGithub : t.downloadOnGithub}
               </button>
             )}
             {!skipped && (
               <button className="btn btn-ghost" onClick={() => update({ skippedVersion: u.latest ?? '' }, true)} disabled={busy}>
-                Diese Version überspringen
+                {t.skip}
               </button>
             )}
           </div>
           {skipped && (
             <p className="update-how">
-              An diese Version wird nicht mehr erinnert.{' '}
+              {t.skipped}{' '}
               <button className="link-btn" onClick={() => update({ skippedVersion: '' }, true)}>
-                Wieder erinnern
+                {t.remindAgain}
               </button>
             </p>
           )}
         </div>
       )}
-      <h3>Automatisch</h3>
-      <Row
-        label="Automatisch nach Updates suchen"
-        hint="Hakobo fragt beim Start und danach täglich bei GitHub nach der neuesten Version. Dabei werden keine Daten aus deinen Notizen übertragen."
-      >
+      <h3>{t.automatic}</h3>
+      <Row label={t.autoCheck} hint={t.autoCheckHint}>
         <Toggle checked={settings.updateCheck} onChange={(v) => update({ updateCheck: v })} />
       </Row>
     </section>
@@ -798,29 +823,30 @@ function AboutTab() {
   useEffect(() => {
     api.info().then(setInfo, () => undefined);
   }, []);
+  const t = L.settings.about;
   return (
     <section className="set-section">
       <div className="set-about">
         <img src="/favicon.svg" alt="" width={44} height={44} />
         <div>
           <div className="set-about-name">Hakobo {info?.version ?? ''}</div>
-          <div className="set-row-hint">Notizen, Todos und Termine als Outline – lokal als Markdown, versioniert mit Git.</div>
+          <div className="set-row-hint">{t.tagline}</div>
         </div>
       </div>
       <dl className="set-facts">
         {info && (
           <>
-            <dt>Rechner</dt>
+            <dt>{t.host}</dt>
             <dd>{info.host}</dd>
-            <dt>Notizbuch</dt>
+            <dt>{t.vault}</dt>
             <dd className="mono">{info.vault}</dd>
-            <dt>Git</dt>
-            <dd>{info.gitCli ? 'installiert – Synchronisation möglich' : 'nicht gefunden – nur lokale Versionen'}</dd>
+            <dt>{t.git}</dt>
+            <dd>{info.gitCli ? t.gitInstalled : t.gitMissing}</dd>
           </>
         )}
-        <dt>Lizenz</dt>
-        <dd>Freie Software unter der GNU Affero General Public License, Version 3 oder später</dd>
-        <dt>Quellcode</dt>
+        <dt>{t.license}</dt>
+        <dd>{t.licenseText}</dd>
+        <dt>{t.source}</dt>
         <dd>
           <a
             href={SOURCE_URL}
@@ -833,9 +859,9 @@ function AboutTab() {
           </a>
         </dd>
       </dl>
-      <h3>Tastenkürzel</h3>
+      <h3>{t.shortcuts}</h3>
       <ShortcutTable />
-      <h3>Kommandozeile</h3>
+      <h3>{t.cli}</h3>
       <table className="set-table">
         <tbody>
           {CLI.map(([c, d]) => (
@@ -843,7 +869,7 @@ function AboutTab() {
               <td>
                 <code>{c}</code>
               </td>
-              <td>{d}</td>
+              <td>{t.cliCommands[d]}</td>
             </tr>
           ))}
         </tbody>

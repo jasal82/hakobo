@@ -8,6 +8,7 @@ import { formatFence, guessLanguage } from './code';
 import { newId } from './ids';
 import { applyLocal, createOp, field, isCollapsed, isTable, pageOf, store, withField } from './store';
 import type { CommandResult, Field, Node, Op, Task } from './types';
+import { L } from '../i18n';
 
 const S = () => store();
 const N = (id: string | null | undefined): Node | undefined => (id ? S().nodes[id] : undefined);
@@ -61,7 +62,7 @@ export function createAfter(id: string, text = '', extra: { body?: string; field
   const parent = N(n?.parent);
   if (!n || !parent) return null;
   if (n.kind === 'page') {
-    const title = text || 'Unbenannt';
+    const title = text || L.common.untitled;
     const op: Op = { op: 'create', id: newId(), parent: parent.id, page: true, text: title };
     S().commit([op], { focusAfter: { id: op.id, caret: 0, selEnd: title.length } });
     return op.id;
@@ -76,7 +77,7 @@ export function createChild(parent: string, index?: number, text = ''): string |
   const p = N(parent);
   if (!p) return null;
   if (p.kind === 'root') {
-    const title = text || 'Unbenannt';
+    const title = text || L.common.untitled;
     const op: Op = { op: 'create', id: newId(), parent, page: true, text: title };
     S().commit([op], { focusAfter: { id: op.id, caret: 0, selEnd: title.length } });
     return op.id;
@@ -127,12 +128,12 @@ export async function toPage(id: string) {
   // Die neue Seite ist die, die es vorher noch nicht gab.
   const created = patch?.nodes.find((x) => x.kind === 'page' && !before.has(x.id));
   if (created) {
-    S().toast(`„${created.text}“ ist jetzt eine eigene Seite`, 'success', { label: 'Öffnen', run: () => S().navigate({ view: 'node', id: created.id }) });
+    S().toast(L.lib.outline.nowPage(created.text), 'success', { label: L.common.open, run: () => S().navigate({ view: 'node', id: created.id }) });
   }
 }
 
 /** Neue Unterseite anlegen und öffnen. */
-export function createSubpage(parent: string, title = 'Unbenannt'): string | null {
+export function createSubpage(parent: string, title = L.common.untitled): string | null {
   const p = N(parent);
   if (!p || p.kind === 'item') return null;
   const id = newId();
@@ -277,11 +278,11 @@ export function deleteNode(id: string, root: string) {
   const n = N(id);
   if (!n || id === root) return;
   if (n.kind === 'page') {
-    if (!confirm(`Seite „${n.text}“ samt Unterseiten löschen? Sie bleibt im Verlauf (Git) erhalten.`)) return;
+    if (!confirm(L.lib.outline.confirmDeletePage(n.text))) return;
   }
   const prev = prevVisible(id, root);
   S().commit([{ op: 'delete', id }], { focusAfter: prev ? { id: prev, caret: 'end' } : null });
-  if (n.kind === 'page') S().toast(`„${n.text}“ gelöscht`, 'info');
+  if (n.kind === 'page') S().toast(L.lib.outline.pageDeleted(n.text), 'info');
 }
 
 /** Strg+Enter: Todo erledigen bzw. wieder öffnen; ohne Kästchen wird es ein Todo. */
@@ -290,7 +291,7 @@ export function cycleTask(id: string) {
   if (!n || n.kind !== 'item') return;
   const next: Task = !n.task ? 'open' : n.task === 'done' || n.task === 'cancelled' ? 'open' : 'done';
   S().commit([{ op: 'update', id, task: next }], { key: undefined });
-  if (next === 'done' && field(n, 'repeat')) S().toast('Wiederkehrendes Todo: auf den nächsten Termin verschoben', 'success');
+  if (next === 'done' && field(n, 'repeat')) S().toast(L.lib.outline.repeatDone, 'success');
 }
 
 export function toggleTodo(id: string) {
@@ -369,11 +370,12 @@ export function moveInto(ids: string[], target: string, { quiet = false }: { qui
   }
   if (!ops.length) return;
   if (S().commit(ops) && !quiet) {
-    const where = t.kind === 'root' ? 'in die oberste Ebene' : `nach „${t.text || 'Unbenannt'}“`;
+    const tx = L.lib.outline;
+    const where = t.kind === 'root' ? tx.toTop : tx.toTarget(t.text || L.common.untitled);
     const pages = ops.every((o) => nodes[o.id]?.kind === 'page');
-    const what = ops.length === 1 ? (pages ? 'Seite' : 'Eintrag') : `${ops.length} ${pages ? 'Seiten' : 'Einträge'}`;
-    S().toast(`${what} ${where} verschoben`, 'success', {
-      label: 'Öffnen',
+    const what = pages ? tx.movedPages(ops.length) : tx.movedEntries(ops.length);
+    S().toast(tx.moved(what, where), 'success', {
+      label: L.common.open,
       run: () => S().reveal(ids[0]),
     });
   }

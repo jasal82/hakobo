@@ -12,11 +12,12 @@ import { plainText } from '../../lib/inline';
 import { ancestors, store, typesOf, useStore } from '../../lib/store';
 import type { Hit, Node, Types } from '../../lib/types';
 import { Highlighted } from '../ui';
+import { compareText, L } from '../../i18n';
 
 /** Titel als Klartext (so, wie ihn die Suche kennt). */
 export function nodeTitle(n: Node | undefined): string {
   if (!n) return '';
-  if (n.kind === 'root') return 'Notizbuch';
+  if (n.kind === 'root') return L.dialogs.notebook;
   if (n.kind === 'item' && !n.text.trim() && isCodeNode(n)) {
     // Codeblock: erste Codezeile (wie der Suchindex).
     const line = (parseFence(n.body)?.code ?? '').split('\n').map((l) => l.trim()).find(Boolean) ?? '';
@@ -161,7 +162,7 @@ export function useCandidates(query: string, fallback: () => string[], limit = 4
 export function allPages(nodes: Record<string, Node>, inbox: string): string[] {
   return Object.values(nodes)
     .filter((n) => n.kind === 'page')
-    .sort((a, b) => (a.id === inbox ? -1 : b.id === inbox ? 1 : (a.path ?? a.text).localeCompare(b.path ?? b.text, 'de', { numeric: true, sensitivity: 'base' })))
+    .sort((a, b) => (a.id === inbox ? -1 : b.id === inbox ? 1 : compareText(a.path ?? a.text, b.path ?? b.text)))
     .map((n) => n.id);
 }
 

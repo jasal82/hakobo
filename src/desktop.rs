@@ -37,6 +37,8 @@ pub enum UserEvent {
     SetHotkey(String, mpsc::Sender<Result<(), String>>),
     /// Schriftgröße/Zoom der Oberfläche.
     Zoom(f64),
+    /// Sprache gewechselt: Beschriftungen im Infobereich erneuern.
+    Relabel,
     Title(String),
     Quit,
 }
@@ -94,7 +96,8 @@ impl Desktop {
         let p3 = proxy.clone();
         let p4 = proxy.clone();
         let p5 = proxy.clone();
-        let p6 = proxy;
+        let p6 = proxy.clone();
+        let p7 = proxy;
         Shell {
             focus: Some(Arc::new(move || send(&p1, UserEvent::Focus))),
             capture: Some(Arc::new(move || send(&p2, UserEvent::ShowCapture))),
@@ -106,10 +109,11 @@ impl Desktop {
                 match rx.recv_timeout(Duration::from_secs(3)) {
                     Ok(Ok(())) => Ok(()),
                     Ok(Err(e)) => Err(anyhow!(e)),
-                    Err(_) => Err(anyhow!("Keine Antwort vom Fenster")),
+                    Err(_) => Err(anyhow!(crate::tr!("Keine Antwort vom Fenster", "No response from the window"))),
                 }
             })),
             set_zoom: Some(Arc::new(move |z: f64| send(&p6, UserEvent::Zoom(z)))),
+            relabel: Some(Arc::new(move || send(&p7, UserEvent::Relabel))),
         }
     }
 
@@ -158,7 +162,7 @@ impl Desktop {
 
         // -- Erfassungsfenster (versteckt, erscheint per Hotkey) -----------
         let mut cbuilder = WindowBuilder::new()
-            .with_title("Hakobo – Erfassen")
+            .with_title(&crate::tr!("Hakobo – Erfassen", "Hakobo – Capture"))
             .with_inner_size(LogicalSize::new(CAPTURE_SIZE.0, CAPTURE_SIZE.1))
             .with_decorations(false)
             .with_resizable(false)
@@ -177,13 +181,22 @@ impl Desktop {
         apply_zoom(&webview, &capture_view, &capture, opts.app.settings.lock().ui_scale);
 
         // -- Tray ---------------------------------------------------------
-        let hotkey_label = |hk: &str| format!("Schnell erfassen\t{}", hk.replace("Ctrl", "Strg").replace("Shift", "Umschalt").replace("Space", "Leertaste"));
-        let hotkey_now = opts.app.settings.lock().hotkey.clone();
+        let hotkey_label = |hk: &str| {
+            if crate::i18n::is_en() {
+                format!("Quick capture\t{hk}")
+            } else {
+                format!("Schnell erfassen\t{}", hk.replace("Ctrl", "Strg").replace("Shift", "Umschalt").replace("Space", "Leertaste"))
+            }
+        };
+        let open_label = || crate::tr!("Hakobo öffnen", "Open Hakobo");
+        let sync_label = || crate::tr!("Jetzt synchronisieren", "Sync now");
+        let quit_label = || crate::tr!("Beenden", "Quit");
+        let mut hotkey_now = opts.app.settings.lock().hotkey.clone();
         let menu = Menu::new();
-        let item_open = MenuItem::with_id("open", "Hakobo öffnen", true, None);
+        let item_open = MenuItem::with_id("open", open_label(), true, None);
         let item_capture = MenuItem::with_id("capture", hotkey_label(&hotkey_now), true, None);
-        let item_sync = MenuItem::with_id("sync", "Jetzt synchronisieren", true, None);
-        let item_quit = MenuItem::with_id("quit", "Beenden", true, None);
+        let item_sync = MenuItem::with_id("sync", sync_label(), true, None);
+        let item_quit = MenuItem::with_id("quit", quit_label(), true, None);
         let _ = menu.append_items(&[&item_open, &item_capture, &item_sync, &PredefinedMenuItem::separator(), &item_quit]);
         let tray_icon = tray_icon::Icon::from_rgba(crate::assets::TRAY_RGBA.to_vec(), 32, 32).ok();
         let mut tray_builder = TrayIconBuilder::new().with_tooltip("Hakobo").with_menu(Box::new(menu)).with_menu_on_left_click(false);
@@ -336,7 +349,7 @@ impl Desktop {
                 },
                 Event::UserEvent(UserEvent::SetHotkey(hk, reply)) => {
                     let result = (|| -> Result<(), String> {
-                        let m = hotkeys.as_ref().ok_or("Globale Tastenkürzel sind nicht verfügbar.")?;
+                        let m = hotkeys.as_ref().ok_or_else(|| crate::tr!("Globale Tastenkürzel sind nicht verfügbar.", "Global shortcuts are not available."))?;
                         let new: HotKey = hk.parse().map_err(|e| format!("{e}"))?;
                         if let Some(old) = current_hotkey.take() {
                             let _ = m.unregister(old);
@@ -345,15 +358,23 @@ impl Desktop {
                             Ok(()) => {
                                 current_hotkey = Some(new);
                                 item_capture.set_text(hotkey_label(&hk));
+                                hotkey_now = hk.clone();
                                 Ok(())
                             }
-                            Err(e) => Err(format!("bereits von einem anderen Programm belegt ({e})")),
+                            Err(e) => Err(crate::tr!("bereits von einem anderen Programm belegt ({e})", "already used by another program ({e})")),
                         }
                     })();
                     let _ = reply.send(result);
                 }
                 Event::UserEvent(UserEvent::Title(t)) => window.set_title(&t),
                 Event::UserEvent(UserEvent::Zoom(z)) => apply_zoom(&webview, &capture_view, &capture, z),
+                Event::UserEvent(UserEvent::Relabel) => {
+                    item_open.set_text(open_label());
+                    item_capture.set_text(hotkey_label(&hotkey_now));
+                    item_sync.set_text(sync_label());
+                    item_quit.set_text(quit_label());
+                    capture.set_title(&crate::tr!("Hakobo – Erfassen", "Hakobo – Capture"));
+                }
                 Event::UserEvent(UserEvent::Quit) => exit(control_flow, &window, normal),
                 _ => {}
             }

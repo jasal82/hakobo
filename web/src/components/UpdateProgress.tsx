@@ -7,12 +7,13 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { fmtNum, L } from '../i18n';
 import { store } from '../lib/store';
 import { isBusy, pendingVersion, useUpdate } from '../lib/update';
 
 export function fileSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-  return `${(bytes / (1024 * 1024)).toLocaleString('de-DE', { maximumFractionDigits: 1 })} MB`;
+  return `${fmtNum(bytes / (1024 * 1024), { maximumFractionDigits: 1 })} MB`;
 }
 
 /** Öffnet die Einstellungen beim Bereich „Updates“. */
@@ -36,31 +37,27 @@ export function UpdateProgress() {
     <div className="overlay update-overlay">
       <div className="dialog update-progress" role="dialog" aria-live="polite">
         <div className="dialog-header">
-          <h2>Update auf Hakobo {u?.latest ?? ''}</h2>
+          <h2>{L.settings.progress.title(u?.latest ?? '')}</h2>
         </div>
         <div className="dialog-body">
           {u?.phase === 'downloading' && !down && (
             <>
-              <p>Die neue Version wird heruntergeladen und geprüft …</p>
+              <p>{L.settings.progress.downloading}</p>
               <div className="update-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
                 <span style={{ width: `${percent}%` }} />
               </div>
-              <small className="subtle">
-                {percent} % von {fileSize(u.downloadSize)}
-              </small>
+              <small className="subtle">{L.settings.progress.percentOf(percent, fileSize(u.downloadSize))}</small>
             </>
           )}
           {u?.phase === 'installing' && !down && (
             <p className="update-step">
-              <span className="spinner" /> Wird installiert …
+              <span className="spinner" /> {L.settings.progress.installing}
             </p>
           )}
           {restarting && (
             <p className="update-step">
               <span className="spinner" />
-              {seconds > 120
-                ? 'Hakobo wurde beendet, meldet sich aber noch nicht zurück. Falls es nicht von selbst startet, bitte Hakobo neu starten.'
-                : 'Hakobo wird neu gestartet – gleich geht es mit der neuen Version weiter.'}
+              {seconds > 120 ? L.settings.progress.stuck : L.settings.progress.restarting}
             </p>
           )}
         </div>
@@ -80,6 +77,6 @@ export function useUpdateNotice() {
   useEffect(() => {
     if (!latest || announced === latest) return;
     announced = latest;
-    store().toast(`Hakobo ${latest} ist verfügbar (installiert: ${current}).`, 'info', { label: 'Ansehen', run: openUpdates }, { sticky: true });
+    store().toast(L.settings.progress.available(latest, current), 'info', { label: L.settings.progress.view, run: openUpdates }, { sticky: true });
   }, [latest, current]);
 }

@@ -5,19 +5,14 @@
 // Aufnahme eines globalen Tastenkürzels (Format von global-hotkey, z. B. `Ctrl+Shift+Space`).
 
 import { useState } from 'react';
+import { L } from '../../i18n';
 
-const MOD_LABEL: Record<string, string> = { Ctrl: 'Strg', Shift: 'Umschalt', Alt: 'Alt', Super: 'Win' };
-const KEY_LABEL: Record<string, string> = {
-  Space: 'Leertaste',
+/** Tasten, deren Beschriftung in allen Sprachen gleich ist (die übrigen stehen in `L.settings.hotkey.keys`). */
+const KEY_SYMBOL: Record<string, string> = {
+  Alt: 'Alt',
+  Super: 'Win',
   Enter: 'Enter',
   Tab: 'Tab',
-  Backspace: 'Rück',
-  Delete: 'Entf',
-  Insert: 'Einfg',
-  Home: 'Pos1',
-  End: 'Ende',
-  PageUp: 'Bild↑',
-  PageDown: 'Bild↓',
   ArrowUp: '↑',
   ArrowDown: '↓',
   ArrowLeft: '←',
@@ -35,21 +30,23 @@ const KEY_LABEL: Record<string, string> = {
   BracketRight: ']',
 };
 
-/** Deutsche Beschriftung der Tasten eines Kürzels. */
+/** Beschriftung der Tasten eines Kürzels in der aktuellen Sprache. */
 export function hotkeyParts(hk: string): string[] {
+  const names: Record<string, string> = L.settings.hotkey.keys;
   return hk
     .split('+')
     .map((p) => p.trim())
     .filter(Boolean)
     .map((p) => {
       const norm = p.length === 1 ? p.toUpperCase() : p[0].toUpperCase() + p.slice(1);
-      if (MOD_LABEL[norm]) return MOD_LABEL[norm];
-      if (/^Control$/i.test(p)) return 'Strg';
+      if (names[norm]) return names[norm];
+      if (KEY_SYMBOL[norm]) return KEY_SYMBOL[norm];
+      if (/^Control$/i.test(p)) return names.Ctrl;
       if (/^(Meta|Cmd|Command)$/i.test(p)) return 'Win';
       if (/^Key[A-Z]$/i.test(p)) return p.slice(3).toUpperCase();
       if (/^Digit\d$/i.test(p)) return p.slice(5);
       if (/^Numpad\d$/i.test(p)) return `Num ${p.slice(6)}`;
-      return KEY_LABEL[norm] ?? norm;
+      return norm;
     });
 }
 
@@ -110,17 +107,17 @@ export function HotkeyInput({ value, onChange, disabled }: { value: string; onCh
         }
         const hk = record(e);
         if (!hk) {
-          if (!/^(Control|Shift|Alt|Meta|OS)/.test(e.code)) setHint('Bitte mit Strg, Alt oder Win kombinieren.');
+          if (!/^(Control|Shift|Alt|Meta|OS)/.test(e.code)) setHint(L.settings.hotkey.needsModifier);
           return;
         }
         setHint(null);
         onChange(hk);
         (e.currentTarget as HTMLButtonElement).blur();
       }}
-      aria-label="Tastenkürzel aufnehmen"
+      aria-label={L.settings.hotkey.record}
     >
       {recording ? (
-        <span className="hotkey-prompt">{hint ?? 'Tastenkombination drücken …'}</span>
+        <span className="hotkey-prompt">{hint ?? L.settings.hotkey.prompt}</span>
       ) : value ? (
         <span className="hotkey-keys">
           {hotkeyParts(value).map((p, i) => (
@@ -128,7 +125,7 @@ export function HotkeyInput({ value, onChange, disabled }: { value: string; onCh
           ))}
         </span>
       ) : (
-        <span className="faint">Kein Kürzel</span>
+        <span className="faint">{L.settings.hotkey.none}</span>
       )}
     </button>
   );

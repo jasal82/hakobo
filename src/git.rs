@@ -46,7 +46,7 @@ pub fn hostname() -> String {
 }
 
 fn open(dir: &Path) -> Result<Repository> {
-    Repository::open(dir).map_err(|e| anyhow!("Kein Git-Repository in {}: {}", dir.display(), e.message()))
+    Repository::open(dir).map_err(|e| anyhow!(crate::tr!("Kein Git-Repository in {}: {}", "No Git repository in {}: {}", dir.display(), e.message())))
 }
 
 pub fn is_repo(dir: &Path) -> bool {
@@ -67,7 +67,7 @@ pub fn ensure_repo(dir: &Path) -> Result<()> {
     if fresh {
         let mut opts = git2::RepositoryInitOptions::new();
         opts.initial_head("main");
-        Repository::init_opts(dir, &opts).with_context(|| format!("Git-Repository in {} konnte nicht angelegt werden", dir.display()))?;
+        Repository::init_opts(dir, &opts).with_context(|| crate::tr!("Git-Repository in {} konnte nicht angelegt werden", "Could not create a Git repository in {}", dir.display()))?;
     }
     let attrs = dir.join(".gitattributes");
     match std::fs::read_to_string(&attrs) {
@@ -96,7 +96,7 @@ pub fn ensure_repo(dir: &Path) -> Result<()> {
 pub fn commit_all(dir: &Path, message: &str) -> Result<Option<String>> {
     let repo = open(dir)?;
     if repo.state() != git2::RepositoryState::Clean {
-        bail!("Das Repository ist mitten in einer Zusammenführung.");
+        bail!(crate::tr!("Das Repository ist mitten in einer Zusammenführung.", "The repository is in the middle of a merge."));
     }
     let mut index = repo.index()?;
     index.add_all(["*"].iter(), IndexAddOption::DEFAULT, None)?;
@@ -215,7 +215,7 @@ pub fn file_at(dir: &Path, rev: &str, path: &str) -> Result<Option<String>> {
 /// Führt git aus (ohne Rückfragen, mit Zeitlimit).
 fn run_git(dir: &Path, args: &[&str], timeout: Duration) -> Result<String> {
     if !cli_available() {
-        bail!("Für die Synchronisation wird Git benötigt (https://git-scm.com).");
+        bail!(crate::tr!("Für die Synchronisation wird Git benötigt (https://git-scm.com).", "Syncing requires Git (https://git-scm.com)."));
     }
     let mut child = Command::new("git")
         .args(args)
@@ -344,7 +344,7 @@ pub fn integrate(dir: &Path) -> Result<Integrated> {
         }
         args.push(&target);
         if let Err(e) = run_git(dir, &args, LOCAL) {
-            resolved = resolve_conflicts(dir).with_context(|| format!("Zusammenführen fehlgeschlagen: {e:#}"))?;
+            resolved = resolve_conflicts(dir).with_context(|| crate::tr!("Zusammenführen fehlgeschlagen: {e:#}", "Merge failed: {e:#}"))?;
             run_git(dir, &["commit", "--no-edit", "-m", &msg], LOCAL)?;
         }
     }
@@ -364,7 +364,7 @@ fn resolve_conflicts(dir: &Path) -> Result<Vec<String>> {
     let out = run_git(dir, &["diff", "--name-only", "--diff-filter=U", "-z"], LOCAL)?;
     let files: Vec<String> = out.split('\0').map(str::trim).filter(|s| !s.is_empty()).map(str::to_string).collect();
     if files.is_empty() {
-        bail!("Unbekannter Fehler beim Zusammenführen");
+        bail!(crate::tr!("Unbekannter Fehler beim Zusammenführen", "Unknown error while merging"));
     }
     let repo = open(dir)?;
     let index = repo.index()?;
@@ -445,7 +445,7 @@ pub fn clone(url: &str, dir: &Path) -> Result<()> {
     if dir.exists() && std::fs::read_dir(dir)?.next().is_some() {
         bail!("Der Zielordner {} ist nicht leer.", dir.display());
     }
-    let parent = dir.parent().ok_or_else(|| anyhow!("Ungültiger Zielordner"))?;
+    let parent = dir.parent().ok_or_else(|| anyhow!(crate::tr!("Ungültiger Zielordner", "Invalid target folder")))?;
     std::fs::create_dir_all(parent)?;
     run_git(parent, &["clone", url, &dir.to_string_lossy()], Duration::from_secs(600))?;
     // Zeigt das HEAD des Remotes ins Leere (z. B. „master“, hochgeladen wurde

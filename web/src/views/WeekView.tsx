@@ -14,6 +14,7 @@ import { RichText } from '../components/RichText';
 import { TaskBox } from '../components/outline/fields';
 import { activateKeys, moveFocus, type Anchor } from '../components/ui';
 import { hhmm, minutesOf, nodeColor } from './parts/common';
+import { L, locale } from '../i18n';
 import { anchorOf, CalendarSwitch, clock, isAllDayish, isClosed, isoWeek, mondayOf, NewEventPopover, orderedRange, rememberMode, useAgenda, useTooltip, type EventDraft } from './parts/calendar';
 
 const HOUR = 44;
@@ -180,10 +181,10 @@ export function WeekView({ start }: { start?: string }) {
 
   const kw = isoWeek(monday);
   const monthLabel = useMemo(() => {
-    const f = (d: Date) => d.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+    const f = (d: Date) => d.toLocaleDateString(locale(), { month: 'long', year: 'numeric' });
     const a = f(days[0]);
     const b = f(days[6]);
-    return a === b ? a : `${days[0].toLocaleDateString('de-DE', { month: 'long' })} – ${b}`;
+    return a === b ? a : `${days[0].toLocaleDateString(locale(), { month: 'long' })} – ${b}`;
   }, [days]);
 
   const nowMin = now.getHours() * 60 + now.getMinutes();
@@ -300,17 +301,17 @@ export function WeekView({ start }: { start?: string }) {
     >
       <div className="wk-head">
         <h1>{monthLabel}</h1>
-        <span className="wk-kw">KW {kw}</span>
+        <span className="wk-kw">{L.views.calendar.weekNo(kw)}</span>
         <span className="spacer" />
         <CalendarSwitch mode="week" day={thisWeek ? today : monday} />
         <div className="wk-nav">
-          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => go(-7)} aria-label="Vorige Woche" title="Vorige Woche (Bild↑)">
+          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => go(-7)} aria-label={L.views.calendar.prevWeek} title={L.views.calendar.withKey(L.views.calendar.prevWeek, true)}>
             <ChevronLeft size={16} />
           </button>
           <button className="btn btn-sm" onClick={() => go(null)} disabled={thisWeek}>
-            Heute
+            {L.common.today}
           </button>
-          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => go(7)} aria-label="Nächste Woche" title="Nächste Woche (Bild↓)">
+          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => go(7)} aria-label={L.views.calendar.nextWeek} title={L.views.calendar.withKey(L.views.calendar.nextWeek, false)}>
             <ChevronRight size={16} />
           </button>
         </div>
@@ -329,7 +330,7 @@ export function WeekView({ start }: { start?: string }) {
             <button
               key={isoDate(d)}
               className={`wk-col-head${isToday ? ' is-today' : ''}${d.getDay() === 0 || d.getDay() === 6 ? ' is-weekend' : ''}${i >= dayLo && i <= dayHi ? ' is-selected' : ''}`}
-              title={`Neuer Termin am ${longDayLabel(d)} (ziehen: mehrere Tage)`}
+              title={L.views.calendar.newEventOn(longDayLabel(d))}
               onMouseDown={dragDays}
               onClick={(ev) => {
                 // Mit der Maus übernimmt das Ziehen; hier nur Enter und Leertaste.
@@ -339,7 +340,7 @@ export function WeekView({ start }: { start?: string }) {
               }}
               onKeyDown={(ev) => headKeys(ev, i)}
             >
-              <span className="wk-wd">{d.toLocaleDateString('de-DE', { weekday: 'short' }).replace('.', '')}</span>
+              <span className="wk-wd">{L.dates.weekdaysShort[d.getDay()]}</span>
               <span className="wk-date">{d.getDate()}</span>
             </button>
           );
@@ -347,8 +348,8 @@ export function WeekView({ start }: { start?: string }) {
       </div>
 
       <div className="wk-allday">
-        <div className="wk-gutter wk-allday-label">ganztägig</div>
-        <div className="wk-allday-grid" ref={alldayRef} onMouseDown={dragDays} title="Klicken oder über mehrere Tage ziehen: neuer Termin">
+        <div className="wk-gutter wk-allday-label">{L.views.calendar.allDay}</div>
+        <div className="wk-allday-grid" ref={alldayRef} onMouseDown={dragDays} title={L.views.calendar.clickOrDrag}>
           {dayLo >= 0 && <div className="wk-day-sel" style={{ left: `${(dayLo / 7) * 100}%`, width: `${((dayHi - dayLo + 1) / 7) * 100}%` }} />}
           {allDayPlaced.map(({ e, col, span }) => (
             <div key={`${e.id}|${e.value}`} style={{ gridColumn: `${col + 1} / span ${span}` }}>
@@ -383,7 +384,7 @@ export function WeekView({ start }: { start?: string }) {
                   const minutes = Math.max(0, Math.min(DAY_MIN - SLOT, Math.floor((((ev.clientY - r.top) / r.height) * DAY_MIN) / SLOT) * SLOT));
                   openTime(i, minutes, null, { left: ev.clientX, top: ev.clientY, bottom: ev.clientY + 4 });
                 }}
-                title="Ziehen oder Doppelklick: neuer Termin"
+                title={L.views.calendar.dragOrDoubleClick}
               >
                 {timeSel && (
                   <div className="wk-sel" style={{ top: (timeSel.a / 60) * HOUR, height: ((timeSel.b - timeSel.a) / 60) * HOUR }}>

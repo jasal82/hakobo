@@ -16,6 +16,7 @@ import { InlineEditor, type InlineEditorHandle } from './InlineEditor';
 import { useSuggest } from './outline/suggest';
 import { allPages, NodeIcon, nodeTitle, PathLine, pathTitles, useCandidates, useListKeys, waitForNode } from './search/common';
 import { Dialog, Highlighted, Popover, useScrollActive, type Anchor } from './ui';
+import { L } from '../i18n';
 
 export interface Captured {
   id: string;
@@ -65,9 +66,10 @@ function mergeCommand(list: CommandResult[], r: CommandResult): CommandResult[] 
 /** Inhalt nach dem Doppelpunkt („Termin: Morgen 14:00“ → „Morgen 14:00“). */
 const afterColon = (s: string) => s.slice(s.indexOf(':') + 1).trim();
 
+// Die Zusammenfassung kommt vom Server, je nach Sprache deutsch oder englisch.
 function summaryIcon(s: string) {
-  if (s.startsWith('Wiederholung')) return <Repeat size={12} />;
-  if (s.startsWith('Erinnerung')) return <Bell size={12} />;
+  if (/^(?:Wiederholung|Repeat)/i.test(s)) return <Repeat size={12} />;
+  if (/^(?:Erinnerung|Remind)/i.test(s)) return <Bell size={12} />;
   return <CalendarClock size={12} />;
 }
 
@@ -82,7 +84,7 @@ export function CaptureBox({ variant, onDone, onCancel, resetKey = 0 }: { varian
   const ref = useRef<InlineEditorHandle>(null);
   const commandTaken = useRef(false);
   const targetBtn = useRef<HTMLButtonElement>(null);
-  const inboxTitle = useStore((s) => s.nodes[s.inbox]?.text ?? 'Inbox');
+  const inboxTitle = useStore((s) => s.nodes[s.inbox]?.text ?? L.common.inbox);
 
   const apply = (t: string, caret: number) => {
     // Nach einem übernommenen Befehl ein Leerzeichen, damit nicht gleich
@@ -172,7 +174,7 @@ export function CaptureBox({ variant, onDone, onCancel, resetKey = 0 }: { varian
     setError(null);
     try {
       const res = await api.capture(full, target?.id ?? null);
-      const place = target ? `Unter „${target.label}“` : `In der ${inboxTitle}`;
+      const place = target ? L.capture.placeUnder(target.label) : L.capture.placeInbox(inboxTitle);
       onDone({ id: res.id, text: plainText(res.node?.text ?? full.split('\n')[0]), summary: res.summary, place }, open);
       setText('');
       setAccepted([]);
@@ -227,7 +229,7 @@ export function CaptureBox({ variant, onDone, onCancel, resetKey = 0 }: { varian
   const chips: { key: string; label: string; icon: React.ReactNode; remove?: () => void }[] = [];
   const todoAccepted = accepted.find((a) => a.kind === 'todo');
   if (preview?.task || todoAccepted) {
-    chips.push({ key: 'todo', label: 'Todo', icon: <CheckSquare size={12} />, remove: todoAccepted ? () => setAccepted((l) => l.filter((x) => x !== todoAccepted)) : undefined });
+    chips.push({ key: 'todo', label: L.capture.todo, icon: <CheckSquare size={12} />, remove: todoAccepted ? () => setAccepted((l) => l.filter((x) => x !== todoAccepted)) : undefined });
   }
   for (const s of preview?.summary ?? []) {
     const acc = accepted.find((a) => a.kind !== 'todo' && afterColon(a.human) === afterColon(s));
@@ -244,7 +246,7 @@ export function CaptureBox({ variant, onDone, onCancel, resetKey = 0 }: { varian
         autoFocus
         multiline
         ownHistory
-        placeholder="Idee, Todo oder Termin … /morgen 14 uhr #tag @person"
+        placeholder={L.capture.placeholder}
         onChange={(t, c) => {
           setText(t);
           sug.update(t, c);
@@ -260,33 +262,33 @@ export function CaptureBox({ variant, onDone, onCancel, resetKey = 0 }: { varian
             {c.icon}
             {c.label}
             {c.remove && (
-              <button className="chip-x" onMouseDown={(e) => e.preventDefault()} onClick={c.remove} aria-label="Entfernen">
+              <button className="chip-x" onMouseDown={(e) => e.preventDefault()} onClick={c.remove} aria-label={L.common.remove}>
                 <X size={11} />
               </button>
             )}
           </span>
         ))}
-        {!chips.length && <span className="capture-help">/ für Datum, Wiederholung, Erinnerung · # Tag · @ Person · [[ Link</span>}
+        {!chips.length && <span className="capture-help">{L.capture.help}</span>}
       </div>
       {error && <div className="capture-error">{error}</div>}
       <div className="capture-bar">
-        <button ref={targetBtn} className="btn btn-ghost btn-sm capture-target" onMouseDown={(e) => e.preventDefault()} onClick={openPicker} title="Ziel wählen (Tab)">
-          <span className="faint">Ziel:</span> {target?.label ?? inboxTitle}
+        <button ref={targetBtn} className="btn btn-ghost btn-sm capture-target" onMouseDown={(e) => e.preventDefault()} onClick={openPicker} title={L.capture.chooseTarget}>
+          <span className="faint">{L.capture.target}</span> {target?.label ?? inboxTitle}
           <ChevronDown size={13} />
         </button>
         {target && (
-          <button className="btn btn-ghost btn-icon btn-sm" onMouseDown={(e) => e.preventDefault()} onClick={() => setTarget(null)} title="Zurück zur Inbox">
+          <button className="btn btn-ghost btn-icon btn-sm" onMouseDown={(e) => e.preventDefault()} onClick={() => setTarget(null)} title={L.capture.backToInbox}>
             <X size={13} />
           </button>
         )}
         <span className="spacer" />
         <span className="capture-keys">
-          <kbd>↵</kbd> speichern · <kbd>Strg</kbd>
-          <kbd>↵</kbd> öffnen · <kbd>⇧</kbd>
-          <kbd>↵</kbd> Zeile
+          <kbd>↵</kbd> {L.capture.keySave} · <kbd>{L.capture.keyCtrl}</kbd>
+          <kbd>↵</kbd> {L.capture.keyOpen} · <kbd>⇧</kbd>
+          <kbd>↵</kbd> {L.capture.keyLine}
         </span>
         <button className="btn btn-accent btn-sm" onMouseDown={(e) => e.preventDefault()} onClick={() => void save(false)} disabled={saving || !compose(text, accepted).trim()}>
-          {saving ? <span className="spinner" /> : <CornerDownLeft size={14} />} Speichern
+          {saving ? <span className="spinner" /> : <CornerDownLeft size={14} />} {L.common.save}
         </button>
       </div>
       {picker && (
@@ -317,7 +319,7 @@ function TargetPicker({ anchor, onPick, onClose }: { anchor: Anchor; onPick: (t:
   const list = raw.filter((c) => nodes[c.id] && nodes[c.id].kind !== 'root').slice(0, 30);
   const { active, setActive, onKey } = useListKeys(list.length, [q]);
   useScrollActive(listRef, active);
-  const pick = (id: string) => onPick(id === inbox ? null : { id, label: nodeTitle(nodes[id]) || 'Unbenannt' });
+  const pick = (id: string) => onPick(id === inbox ? null : { id, label: nodeTitle(nodes[id]) || L.common.untitled });
   return (
     <Popover anchor={anchor} onClose={onClose} width={380} className="capture-picker">
       <div className="fp-body">
@@ -325,7 +327,7 @@ function TargetPicker({ anchor, onPick, onClose }: { anchor: Anchor; onPick: (t:
           className="input"
           autoFocus
           value={q}
-          placeholder="Seite oder Eintrag suchen …"
+          placeholder={L.capture.searchTarget}
           onChange={(e) => setQ(e.target.value)}
           onMouseDown={(e) => e.stopPropagation()}
           onKeyDown={(e) => {
@@ -358,7 +360,7 @@ function TargetPicker({ anchor, onPick, onClose }: { anchor: Anchor; onPick: (t:
             </button>
           );
         })}
-        {!list.length && <div className="menu-empty">Nichts gefunden</div>}
+        {!list.length && <div className="menu-empty">{L.capture.nothing}</div>}
       </div>
     </Popover>
   );
@@ -368,7 +370,7 @@ function TargetPicker({ anchor, onPick, onClose }: { anchor: Anchor; onPick: (t:
 export function CaptureModal() {
   const close = () => store().set({ captureOpen: false });
   return (
-    <Dialog title="Schnell erfassen" onClose={close} width={660} className="capture-dialog">
+    <Dialog title={L.capture.title} onClose={close} width={660} className="capture-dialog">
       <CaptureBox
         variant="modal"
         onCancel={close}
@@ -380,7 +382,7 @@ export function CaptureModal() {
             return;
           }
           const extra = r.summary.length ? ` · ${r.summary.map(afterColon).join(' · ')}` : '';
-          store().toast(`${r.place}: ${r.text || 'Eintrag'}${extra}`, 'success', there ? { label: 'Öffnen', run: () => store().reveal(r.id) } : undefined);
+          store().toast(`${r.place}: ${r.text || L.common.entry}${extra}`, 'success', there ? { label: L.common.open, run: () => store().reveal(r.id) } : undefined);
         }}
       />
     </Dialog>

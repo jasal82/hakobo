@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { moveBeside, moveInto, topLevel } from './outline';
 import { isAncestor, store } from './store';
+import { L } from '../i18n';
 
 export type DropPos = 'before' | 'after' | 'into';
 
@@ -40,9 +41,9 @@ export function dragGhost(e: DragEvent, text: string) {
 /**
  * Beginnt das Ziehen; bei mehreren Knoten mit einem Zähler statt der Zeile als Bild.
  * `within`: nur zwischen die Kinder dieses Knotens (z. B. Zeilen einer Tabelle), ohne Text.
- * `noun`: Wort für den Zähler (sonst „Einträge“ bzw. „Seiten“).
+ * `noun`: Wort für den Zähler oder Text zur Anzahl (z. B. `L.table.rows`; sonst „3 Einträge“ bzw. „3 Seiten“).
  */
-export function startDrag(e: DragEvent, ids: string[], opts: { within?: string; noun?: string } = {}) {
+export function startDrag(e: DragEvent, ids: string[], opts: { within?: string; noun?: string | ((n: number) => string) } = {}) {
   dragged = topLevel(ids);
   within = opts.within ?? null;
   const nodes = store().nodes;
@@ -50,8 +51,9 @@ export function startDrag(e: DragEvent, ids: string[], opts: { within?: string; 
   if (within) e.dataTransfer.setData(INTERNAL, within);
   else e.dataTransfer.setData('text/plain', dragged.map((id) => nodes[id]?.text ?? '').join('\n'));
   if (dragged.length > 1) {
-    const noun = opts.noun ?? (dragged.every((id) => nodes[id]?.kind === 'page') ? 'Seiten' : 'Einträge');
-    dragGhost(e, `${dragged.length} ${noun}`);
+    const pages = dragged.every((id) => nodes[id]?.kind === 'page');
+    const n = dragged.length;
+    dragGhost(e, typeof opts.noun === 'function' ? opts.noun(n) : opts.noun ? `${n} ${opts.noun}` : pages ? L.lib.drag.pages(n) : L.lib.drag.entries(n));
   }
 }
 

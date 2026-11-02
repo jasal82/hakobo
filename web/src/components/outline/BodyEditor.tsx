@@ -21,6 +21,7 @@ import { ancestors, store } from '../../lib/store';
 import { followLinkAt } from '../RichText';
 import { hasFiles, imageFiles, imagesAsMarkdown, pastedImages } from '../../lib/images';
 import { detectTrigger } from './suggest';
+import { L } from '../../i18n';
 
 /** Codeblock (```…```) an einer Position: Bereich und Sprache. */
 function fencedAt(state: State, pos: number): { from: number; to: number; lang: string } | null {
@@ -174,7 +175,7 @@ export function BodyEditor({ id, onClose }: { id: string; onClose: (focusTitle: 
         codeLines,
         EditorView.lineWrapping,
         EditorState.tabSize.of(4),
-        placeholder('Notiz … (Markdown, ```code```, [[Link]], #tag)'),
+        placeholder(L.editor.notePlaceholder),
         autocompletion({ override: [complete], icons: false }),
         keymap.of([
           { key: 'Enter', run: codeEnter },
@@ -203,7 +204,7 @@ export function BodyEditor({ id, onClose }: { id: string; onClose: (focusTitle: 
             run: (v) => {
               const head = v.state.selection.main.head;
               const line = v.state.doc.lineAt(head);
-              if (!followLinkAt(store().nodes[id], line.text, head - line.from)) store().toast('Hier gibt es keinen Link zum Öffnen', 'info');
+              if (!followLinkAt(store().nodes[id], line.text, head - line.from)) store().toast(L.editor.noLinkHere, 'info');
               return true;
             },
           },
@@ -234,7 +235,7 @@ export function BodyEditor({ id, onClose }: { id: string; onClose: (focusTitle: 
             e.stopPropagation();
             const images = imageFiles(e.dataTransfer);
             if (!images.length) {
-              store().toast('Nur Bilder lassen sich hier ablegen', 'info');
+              store().toast(L.editor.onlyImages, 'info');
               return true;
             }
             const pos = v.posAtCoords({ x: e.clientX, y: e.clientY }) ?? v.state.selection.main.head;

@@ -17,6 +17,7 @@ import { store } from '../lib/store';
 import { imageFiles } from '../lib/images';
 import type { Node } from '../lib/types';
 import type { Anchor } from './ui';
+import { L } from '../i18n';
 
 /** Änderung von außen (Store, Vorschlag) – kein `onChange`. */
 const external = Annotation.define<boolean>();
@@ -52,7 +53,7 @@ class LinkChip extends WidgetType {
     s.className = `cm-chip ${this.cls}`;
     s.textContent = this.label;
     if (this.id) s.dataset.id = this.id;
-    s.title = this.id ? 'Strg+Klick oder Strg+O öffnet das Ziel' : 'Ziel gibt es (noch) nicht';
+    s.title = this.id ? L.editor.linkOpens : L.editor.linkMissing;
     return s;
   }
   ignoreEvent() {

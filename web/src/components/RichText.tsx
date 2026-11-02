@@ -9,6 +9,7 @@ import { headingLevel, tokenize, type Segment } from '../lib/inline';
 import { isPerson, linkLabel, resolveKey } from '../lib/links';
 import { store, useStore } from '../lib/store';
 import type { Node } from '../lib/types';
+import { L } from '../i18n';
 
 export function openTag(tag: string) {
   store().navigate({ view: 'tag', tag: tag.toLowerCase() });
@@ -39,7 +40,7 @@ export function followLinkAt(source: Node | undefined, text: string, caret: numb
   else {
     const id = resolveKey(store().nodes, source, best.key);
     if (id) store().reveal(id, { edit: store().nodes[id]?.kind === 'item' });
-    else store().toast(`„${best.target}“ gibt es (noch) nicht`, 'error');
+    else store().toast(L.editor.targetMissing(best.target), 'error');
   }
   return true;
 }
@@ -56,7 +57,7 @@ function LinkSeg({ s, source }: { s: Extract<Segment, { t: 'link' }>; source: No
     <a
       className={`wikilink${id ? '' : ' is-broken'}${person === '1' ? ' is-person' : ''}${kind === 'page' ? ' is-page' : ''}`}
       data-e={s.e}
-      title={id ? undefined : `„${s.target}“ gibt es (noch) nicht`}
+      title={id ? undefined : L.editor.targetMissing(s.target)}
       onClick={(e) => {
         e.stopPropagation();
         if (id) store().reveal(id);

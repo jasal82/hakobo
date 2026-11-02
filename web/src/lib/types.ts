@@ -164,6 +164,8 @@ export interface Settings {
   allDayReminders: boolean;
   allDayTime: string;
   theme: 'system' | 'light' | 'dark';
+  /** Sprache der Oberfläche: `system` (Deutsch, sonst Englisch), `de` oder `en`. */
+  language: 'system' | 'de' | 'en';
   uiScale: number;
   /** Beim Start und täglich nach Updates suchen (lokale App). */
   updateCheck: boolean;

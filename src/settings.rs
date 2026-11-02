@@ -32,6 +32,8 @@ pub struct Settings {
     pub all_day_time: String,
     /// `system`, `light` oder `dark`.
     pub theme: String,
+    /// Sprache der Oberfläche: `system` (Deutsch, sonst Englisch), `de` oder `en`.
+    pub language: String,
     /// Schriftgröße bzw. Zoom der ganzen Oberfläche (1.0 = 100 %).
     pub ui_scale: f64,
     /// Beim Start und täglich nach Updates suchen (lokale App).
@@ -54,6 +56,7 @@ impl Default for Settings {
             all_day_reminders: true,
             all_day_time: "09:00".into(),
             theme: "system".into(),
+            language: "system".into(),
             ui_scale: 1.0,
             update_check: true,
             skipped_version: String::new(),
@@ -115,12 +118,12 @@ pub fn set_autostart(enabled: bool) -> Result<()> {
         std::process::Command::new("reg").args(["delete", key, "/v", "Hakobo", "/f"]).no_window().output()?
     };
     if !status.status.success() && enabled {
-        anyhow::bail!("Autostart konnte nicht eingerichtet werden: {}", String::from_utf8_lossy(&status.stderr).trim());
+        anyhow::bail!(crate::tr!("Autostart konnte nicht eingerichtet werden: {}", "Could not set up autostart: {}", String::from_utf8_lossy(&status.stderr).trim()));
     }
     Ok(())
 }
 
 #[cfg(not(windows))]
 pub fn set_autostart(_enabled: bool) -> Result<()> {
-    anyhow::bail!("Autostart wird auf diesem System noch nicht unterstützt.")
+    anyhow::bail!(crate::tr!("Autostart wird auf diesem System noch nicht unterstützt.", "Autostart is not supported on this system yet."))
 }

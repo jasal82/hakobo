@@ -151,6 +151,10 @@ Todos im Format von Obsidian Tasks (`- [ ] Aufgabe 📅 2026-10-30`) erscheinen 
 
 Ein Typ ist ein Tag mit Feldern, definiert in `.hakobo/types.toml` oder über die Typen in der Seitenleiste. Mitgeliefert: **Meeting** (Datum, Teilnehmer, Projekt, Ort), **Projekt** (Status, Ziel, Deadline), **Person** (E-Mail, Telefon, Firma, Rolle), **Snippet** (Sprache, Quelle). Jeder Typ hat eine Tabellenansicht; Felder mit dem Schlüssel `date` erscheinen in der Agenda.
 
+### Sprache
+
+Hakobo spricht Deutsch und Englisch. Standard ist die Sprache des Systems (Deutsch, sonst Englisch); umstellen lässt sie sich unter Einstellungen → Allgemein → Sprache, sie gilt sofort für Oberfläche, Erfassungsfenster, Infobereich, Erinnerungen, Meldungen und die Kommandozeile (auch `hakobo --help`). Was du tippst, versteht Hakobo unabhängig davon in beiden Sprachen: `/morgen 14 uhr` und `/tomorrow 2pm`, `/fällig fr` und `/due fri`, `/bild` und `/image`. Das Dateiformat bleibt sprachneutral (`layout:: table`, `remind::` …); die automatischen Versionen heißen weiterhin „Bearbeitet: …“.
+
 ## Speicherung, Versionen, Synchronisation
 
 Jede Seite ist eine Markdown-Datei, Unterseiten liegen im gleichnamigen Ordner. Das Format ist in [docs/format.md](docs/format.md) beschrieben und bleibt in jedem Editor, in Obsidian und auf GitHub lesbar. Änderungen von außen (anderer Editor, `git pull`) übernimmt Hakobo sofort.
@@ -207,6 +211,8 @@ node scripts/smoke-test.mjs dist/Hakobo.exe   # fertiges Programm von außen pr�
 ```
 
 Aufbau: `src/vault` (Datenmodell, Markdown-Parser/-Writer, Typen), `src/dates.rs` (natürlichsprachliche Daten, Wiederholungen, Erinnerungen), `src/search.rs` (Fuzzy-Suche), `src/capture.rs` (Slash-Befehle), `src/git.rs` (Versionen, Sync), `src/app.rs` (Hintergrundaufgaben), `src/server` (REST-API, Ereignisstrom), `src/desktop.rs` (Fenster, Tray, globaler Hotkey), `src/update.rs` (Selbst-Update aus den GitHub-Releases), `web/` (React-Oberfläche), `installer/` und `scripts/` (Windows-Setup, Versionen, Lizenzen, Tests der Pakete).
+
+Texte der Oberfläche stehen in `web/src/i18n/de/*.ts` (Ausgangssprache) und `web/src/i18n/en/*.ts`; die englischen Dateien sind gegen die deutschen typisiert, fehlende Texte meldet also `tsc`. Im Code liest man sie über `L.bereich.text` (nur innerhalb von Funktionen, nie auf Modulebene), Mehrzahl über `plural()`. Texte aus dem Backend stehen zweisprachig an Ort und Stelle: `tr!("Deutsch {x}", "English {x}")` (`src/i18n.rs`).
 
 ### Neue Version veröffentlichen
 

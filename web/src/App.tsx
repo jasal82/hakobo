@@ -2,12 +2,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
 
-import { useEffect } from 'react';
+import { Fragment, useEffect } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { CircleCheck, CircleAlert, X } from 'lucide-react';
 import { store, useStore } from './lib/store';
 import { visibleList } from './lib/outline';
 import { loadZoom, setZoom, stepZoom } from './lib/zoom';
+import { loadLanguage } from './lib/language';
+import { L, useLang } from './i18n';
 import { startUpdatePolling } from './lib/update';
 import { UpdateProgress, useUpdateNotice } from './components/UpdateProgress';
 import { TitleBar } from './components/TitleBar';
@@ -50,7 +52,7 @@ function Toasts() {
               {t.action.label}
             </button>
           )}
-          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => store().dismissToast(t.id)} aria-label="Schließen">
+          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => store().dismissToast(t.id)} aria-label={L.common.close}>
             <X size={14} />
           </button>
         </div>
@@ -140,6 +142,9 @@ export function App() {
   const loadError = useStore((s) => s.loadError);
   const sidebar = useStore((s) => s.sidebar);
   const overlays = useStore(useShallow((s) => ({ search: s.searchOpen, move: !!s.move, assign: !!s.assign, capture: s.captureOpen, settings: s.settingsOpen, history: !!s.history, shortcuts: s.shortcutsOpen })));
+  // Beim Wechsel der Sprache wird der Inhalt neu aufgebaut, damit kein Text in der alten Sprache stehen bleibt.
+  // Die Einstellungen bleiben dabei offen (sie folgen der Sprache selbst).
+  const lang = useLang();
 
   useUpdateNotice();
 
@@ -149,7 +154,11 @@ export function App() {
     startUpdatePolling();
     // Schriftgröße: gespeicherten Wert übernehmen, auch nach Änderungen in anderen Fenstern.
     void loadZoom();
-    const onSettings = () => void loadZoom();
+    void loadLanguage();
+    const onSettings = () => {
+      void loadZoom();
+      void loadLanguage();
+    };
     window.addEventListener('hakobo-settings', onSettings);
     // Strg+Mausrad vergrößert/verkleinert.
     const onWheel = (e: WheelEvent) => {
@@ -170,7 +179,7 @@ export function App() {
       e.preventDefault();
       const files = imageFiles(e.dataTransfer);
       if (files.length) void imagesToInbox(files);
-      else store().toast('Nur Bilder lassen sich ablegen', 'info');
+      else store().toast(L.app.onlyImagesDrop, 'info');
     };
     window.addEventListener('dragover', onDragOver);
     window.addEventListener('drop', onDrop);
@@ -258,10 +267,10 @@ export function App() {
   if (loadError) {
     return (
       <div className="boot">
-        <h2>Hakobo konnte das Notizbuch nicht laden</h2>
+        <h2>{L.app.loadFailed}</h2>
         <p className="subtle">{loadError}</p>
         <button className="btn" onClick={() => location.reload()}>
-          Erneut versuchen
+          {L.common.retry}
         </button>
       </div>
     );
@@ -269,21 +278,23 @@ export function App() {
 
   return (
     <div className={`app${sidebar ? '' : ' no-sidebar'}`}>
-      <TitleBar />
-      <div className="app-body">
-        {sidebar && <Sidebar />}
-        <main className="main">{ready ? <Main /> : <div className="boot"><div className="spinner" /></div>}</main>
-      </div>
-      {overlays.search && <SearchPalette />}
-      {overlays.move && <MoveDialog />}
-      {overlays.assign && <AssignDialog />}
-      {overlays.capture && <CaptureModal />}
+      <Fragment key={lang}>
+        <TitleBar />
+        <div className="app-body">
+          {sidebar && <Sidebar />}
+          <main className="main">{ready ? <Main /> : <div className="boot"><div className="spinner" /></div>}</main>
+        </div>
+        {overlays.search && <SearchPalette />}
+        {overlays.move && <MoveDialog />}
+        {overlays.assign && <AssignDialog />}
+        {overlays.capture && <CaptureModal />}
+        {overlays.history && <HistoryDialog />}
+        {overlays.shortcuts && <ShortcutsDialog />}
+        <ImageViewer />
+        <UpdateProgress />
+        <Toasts />
+      </Fragment>
       {overlays.settings && <SettingsDialog />}
-      {overlays.history && <HistoryDialog />}
-      {overlays.shortcuts && <ShortcutsDialog />}
-      <ImageViewer />
-      <UpdateProgress />
-      <Toasts />
     </div>
   );
 }

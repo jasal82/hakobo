@@ -12,25 +12,27 @@ import { store, useStore } from '../lib/store';
 import type { CommitInfo } from '../lib/types';
 import { Dialog, moveFocus } from './ui';
 import { diffBlocks, diffLines, diffStats, type DiffLine } from './settings/diff';
+import { L } from '../i18n';
 
 const CURRENT = '__current__';
 
-/** Kurzfassung einer Commit-Nachricht. */
+/** Kurzfassung einer Commit-Nachricht (vom Server; bisher deutsch, evtl. künftig auch englisch). */
 function describe(c: CommitInfo, path: string): { title: string; detail?: string } {
   const s = c.summary.trim();
   const page = path.replace(/\.md$/, '');
-  if (s.startsWith('Bearbeitet: ')) {
-    const list = s.slice('Bearbeitet: '.length);
+  const edited = /^(?:Bearbeitet|Edited): /.exec(s);
+  if (edited) {
+    const list = s.slice(edited[0].length);
     const others = list
       .split(/,\s*/)
       .map((x) => x.trim())
       .filter((x) => x && x.toLowerCase() !== page.toLowerCase());
-    const rest = others.length ? `zusammen mit ${others.join(', ')}` : undefined;
-    return { title: 'Bearbeitet', detail: rest };
+    const rest = others.length ? L.dialogs.history.together(others.join(', ')) : undefined;
+    return { title: L.dialogs.history.edited, detail: rest };
   }
-  if (/^Synchronisiert/.test(s)) return { title: 'Von anderem Gerät übernommen', detail: s.replace(/^Synchronisiert\s*/, '').replace(/^\((.*)\)$/, '$1') || undefined };
-  if (s.endsWith('(wiederhergestellt)')) return { title: 'Ältere Fassung wiederhergestellt' };
-  return { title: s || 'Version' };
+  if (/^(?:Synchronisiert|Synced)/.test(s)) return { title: L.dialogs.history.synced, detail: s.replace(/^(?:Synchronisiert|Synced)\s*/, '').replace(/^\((.*)\)$/, '$1') || undefined };
+  if (s.endsWith('(wiederhergestellt)') || s.endsWith('(restored)')) return { title: L.dialogs.history.restored };
+  return { title: s || L.dialogs.history.version };
 }
 
 /** Gerät/Autor: „Hakobo (RECHNER)“ → „RECHNER“; ältere Versionen stammen von „Sqizzo (RECHNER)“. */
@@ -45,7 +47,7 @@ function DiffView({ lines }: { lines: DiffLine[] }) {
   useEffect(() => setOpen(new Set()), [lines]);
   const stats = diffStats(lines);
   if (!stats.added && !stats.removed) {
-    return <div className="hist-same">Diese Version stimmt mit dem aktuellen Stand überein.</div>;
+    return <div className="hist-same">{L.dialogs.history.same}</div>;
   }
   return (
     <div className="hist-diff" role="table">
@@ -53,7 +55,7 @@ function DiffView({ lines }: { lines: DiffLine[] }) {
         if (b.kind === 'skip' && !open.has(bi)) {
           return (
             <button key={bi} className="hist-skip" onClick={() => setOpen(new Set(open).add(bi))}>
-              <ChevronsUpDown size={13} /> {b.lines.length} unveränderte {b.lines.length === 1 ? 'Zeile' : 'Zeilen'}
+              <ChevronsUpDown size={13} /> {L.dialogs.history.unchanged(b.lines.length)}
             </button>
           );
         }
@@ -152,11 +154,11 @@ export function HistoryDialog() {
 
   const restore = async () => {
     if (!id || !sel) return;
-    if (!confirm(`Die Fassung vom ${formatDateTime(sel.time)} wiederherstellen? Der aktuelle Stand bleibt als Version erhalten.`)) return;
+    if (!confirm(L.dialogs.history.confirmRestore(formatDateTime(sel.time)))) return;
     setRestoring(true);
     try {
       await api.restore(id, sel.id);
-      store().toast('Ältere Fassung wiederhergestellt', 'success');
+      store().toast(L.dialogs.history.restored, 'success');
       close();
     } catch (e) {
       setError((e as Error).message);
@@ -166,7 +168,7 @@ export function HistoryDialog() {
 
   const title = (
     <span className="hist-title">
-      <History size={16} /> Versionen von „{page?.text ?? path.replace(/\.md$/, '')}“
+      <History size={16} /> {L.dialogs.history.title(page?.text ?? path.replace(/\.md$/, ''))}
     </span>
   );
 
@@ -184,15 +186,15 @@ export function HistoryDialog() {
       ) : commits && commits.length === 0 ? (
         <div className="empty">
           <History size={28} />
-          <h3>Noch keine Versionen</h3>
-          <p>Versionen entstehen automatisch kurz nach dem Bearbeiten. Schau gleich noch einmal vorbei.</p>
+          <h3>{L.dialogs.history.noVersions}</h3>
+          <p>{L.dialogs.history.noVersionsHint}</p>
         </div>
       ) : commits ? (
         <div className="hist-layout">
           <div
             className="hist-list"
             role="listbox"
-            aria-label="Versionen"
+            aria-label={L.dialogs.history.versions}
             onKeyDown={(e) => {
               // ↑ ↓ wählen die vorige/nächste Version.
               if (!(e.target as HTMLElement).matches('.hist-item') || !moveFocus(e, e.currentTarget, '.hist-item')) return;
@@ -200,8 +202,8 @@ export function HistoryDialog() {
             }}
           >
             <button className={`hist-item${selected === CURRENT ? ' is-active' : ''}`} onClick={() => setSelected(CURRENT)}>
-              <span className="hist-item-title">Aktueller Stand</span>
-              <span className="hist-item-meta">so wie die Seite jetzt ist</span>
+              <span className="hist-item-title">{L.dialogs.history.current}</span>
+              <span className="hist-item-meta">{L.dialogs.history.currentHint}</span>
             </button>
             {commits.map((c) => {
               const d = describe(c, path);
@@ -225,10 +227,10 @@ export function HistoryDialog() {
                 <>
                   <div className="tabs">
                     <button className={mode === 'diff' ? 'is-active' : ''} onClick={() => setMode('diff')}>
-                      Änderungen bis heute
+                      {L.dialogs.history.tabDiff}
                     </button>
                     <button className={mode === 'text' ? 'is-active' : ''} onClick={() => setMode('text')}>
-                      Inhalt damals
+                      {L.dialogs.history.tabText}
                     </button>
                   </div>
                   {mode === 'diff' && changed && (
@@ -238,11 +240,11 @@ export function HistoryDialog() {
                   )}
                   <span className="spacer" />
                   <button className="btn btn-sm" disabled={!sel || restoring || !file || file.text === null || !changed} onClick={() => void restore()}>
-                    <RotateCcw size={14} /> {restoring ? 'Stelle wieder her …' : 'Diese Version wiederherstellen'}
+                    <RotateCcw size={14} /> {restoring ? L.dialogs.history.restoring : L.dialogs.history.restore}
                   </button>
                 </>
               ) : (
-                <span className="hist-hint">Wähle links eine Version, um zu sehen, was sich seitdem geändert hat.</span>
+                <span className="hist-hint">{L.dialogs.history.pick}</span>
               )}
             </div>
             <div className="hist-body">
@@ -253,13 +255,13 @@ export function HistoryDialog() {
               ) : !file ? null : selected === CURRENT ? (
                 <TextView text={file.current} />
               ) : file.text === null ? (
-                <div className="hist-same">In dieser Version gab es die Seite noch nicht (oder sie hieß anders).</div>
+                <div className="hist-same">{L.dialogs.history.missing}</div>
               ) : mode === 'diff' ? (
                 <>
                   {changed && (
                     <div className="hist-legend">
-                    <span className="is-del">− nur in der Version vom {sel ? formatDateTime(sel.time) : ''}</span>
-                    <span className="is-add">+ seitdem hinzugekommen</span>
+                    <span className="is-del">{L.dialogs.history.legendDel(sel ? formatDateTime(sel.time) : '')}</span>
+                    <span className="is-add">{L.dialogs.history.legendAdd}</span>
                     </div>
                   )}
                   <DiffView lines={lines} />

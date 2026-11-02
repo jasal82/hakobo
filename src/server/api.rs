@@ -183,11 +183,11 @@ async fn parse(Query(p): Query<ParseQuery>) -> Json<Value> {
         "command" => capture::parse_command(&p.q, now).map(|r| json!(r)),
         "date" => parse_natural_prefix(&p.q, now)
             .or_else(|| crate::dates::When::parse(&p.q).map(|w| (w, p.q.len())))
-            .map(|(w, n)| json!({ "value": w.format(), "human": w.human_de(today), "consumed": n, "complete": n == p.q.trim_end().len() })),
-        "repeat" => Repeat::parse_prefix(&p.q).map(|(r, n)| json!({ "value": r.format(), "human": r.human_de(), "consumed": n, "complete": n == p.q.trim_end().len() })),
+            .map(|(w, n)| json!({ "value": w.format(), "human": w.human(today), "consumed": n, "complete": n == p.q.trim_end().len() })),
+        "repeat" => Repeat::parse_prefix(&p.q).map(|(r, n)| json!({ "value": r.format(), "human": r.human(), "consumed": n, "complete": n == p.q.trim_end().len() })),
         "remind" => {
             let list = Remind::parse_list(&p.q, now);
-            (!list.is_empty()).then(|| json!({ "value": Remind::format_list(&list), "human": list.iter().map(|r| r.human_de()).collect::<Vec<_>>().join(", "), "consumed": p.q.len(), "complete": true }))
+            (!list.is_empty()).then(|| json!({ "value": Remind::format_list(&list), "human": list.iter().map(|r| r.human()).collect::<Vec<_>>().join(", "), "consumed": p.q.len(), "complete": true }))
         }
         _ => None,
     };
@@ -239,7 +239,7 @@ async fn put_settings(State(s): State<AppState>, Json(mut new): Json<Settings>) 
         if let Some(set) = setter
             && let Err(e) = set(new.hotkey.clone())
         {
-            return Err(bad(format!("Tastenkürzel „{}“: {e:#}", new.hotkey)));
+            return Err(bad(crate::tr!("Tastenkürzel „{}“: {e:#}", "Shortcut “{}”: {e:#}", new.hotkey)));
         }
     }
     if new.autostart != old.autostart
@@ -248,6 +248,12 @@ async fn put_settings(State(s): State<AppState>, Json(mut new): Json<Settings>) 
         warnings.push(format!("{e:#}"));
     }
     new.save(&s.app.config_dir)?;
+    if new.language != old.language && crate::i18n::apply(&new.language) {
+        let relabel = s.app.shell.lock().relabel.clone();
+        if let Some(r) = relabel {
+            r();
+        }
+    }
     let restart = new.vault != old.vault;
     *s.app.settings.lock() = new.clone();
     s.app.emit(Event::Settings);
@@ -279,7 +285,7 @@ async fn set_remote(State(s): State<AppState>, Json(b): Json<RemoteBody>) -> Api
 /// Datei einer Seite relativ zum Notizbuch.
 fn page_rel(s: &AppState, id: &str) -> ApiResult<String> {
     let v = s.app.vault.lock();
-    let page = v.page_of(id).ok_or_else(|| bad("Seite nicht gefunden"))?;
+    let page = v.page_of(id).ok_or_else(|| bad(crate::tr!("Seite nicht gefunden", "Page not found")))?;
     let path = page.page.as_ref().map(|p| p.path.clone()).unwrap_or_default();
     if page.kind != Kind::Page {
         return Err(bad("Keine Seite"));
@@ -304,7 +310,7 @@ async fn history(State(s): State<AppState>, Query(q): Query<HistoryQuery>) -> Ap
 
 async fn history_file(State(s): State<AppState>, Query(q): Query<HistoryQuery>) -> ApiResult<Json<Value>> {
     let rel = page_rel(&s, &q.id)?;
-    let rev = q.rev.ok_or_else(|| bad("Version fehlt"))?;
+    let rev = q.rev.ok_or_else(|| bad(crate::tr!("Version fehlt", "Version missing")))?;
     let text = git::file_at(&s.app.vault_dir(), &rev, &rel)?;
     let current = std::fs::read_to_string(s.app.vault_dir().join(&rel)).unwrap_or_default();
     Ok(Json(json!({ "path": rel, "text": text, "current": current })))
@@ -312,9 +318,9 @@ async fn history_file(State(s): State<AppState>, Query(q): Query<HistoryQuery>) 
 
 async fn history_restore(State(s): State<AppState>, Json(q): Json<HistoryQuery>) -> ApiResult<Json<Value>> {
     let rel = page_rel(&s, &q.id)?;
-    let rev = q.rev.ok_or_else(|| bad("Version fehlt"))?;
+    let rev = q.rev.ok_or_else(|| bad(crate::tr!("Version fehlt", "Version missing")))?;
     let dir = s.app.vault_dir();
-    let text = git::file_at(&dir, &rev, &rel)?.ok_or_else(|| bad("Die Seite gab es in dieser Version nicht."))?;
+    let text = git::file_at(&dir, &rev, &rel)?.ok_or_else(|| bad(crate::tr!("Die Seite gab es in dieser Version nicht.", "The page did not exist in this version.")))?;
     // Erst den aktuellen Stand sichern, dann zurückholen.
     s.app.commit_now()?;
     crate::vault::write_atomic(&dir.join(&rel), text.as_bytes())?;
@@ -368,7 +374,7 @@ async fn hide_capture(State(s): State<AppState>) -> Json<Value> {
 
 async fn open_folder(State(s): State<AppState>) -> ApiResult<Json<Value>> {
     if !s.local {
-        return Err(bad("Nur in der lokalen App möglich."));
+        return Err(bad(crate::tr!("Nur in der lokalen App möglich.", "Only possible in the desktop app.")));
     }
     open::that_detached(s.app.vault_dir())?;
     Ok(Json(json!({ "ok": true })))
@@ -381,11 +387,11 @@ struct UrlBody {
 
 async fn open_url(State(s): State<AppState>, Json(b): Json<UrlBody>) -> ApiResult<Json<Value>> {
     if !s.local {
-        return Err(bad("Nur in der lokalen App möglich."));
+        return Err(bad(crate::tr!("Nur in der lokalen App möglich.", "Only possible in the desktop app.")));
     }
     let ok = ["http://", "https://", "mailto:", "tel:"].iter().any(|p| b.url.starts_with(p));
     if !ok {
-        return Err(bad("Nur Web-, Mail- und Telefonlinks werden geöffnet."));
+        return Err(bad(crate::tr!("Nur Web-, Mail- und Telefonlinks werden geöffnet.", "Only web, mail and phone links are opened.")));
     }
     open::that_detached(&b.url)?;
     Ok(Json(json!({ "ok": true })))
@@ -399,10 +405,10 @@ struct PathBody {
 /// Bild aus `assets/` mit dem Standardprogramm öffnen (nur lokal).
 async fn open_file(State(s): State<AppState>, Json(b): Json<PathBody>) -> ApiResult<Json<Value>> {
     if !s.local {
-        return Err(bad("Nur in der lokalen App möglich."));
+        return Err(bad(crate::tr!("Nur in der lokalen App möglich.", "Only possible in the desktop app.")));
     }
     let Some(path) = files::resolve(&s.app.vault_dir(), &b.path) else {
-        return Err(bad("Datei nicht gefunden."));
+        return Err(bad(crate::tr!("Datei nicht gefunden.", "File not found.")));
     };
     open::that_detached(path)?;
     Ok(Json(json!({ "ok": true })))
@@ -427,7 +433,7 @@ async fn upload_file(State(s): State<AppState>, Query(q): Query<UploadQuery>, he
 /// Bild aus `assets/` ausliefern. Eigene Sicherheitsregeln: auch direkt geöffnet (z. B. SVG) läuft kein Skript.
 async fn get_file(State(s): State<AppState>, UrlPath(path): UrlPath<String>) -> Response {
     let Some(full) = files::resolve(&s.app.vault_dir(), &path) else {
-        return (StatusCode::NOT_FOUND, "Datei nicht gefunden").into_response();
+        return (StatusCode::NOT_FOUND, crate::tr!("Datei nicht gefunden", "File not found")).into_response();
     };
     match tokio::fs::read(&full).await {
         Ok(data) => Response::builder()
@@ -437,7 +443,7 @@ async fn get_file(State(s): State<AppState>, UrlPath(path): UrlPath<String>) -> 
             .header(header::CONTENT_SECURITY_POLICY, "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox")
             .body(Body::from(data))
             .expect("Antwort"),
-        Err(_) => (StatusCode::NOT_FOUND, "Datei nicht gefunden").into_response(),
+        Err(_) => (StatusCode::NOT_FOUND, crate::tr!("Datei nicht gefunden", "File not found")).into_response(),
     }
 }
 
@@ -458,7 +464,7 @@ async fn update_status() -> Json<update::UpdateStatus> {
 }
 
 fn local_app_only() -> ApiResult<()> {
-    if update::enabled() { Ok(()) } else { Err(ApiError(StatusCode::FORBIDDEN, "Nur in der lokalen App verfügbar.".into())) }
+    if update::enabled() { Ok(()) } else { Err(ApiError(StatusCode::FORBIDDEN, crate::tr!("Nur in der lokalen App verfügbar.", "Only available in the desktop app."))) }
 }
 
 async fn update_check() -> ApiResult<Json<update::UpdateStatus>> {

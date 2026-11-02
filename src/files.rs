@@ -68,13 +68,13 @@ pub fn unique_name(dir: &Path, name: &str) -> String {
 /// Speichert ein Bild und liefert seinen Pfad im Notizbuch (`assets/bild.png`).
 pub fn save(vault: &Path, name: &str, mime: Option<&str>, data: &[u8]) -> Result<String> {
     if data.is_empty() {
-        bail!("Die Datei ist leer.");
+        bail!(crate::tr!("Die Datei ist leer.", "The file is empty."));
     }
     if data.len() > MAX_BYTES {
-        bail!("Die Datei ist größer als {} MB.", MAX_BYTES / 1024 / 1024);
+        bail!(crate::tr!("Die Datei ist größer als {} MB.", "The file is larger than {} MB.", MAX_BYTES / 1024 / 1024));
     }
     let Some(name) = safe_name(name, mime) else {
-        bail!("Nur Bilder werden unterstützt (PNG, JPEG, GIF, WebP, BMP, AVIF, SVG).");
+        bail!(crate::tr!("Nur Bilder werden unterstützt (PNG, JPEG, GIF, WebP, BMP, AVIF, SVG).", "Only images are supported (PNG, JPEG, GIF, WebP, BMP, AVIF, SVG)."));
     };
     let dir = vault.join(DIR);
     std::fs::create_dir_all(&dir).with_context(|| format!("{} konnte nicht angelegt werden", dir.display()))?;

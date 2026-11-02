@@ -1,0 +1,110 @@
+// Copyright (C) 2026 Johannes Asal
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
+
+// Texte (Englisch): types
+
+import type { types as de } from '../de/types';
+import { plural } from '..';
+
+export const types: typeof de = {
+  empty: '(empty)',
+  filter: 'Filter …',
+
+  view: {
+    notFound: (type) => `The type “${type}” doesn’t exist (anymore)`,
+    entriesWith: (tag) => `Entries with #${tag}`,
+    create: 'Create type',
+    asList: 'As list',
+    edit: 'Edit type',
+    title: 'Title',
+    whereTitle: 'Where the entry is',
+    yes: 'yes',
+    no: 'no',
+    created: (text, where) => `“${text}” created under ${where}`,
+    newPlaceholder: (label, where) => `New: ${label} … (goes to ${where})`,
+    hintA: (label) => `No entries of type ${label} yet. Write `,
+    hintB: ' in any entry, choose ',
+    hintC: (label) => ` → “Type: ${label}” in the editor, or add one right above.`,
+  },
+
+  tag: {
+    count: (n) => plural(n, { one: '# entry', other: '# entries' }),
+    asTable: 'As table',
+    makeTypeTitle: 'Define fields for this tag',
+    makeType: 'Make it a type …',
+    all: 'All',
+    open: 'Open',
+    nothing: (tag) => `Nothing with #${tag} yet`,
+    help: (tag) => `Write tags right into the text, e.g. “Idea #${tag}” – after the #, Hakobo suggests existing tags. Nest them with “/”: #${tag}/subtopic.`,
+    noMatches: 'No matches for this filter',
+    noPage: 'No page',
+  },
+
+  editor: {
+    labelMissing: 'Please enter a name.',
+    fieldN: (n) => `Field ${n}`,
+    keyMissing: (field) => `${field}: key is missing.`,
+    keyInvalid: (field, key) => `${field}: key “${key}” may only contain letters, digits, _ and -.`,
+    keyReserved: (field, key) => `${field}: “${key}” is reserved for built-in fields.`,
+    keyDuplicate: (field, key) => `${field}: key “${key}” appears twice.`,
+    selectNeedsOption: (field) => `${field}: a choice needs at least one option.`,
+    created: (label) => `Type “${label}” created`,
+    saved: (label) => `Type “${label}” saved`,
+    deleted: 'Type deleted',
+    confirmDelete: (label, tag) => `Delete type “${label}”? The #${tag} tags and all field values in your notes are kept.`,
+    createTitle: (tag) => `Create type for #${tag}`,
+    editTitle: (label) => `Edit type “${label}”`,
+    deleteType: 'Delete type',
+    create: 'Create',
+    introA: 'Every entry with ',
+    introB: ' gets these fields. A field with the key ',
+    introC: ' is the built-in date and shows up in the agenda.',
+    label: 'Name',
+    defaultPage: 'Default page',
+    defaultPagePlaceholder: 'e.g. People',
+    defaultPageHint: 'New entries of this type go here.',
+    color: 'Color',
+    fields: 'Fields',
+    addField: 'Add field',
+    noFields: 'No fields yet. Even without fields, a type colors the bullets and gets a table view.',
+    key: 'Key',
+    kind: 'Kind',
+    options: 'Options',
+    keyPlaceholder: 'e.g. customer',
+    optionsPlaceholder: 'open, active, done',
+    targetTitle: 'Only suggest entries of this type',
+    anyTarget: 'any',
+    thisType: (name) => `${name} (this one)`,
+    multipleTitle: 'Allow several references',
+    multiple: 'multiple',
+    dateTip: 'Tip: the key “date” shows up in the agenda',
+    moveUp: 'Move up',
+    moveDown: 'Move down',
+    removeField: 'Remove field',
+  },
+
+  colors: {
+    violet: 'Violet',
+    blue: 'Blue',
+    green: 'Green',
+    orange: 'Orange',
+    red: 'Red',
+    pink: 'Pink',
+    teal: 'Teal',
+    yellow: 'Yellow',
+    gray: 'Gray',
+  },
+
+  kinds: {
+    text: 'Text',
+    number: 'Number',
+    date: 'Date',
+    select: 'Choice',
+    ref: 'Reference',
+    url: 'Link (URL)',
+    email: 'Email',
+    phone: 'Phone',
+    checkbox: 'Yes/No',
+  },
+};

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
 
+import { L } from '../i18n';
 import type { Agenda, CommandResult, CommitInfo, Field, Hit, Node, Op, ParseResult, Patch, Settings, Snapshot, SyncStatus, TagHit, Task, Types, UpdateStatus } from './types';
 
 export class ApiError extends Error {
@@ -21,7 +22,7 @@ async function request<T>(method: string, url: string, body?: unknown, signal?: 
   }
   const res = await fetch(url, init);
   if (!res.ok) {
-    let msg = res.statusText || `Fehler ${res.status}`;
+    let msg = res.statusText || L.lib.api.error(res.status);
     try {
       const j = await res.json();
       if (j?.error) msg = j.error;
@@ -96,7 +97,7 @@ export const api = {
   uploadFile: async (file: Blob, name: string): Promise<{ path: string }> => {
     const res = await fetch(`/api/files${q({ name })}`, { method: 'POST', credentials: 'same-origin', body: file, headers: { 'Content-Type': file.type || 'application/octet-stream' } });
     if (!res.ok) {
-      let msg = res.statusText || `Fehler ${res.status}`;
+      let msg = res.statusText || L.lib.api.error(res.status);
       try {
         msg = (await res.json())?.error ?? msg;
       } catch {

@@ -64,6 +64,8 @@ pub struct Shell {
     pub set_hotkey: Option<Arc<dyn Fn(String) -> Result<()> + Send + Sync>>,
     /// Zoom der Fenster (Schriftgröße) ändern.
     pub set_zoom: Option<Arc<dyn Fn(f64) + Send + Sync>>,
+    /// Sprache gewechselt: Beschriftungen im Infobereich erneuern.
+    pub relabel: Option<Callback>,
 }
 
 #[derive(Default)]
@@ -165,7 +167,7 @@ impl App {
     pub fn capture(&self, text: &str, parent: Option<&str>) -> Result<(NodeId, Captured)> {
         let mut c = capture::parse(text, now());
         if c.text.is_empty() && c.body.is_empty() {
-            return Err(anyhow!("Nichts zu erfassen."));
+            return Err(anyhow!(crate::tr!("Nichts zu erfassen.", "Nothing to capture.")));
         }
         let patch = {
             let mut v = self.vault.lock();
@@ -272,7 +274,7 @@ impl App {
             Ok(integrated)
         })
         .await
-        .map_err(|e| anyhow!("Synchronisation abgebrochen: {e}"))?;
+        .map_err(|e| anyhow!(crate::tr!("Synchronisation abgebrochen: {e}", "Sync aborted: {e}")))?;
         match result {
             Ok(r) => self.set_sync(|s| {
                 s.running = false;
@@ -406,7 +408,7 @@ impl App {
                     if fresh {
                         let app2 = app.clone();
                         let id = r.id.clone();
-                        let title = if r.todo { format!("Fällig: {}", r.text) } else { r.text.clone() };
+                        let title = if r.todo { crate::tr!("Fällig: {}", "Due: {}", r.text) } else { r.text.clone() };
                         crate::notify::show(&title, &r.human, Some(Box::new(move || app2.navigate(&id))));
                     }
                 }

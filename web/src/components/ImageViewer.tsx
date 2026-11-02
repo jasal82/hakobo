@@ -11,6 +11,7 @@ import { vaultPath } from '../lib/images';
 import { store, useStore } from '../lib/store';
 import { openExternal } from './RichText';
 import { Dialog } from './ui';
+import { L } from '../i18n';
 
 export function ImageViewer() {
   const view = useStore((s) => s.imageView);
@@ -24,7 +25,7 @@ export function ImageViewer() {
   };
   return (
     <Dialog
-      title={view.alt || 'Bild'}
+      title={view.alt || L.dialogs.image.fallback}
       onClose={close}
       width={1200}
       className="image-viewer"
@@ -33,10 +34,10 @@ export function ImageViewer() {
           {path && <span className="image-viewer-path mono">{path}</span>}
           <span className="spacer" />
           <button className="btn" onClick={original}>
-            <ExternalLink size={14} /> {path && desktop ? 'Mit Standard-App öffnen' : 'Original öffnen'}
+            <ExternalLink size={14} /> {path && desktop ? L.dialogs.image.openDefault : L.dialogs.image.openOriginal}
           </button>
           <button className="btn btn-primary" onClick={close}>
-            Schließen
+            {L.common.close}
           </button>
         </>
       }

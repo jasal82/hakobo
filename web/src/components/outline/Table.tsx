@@ -27,6 +27,7 @@ import {
   Trash2,
   ZoomIn,
 } from 'lucide-react';
+import { L } from '../../i18n';
 import { canDrop, dragGhost, draggedIds, dropOn, endDrag, INTERNAL, startDrag, type DropPos } from '../../lib/drag';
 import { nextVisible, prevVisible } from '../../lib/outline';
 import { store, useStore, type CellSel } from '../../lib/store';
@@ -232,7 +233,7 @@ function startTableDrag(e: DragEvent, d: TableDrag) {
   tdrag = d;
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData(INTERNAL, d.table);
-  if (d.kind === 'col' && d.n > 1) dragGhost(e, `${d.n} Spalten`);
+  if (d.kind === 'col' && d.n > 1) dragGhost(e, L.table.columnsGhost(d.n));
 }
 
 /** Ziel einer Spalte: Grenze links oder rechts der Zelle, je nach Mausposition. */
@@ -286,6 +287,8 @@ function TableMenu({ row, col, anchor, onClose }: MenuAt & { onClose: () => void
   const nr = rg.r1 - rg.r0 + 1;
   const nc = rg.c1 - rg.c0 + 1;
   const multi = nr > 1 || nc > 1;
+  const m = L.table.menu;
+  const k = L.table.keys;
   const item = (icon: React.ReactNode, label: string, run: () => void, hint?: string, danger?: boolean) => (
     <button
       className={`menu-item${danger ? ' is-danger' : ''}`}
@@ -313,38 +316,36 @@ function TableMenu({ row, col, anchor, onClose }: MenuAt & { onClose: () => void
       <div className="menu" role="menu">
         {multi && (
           <>
-            <div className="menu-section">
-              Auswahl · {nr} × {nc}
-            </div>
-            {item(<ClipboardCopy size={15} />, 'Kopieren', () => void copyCells(table, rg), 'Strg+C')}
-            {item(<Scissors size={15} />, 'Ausschneiden', () => void copyCells(table, rg, true), 'Strg+X')}
-            {item(<Eraser size={15} />, 'Inhalt löschen', () => clearCells(table, rg), 'Entf')}
-            {item(<SquareCheck size={15} />, 'Erledigen', () => completeCells(table, rg), 'Strg+Enter')}
+            <div className="menu-section">{m.selection(nr, nc)}</div>
+            {item(<ClipboardCopy size={15} />, L.common.copy, () => void copyCells(table, rg), k.copy)}
+            {item(<Scissors size={15} />, L.common.cut, () => void copyCells(table, rg, true), k.cut)}
+            {item(<Eraser size={15} />, m.clearContent, () => clearCells(table, rg), k.clear)}
+            {item(<SquareCheck size={15} />, m.complete, () => completeCells(table, rg), k.complete)}
           </>
         )}
-        <div className="menu-section">{nr > 1 ? `${nr} Zeilen` : 'Zeile'}</div>
-        {rg.r0 > 0 && item(<CornerDownRight size={15} style={{ transform: 'scaleY(-1)' }} />, 'Zeile darüber einfügen', () => insertRow(table, rg.r0))}
-        {item(<CornerDownRight size={15} />, 'Zeile darunter einfügen', () => insertRow(table, rg.r1 + 1), multi ? undefined : 'Enter')}
-        {rg.r1 > 0 && item(<Copy size={15} />, nr > 1 ? 'Zeilen duplizieren' : 'Zeile duplizieren', () => duplicateRows(table, rg.r0, rg.r1))}
-        {rg.r0 > 1 && item(<ArrowUp size={15} />, nr > 1 ? 'Zeilen nach oben' : 'Zeile nach oben', () => moveRowsBy(-1), 'Alt+⇧+↑')}
-        {rg.r0 > 0 && rg.r1 < rows - 1 && item(<ArrowDown size={15} />, nr > 1 ? 'Zeilen nach unten' : 'Zeile nach unten', () => moveRowsBy(1), 'Alt+⇧+↓')}
-        {item(<Trash2 size={15} />, nr > 1 ? `${nr} Zeilen löschen` : rg.r0 === 0 ? 'Kopfzeile löschen' : 'Zeile löschen', () => deleteRows(table, rg.r0, rg.r1), 'Strg+⇧+⌫', true)}
-        <div className="menu-section">{nc > 1 ? `${nc} Spalten` : 'Spalte'}</div>
-        {rg.c0 > 0 && item(<Plus size={15} />, 'Spalte links einfügen', () => insertColumn(table, rg.c0))}
-        {item(<Plus size={15} />, 'Spalte rechts einfügen', () => insertColumn(table, rg.c1 + 1))}
-        {nc === 1 && item(<Copy size={15} />, 'Spalte duplizieren', () => duplicateColumn(table, col, row))}
-        {rg.c0 > 1 && item(<ArrowLeft size={15} />, nc > 1 ? 'Spalten nach links' : 'Spalte nach links', () => moveColsTo(rg.c0 - 1))}
-        {rg.c0 > 0 && rg.c1 < cols - 1 && item(<ArrowRight size={15} />, nc > 1 ? 'Spalten nach rechts' : 'Spalte nach rechts', () => moveColsTo(rg.c1 + 2))}
-        {item(<ArrowDownAZ size={15} />, 'Aufsteigend sortieren', () => sortByColumn(table, col, 1))}
-        {item(<ArrowDownZA size={15} />, 'Absteigend sortieren', () => sortByColumn(table, col, -1))}
-        {widths[col] > 0 && item(<MoveHorizontal size={15} />, 'Breite automatisch', () => setColumnWidth(table, col, null))}
-        {rg.c0 > 0 && item(<Trash2 size={15} />, nc > 1 ? `${nc} Spalten löschen` : 'Spalte löschen', () => deleteColumns(table, rg.c0, rg.c1), undefined, true)}
-        <div className="menu-section">Tabelle</div>
-        {id && !multi && item(<ZoomIn size={15} />, 'Zelle öffnen', () => store().zoom(id), 'Alt+→')}
-        {item(<ClipboardCopy size={15} />, 'Als Markdown kopieren', () => void copyTable(table, 'markdown'))}
-        {item(<ClipboardCopy size={15} />, 'Als TSV kopieren', () => void copyTable(table, 'tsv'))}
-        {item(<ClipboardCopy size={15} />, 'Als HTML kopieren', () => void copyTable(table, 'html'))}
-        {item(<List size={15} />, 'Als Liste anzeigen', () => toggleTable(table))}
+        <div className="menu-section">{m.rows(nr)}</div>
+        {rg.r0 > 0 && item(<CornerDownRight size={15} style={{ transform: 'scaleY(-1)' }} />, m.insertRowAbove, () => insertRow(table, rg.r0))}
+        {item(<CornerDownRight size={15} />, m.insertRowBelow, () => insertRow(table, rg.r1 + 1), multi ? undefined : k.enter)}
+        {rg.r1 > 0 && item(<Copy size={15} />, m.duplicateRows(nr), () => duplicateRows(table, rg.r0, rg.r1))}
+        {rg.r0 > 1 && item(<ArrowUp size={15} />, m.rowsUp(nr), () => moveRowsBy(-1), k.rowUp)}
+        {rg.r0 > 0 && rg.r1 < rows - 1 && item(<ArrowDown size={15} />, m.rowsDown(nr), () => moveRowsBy(1), k.rowDown)}
+        {item(<Trash2 size={15} />, nr === 1 && rg.r0 === 0 ? m.deleteHeader : m.deleteRows(nr), () => deleteRows(table, rg.r0, rg.r1), k.deleteRows, true)}
+        <div className="menu-section">{m.cols(nc)}</div>
+        {rg.c0 > 0 && item(<Plus size={15} />, m.insertColLeft, () => insertColumn(table, rg.c0))}
+        {item(<Plus size={15} />, m.insertColRight, () => insertColumn(table, rg.c1 + 1))}
+        {nc === 1 && item(<Copy size={15} />, m.duplicateCol, () => duplicateColumn(table, col, row))}
+        {rg.c0 > 1 && item(<ArrowLeft size={15} />, m.colsLeft(nc), () => moveColsTo(rg.c0 - 1))}
+        {rg.c0 > 0 && rg.c1 < cols - 1 && item(<ArrowRight size={15} />, m.colsRight(nc), () => moveColsTo(rg.c1 + 2))}
+        {item(<ArrowDownAZ size={15} />, m.sortAsc, () => sortByColumn(table, col, 1))}
+        {item(<ArrowDownZA size={15} />, m.sortDesc, () => sortByColumn(table, col, -1))}
+        {widths[col] > 0 && item(<MoveHorizontal size={15} />, m.autoWidth, () => setColumnWidth(table, col, null))}
+        {rg.c0 > 0 && item(<Trash2 size={15} />, m.deleteCols(nc), () => deleteColumns(table, rg.c0, rg.c1), undefined, true)}
+        <div className="menu-section">{m.table}</div>
+        {id && !multi && item(<ZoomIn size={15} />, m.openCell, () => store().zoom(id), k.openCell)}
+        {item(<ClipboardCopy size={15} />, m.copyAs('Markdown'), () => void copyTable(table, 'markdown'))}
+        {item(<ClipboardCopy size={15} />, m.copyAs('TSV'), () => void copyTable(table, 'tsv'))}
+        {item(<ClipboardCopy size={15} />, m.copyAs('HTML'), () => void copyTable(table, 'html'))}
+        {item(<List size={15} />, m.showAsList, () => toggleTable(table))}
       </div>
     </Popover>
   );
@@ -436,7 +437,7 @@ function TableCell({ row, col, id }: { row: number; col: number; id: string | nu
           e.stopPropagation();
           setFileOver(false);
           const files = imageFiles(e.dataTransfer);
-          if (!files.length) return store().toast('Nur Bilder lassen sich hier ablegen', 'info');
+          if (!files.length) return store().toast(L.table.onlyImages, 'info');
           const target = id ?? ensureCell(table, row, col);
           if (target) void attachImages(target, files);
           return;
@@ -463,7 +464,7 @@ function TableCell({ row, col, id }: { row: number; col: number; id: string | nu
           <span
             className="ot-grip-col"
             draggable
-            title="Ziehen: Spalte verschieben · Klick: Spalte auswählen"
+            title={L.table.gripCol}
             onDragStart={(e) => {
               // Spalte in einer Auswahl ganzer Spalten: alle ausgewählten mitnehmen
               const cs = store().cellSel;
@@ -483,7 +484,7 @@ function TableCell({ row, col, id }: { row: number; col: number; id: string | nu
           <span
             className="ot-grip-cell"
             draggable
-            title="Ziehen: Zelle mit einer anderen tauschen"
+            title={L.table.gripCell}
             onDragStart={(e) => startTableDrag(e, { kind: 'cell', table, row, col })}
             onDragEnd={endTableDrag}
             onClick={(e) => e.stopPropagation()}
@@ -498,7 +499,7 @@ function TableCell({ row, col, id }: { row: number; col: number; id: string | nu
             id={id}
             root={root}
             className="is-cell"
-            placeholder={head ? 'Spaltenname' : undefined}
+            placeholder={head ? L.table.columnName : undefined}
             keys={cellKeys(pos, id)}
             onPasteText={(text) => {
               const grid = parseGrid(text);
@@ -519,12 +520,12 @@ function TableCell({ row, col, id }: { row: number; col: number; id: string | nu
               e.stopPropagation();
               store().zoom(id!);
             }}
-            title={`${nested} ${nested === 1 ? 'Eintrag' : 'Einträge'} darunter – öffnen (Alt+→)`}
+            title={L.table.nested(nested)}
           >
             {nested}
           </button>
         )}
-        <button className="ot-menu-btn" tabIndex={-1} aria-label="Zeile und Spalte" aria-haspopup="menu" title="Zeile und Spalte (Umschalt+F10)" onMouseDown={(e) => e.preventDefault()} onClick={onMenu}>
+        <button className="ot-menu-btn" tabIndex={-1} aria-label={L.table.cellMenu} aria-haspopup="menu" title={L.table.cellMenuTitle} onMouseDown={(e) => e.preventDefault()} onClick={onMenu}>
           <MoreHorizontal size={13} />
         </button>
       </div>
@@ -556,7 +557,7 @@ function TableCell({ row, col, id }: { row: number; col: number; id: string | nu
       {head && (
         <span
           className="ot-resize"
-          title="Ziehen: Spaltenbreite · Doppelklick: automatisch"
+          title={L.table.resize}
           onMouseDown={(e) => resize(e, col, e.currentTarget.parentElement!)}
           onClick={(e) => e.stopPropagation()}
           onDoubleClick={(e) => {
@@ -616,7 +617,7 @@ function TableRow({ row, index }: { row: string; index: number }) {
       <td
         className="ot-handle"
         draggable={!head || undefined}
-        title={head ? 'Klick: Kopfzeile auswählen' : 'Ziehen: Zeile verschieben · Klick: Zeile auswählen'}
+        title={head ? L.table.selectHeader : L.table.gripRow}
         onClick={(e) => selectLine('row', index, e.shiftKey)}
         onDragStart={(e) => {
           if (head) return;
@@ -627,7 +628,7 @@ function TableRow({ row, index }: { row: string; index: number }) {
           const rg = s.cellSel?.table === table ? rangeOf(s.cellSel) : null;
           const all = itemsOf(s.nodes, table);
           const ids = rg && index >= rg.r0 && index <= rg.r1 ? all.slice(Math.max(1, rg.r0), rg.r1 + 1) : [row];
-          startDrag(e, ids, { within: table, noun: 'Zeilen' });
+          startDrag(e, ids, { within: table, noun: L.table.rowsGhost });
         }}
         onDragEnd={endDrag}
       >
@@ -642,7 +643,7 @@ function TableRow({ row, index }: { row: string; index: number }) {
       ))}
       {head ? (
         <th className="ot-add-col">
-          <button className="btn btn-ghost btn-icon btn-sm" tabIndex={-1} onClick={() => insertColumn(table, cols)} title="Spalte anfügen" aria-label="Spalte anfügen">
+          <button className="btn btn-ghost btn-icon btn-sm" tabIndex={-1} onClick={() => insertColumn(table, cols)} title={L.table.addColumn} aria-label={L.table.addColumn}>
             <Plus size={14} />
           </button>
         </th>
@@ -897,7 +898,7 @@ export const TableBlock = memo(function TableBlock({ table, root }: { table: str
   const ctx: Ctx = { table, root, rows: rows.length, cols, widths, over, setOver, resize, menu, openMenu, selectLine };
   return (
     <TableContext.Provider value={ctx}>
-      <textarea ref={sink} className="ot-sink" aria-label="Ausgewählte Zellen" tabIndex={-1} value="" onChange={() => undefined} onKeyDown={onSinkKey} onPaste={onSinkPaste} />
+      <textarea ref={sink} className="ot-sink" aria-label={L.table.selectedCells} tabIndex={-1} value="" onChange={() => undefined} onKeyDown={onSinkKey} onPaste={onSinkPaste} />
       <div
         ref={wrap}
         className="ot-wrap"
@@ -914,7 +915,7 @@ export const TableBlock = memo(function TableBlock({ table, root }: { table: str
           </tbody>
         </table>
         <button className="ot-add-row" onClick={() => insertRow(table, rows.length)}>
-          <Plus size={14} /> Zeile
+          <Plus size={14} /> {L.table.addRow}
         </button>
       </div>
       {menu && <TableMenu {...menu} onClose={() => setMenu(null)} />}

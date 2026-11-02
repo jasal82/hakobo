@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Lizenz und Gewährleistungsausschluss: siehe LICENSE im Projektordner.
 
-// Anzeige von Datumswerten (kanonisches Format aus src/dates.rs).
+// Anzeige von Datumswerten (kanonisches Format aus src/dates.rs) in der Sprache der Oberfläche.
+
+import { L } from '../i18n';
 
 export interface WhenParts {
   start: Date;
@@ -10,10 +12,6 @@ export interface WhenParts {
   endDate: Date | null;
   endTime: string | null;
 }
-
-const WD = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-const WD_LONG = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
-const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 
 export function parseIsoDate(s: string): Date | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s.trim());
@@ -60,24 +58,22 @@ export function parseWhen(value: string | undefined | null): WhenParts | null {
   };
 }
 
-/** „Heute“, „Morgen“, „Fr 30.10.“, „So 3.1.2027“ */
+/** „Heute“, „Morgen“, „Fr 30.10.“, „So 3.1.2027“ (Englisch: „Fri, Oct 30“) */
 export function dayLabel(d: Date, today = startOfDay(), long = false): string {
   const diff = Math.round((startOfDay(d).getTime() - today.getTime()) / 86400000);
-  if (diff === 0) return 'Heute';
-  if (diff === 1) return 'Morgen';
-  if (diff === -1) return 'Gestern';
-  const wd = long ? WD_LONG[d.getDay()] : WD[d.getDay()];
-  const year = d.getFullYear() !== today.getFullYear() ? String(d.getFullYear()) : '';
-  return `${wd}${long ? ',' : ''} ${d.getDate()}.${d.getMonth() + 1}.${year}`;
+  if (diff === 0) return L.common.today;
+  if (diff === 1) return L.common.tomorrow;
+  if (diff === -1) return L.common.yesterday;
+  return L.dates.day(d, d.getFullYear() !== today.getFullYear(), long);
 }
 
 export function longDayLabel(d: Date, today = startOfDay()): string {
   const diff = Math.round((startOfDay(d).getTime() - today.getTime()) / 86400000);
-  const base = `${WD_LONG[d.getDay()]}, ${d.getDate()}. ${MONTHS[d.getMonth()]}`;
-  if (diff === 0) return `Heute · ${base}`;
-  if (diff === 1) return `Morgen · ${base}`;
-  if (diff === -1) return `Gestern · ${base}`;
-  return d.getFullYear() !== today.getFullYear() ? `${base} ${d.getFullYear()}` : base;
+  const base = L.dates.dayLong(d, false);
+  if (diff === 0) return L.dates.relDay(L.common.today, base);
+  if (diff === 1) return L.dates.relDay(L.common.tomorrow, base);
+  if (diff === -1) return L.dates.relDay(L.common.yesterday, base);
+  return d.getFullYear() !== today.getFullYear() ? L.dates.dayLong(d, true) : base;
 }
 
 export function humanWhen(value: string | undefined | null, today = startOfDay()): string {
@@ -107,14 +103,13 @@ export function urgency(value: string | undefined | null, today = startOfDay()):
 }
 
 export function humanRepeat(v: string): string {
-  const map: Record<string, string> = { daily: 'täglich', weekdays: 'werktags', weekly: 'wöchentlich', monthly: 'monatlich', yearly: 'jährlich' };
-  const days: Record<string, string> = { mon: 'Mo', tue: 'Di', wed: 'Mi', thu: 'Do', fri: 'Fr', sat: 'Sa', sun: 'So' };
+  const days = L.dates.repeatDays;
   let s = v.trim();
   let until = '';
   const u = / until (\d{4}-\d{2}-\d{2})$/.exec(s);
   if (u) {
     const d = parseIsoDate(u[1]);
-    until = d ? ` bis ${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}` : '';
+    until = d ? L.dates.repeatUntil(L.dates.date(d)) : '';
     s = s.slice(0, u.index);
   }
   let on = '';
@@ -123,11 +118,10 @@ export function humanRepeat(v: string): string {
     on = ` (${o[1].split(',').map((x) => days[x] ?? x).join(', ')})`;
     s = s.slice(0, o.index);
   }
-  let base = map[s];
+  let base = L.dates.repeat[s];
   if (!base) {
     const e = /^every (\d+) (day|week|month|year)s?$/.exec(s);
-    const unit: Record<string, string> = { day: 'Tage', week: 'Wochen', month: 'Monate', year: 'Jahre' };
-    base = e ? `alle ${e[1]} ${unit[e[2]]}` : s;
+    base = e ? L.dates.repeatEvery(e[1], e[2] as 'day' | 'week' | 'month' | 'year') : s;
   }
   return base + on + until;
 }
@@ -138,32 +132,30 @@ export function humanRemind(v: string): string {
     .map((x) => x.trim())
     .filter(Boolean)
     .map((x) => {
-      if (x === '0') return 'zu Beginn';
+      if (x === '0') return L.dates.remindAtStart;
       const w = parseWhen(x);
       if (w) return humanWhen(x);
       const m = /^(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?$/.exec(x);
       if (!m) return x;
       const parts: string[] = [];
-      if (m[1]) parts.push(`${m[1]} ${m[1] === '1' ? 'Tag' : 'Tage'}`);
-      if (m[2]) parts.push(`${m[2]} Std.`);
-      if (m[3]) parts.push(`${m[3]} Min.`);
-      return parts.join(' ') + ' vorher';
+      if (m[1]) parts.push(L.dates.remindDays(m[1]));
+      if (m[2]) parts.push(L.dates.remindHours(m[2]));
+      if (m[3]) parts.push(L.dates.remindMinutes(m[3]));
+      return L.dates.remindBefore(parts.join(' '));
     })
     .join(', ');
 }
 
 export function relativeTime(unix: number | null | undefined): string {
-  if (!unix) return 'nie';
+  if (!unix) return L.dates.never;
   const s = Math.round(Date.now() / 1000 - unix);
-  if (s < 45) return 'gerade eben';
-  if (s < 3600) return `vor ${Math.round(s / 60)} Min.`;
-  if (s < 86400) return `vor ${Math.round(s / 3600)} Std.`;
+  if (s < 45) return L.dates.justNow;
+  if (s < 3600) return L.dates.minutesAgo(Math.round(s / 60));
+  if (s < 86400) return L.dates.hoursAgo(Math.round(s / 3600));
   const d = new Date(unix * 1000);
   return `${dayLabel(d)} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
 export function formatDateTime(unix: number): string {
-  const d = new Date(unix * 1000);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  return L.dates.dateTime(new Date(unix * 1000));
 }

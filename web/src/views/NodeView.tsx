@@ -23,18 +23,19 @@ import { Children, NodeRow, RowMenu } from '../components/outline/NodeRow';
 import { TitleEditor } from '../components/outline/TitleEditor';
 import { startDragSelect } from '../components/outline/dragSelect';
 import { RouteLink, type Anchor } from '../components/ui';
+import { L } from '../i18n';
 
 export function Breadcrumbs({ id }: { id: string }) {
   const nodes = useStore((s) => s.nodes);
   const root = useStore((s) => s.root);
   const trail = ancestors(nodes, id);
   return (
-    <nav className="crumbs" aria-label="Pfad">
-      <RouteLink route={{ view: 'node', id: root }}>Notizbuch</RouteLink>
+    <nav className="crumbs" aria-label={L.views.node.path}>
+      <RouteLink route={{ view: 'node', id: root }}>{L.views.node.notebook}</RouteLink>
       {trail.map((a) => (
         <span key={a.id} className="crumb">
           <ChevronRight size={13} />
-          <RouteLink route={{ view: 'node', id: a.id }}>{a.kind === 'item' ? plainText(a.text, false) || 'Unbenannt' : a.text}</RouteLink>
+          <RouteLink route={{ view: 'node', id: a.id }}>{a.kind === 'item' ? plainText(a.text, false) || L.common.untitled : a.text}</RouteLink>
         </span>
       ))}
     </nav>
@@ -61,7 +62,7 @@ function Backlinks({ id }: { id: string }) {
   return (
     <section className="backlinks">
       <h3>
-        <Link2 size={14} /> Verweise <span className="faint">{refs.length}</span>
+        <Link2 size={14} /> {L.views.node.backlinks} <span className="faint">{refs.length}</span>
       </h3>
       {refs.map((n) => (
         <button key={n.id} className="backlink" onClick={() => store().reveal(n.id)}>
@@ -71,7 +72,7 @@ function Backlinks({ id }: { id: string }) {
               .join(' › ')}
           </span>
           <span className="backlink-text">
-            <RichText text={n.text || '(leer)'} source={n} />
+            <RichText text={n.text || L.views.node.empty} source={n} />
           </span>
         </button>
       ))}
@@ -119,7 +120,7 @@ function useSelectionKeys(root: string) {
       } else if (mod && (k === 'c' || k === 'x')) {
         void navigator.clipboard.writeText(toMarkdown(sel));
         if (k === 'x') deleteMany(sel, root);
-        else s.toast(`${topLevel(sel).length} Einträge kopiert`, 'success');
+        else s.toast(L.views.node.copied(topLevel(sel).length), 'success');
       } else if (mod && k === 'a') {
         const list = visibleList(root);
         if (list.length) selectRange(root, list[0], list[list.length - 1]);
@@ -147,9 +148,9 @@ export function NodeView({ id, inbox }: { id: string; inbox?: boolean }) {
     return (
       <div className="view">
         <div className="empty">
-          <h3>Diesen Eintrag gibt es nicht mehr.</h3>
+          <h3>{L.views.node.gone}</h3>
           <button className="btn" onClick={() => store().navigate({ view: 'node', id: root })}>
-            Zum Notizbuch
+            {L.views.node.toNotebook}
           </button>
         </div>
       </div>
@@ -195,7 +196,7 @@ export function NodeView({ id, inbox }: { id: string; inbox?: boolean }) {
         e.preventDefault();
         e.stopPropagation();
         const files = imageFiles(e.dataTransfer);
-        if (!files.length) return store().toast('Nur Bilder lassen sich hier ablegen', 'info');
+        if (!files.length) return store().toast(L.views.node.onlyImages, 'info');
         if (isRoot) void imagesToInbox(files);
         else void insertImageNodes(id, undefined, files);
       }}
@@ -204,7 +205,7 @@ export function NodeView({ id, inbox }: { id: string; inbox?: boolean }) {
         {!isRoot && <Breadcrumbs id={id} />}
         <header className="zoom-head">
           {isRoot ? (
-            <h1 className="zoom-title-static">Notizbuch</h1>
+            <h1 className="zoom-title-static">{L.views.node.notebook}</h1>
           ) : (
             <div
               className="zoom-title-row"
@@ -221,7 +222,7 @@ export function NodeView({ id, inbox }: { id: string; inbox?: boolean }) {
                 className="zoom-title"
                 // Per Tab erreichbar; der Fokus öffnet den Titel zum Bearbeiten.
                 tabIndex={editableTitle && !focused ? 0 : undefined}
-                aria-label={editableTitle && !focused ? 'Titel bearbeiten' : undefined}
+                aria-label={editableTitle && !focused ? L.views.node.editTitle : undefined}
                 onFocus={(e) => {
                   if (e.target === e.currentTarget && e.currentTarget.matches(':focus-visible') && editableTitle && !focused) store().setFocus({ id, caret: 'end' });
                 }}
@@ -230,12 +231,12 @@ export function NodeView({ id, inbox }: { id: string; inbox?: boolean }) {
                 }}
               >
                 {focused && editableTitle ? (
-                  <TitleEditor id={id} root={id} className="is-zoom" placeholder={node.kind === 'page' ? 'Seitentitel' : 'Ohne Titel'} />
+                  <TitleEditor id={id} root={id} className="is-zoom" placeholder={node.kind === 'page' ? L.views.node.pageTitle : L.common.noTitle} />
                 ) : (
-                  <h1>{node.text ? <RichText text={node.text} source={node} /> : <span className="faint">{node.kind === 'page' ? 'Unbenannt' : isCodeNode(node) ? 'Codeblock' : 'Ohne Titel'}</span>}</h1>
+                  <h1>{node.text ? <RichText text={node.text} source={node} /> : <span className="faint">{node.kind === 'page' ? L.common.untitled : isCodeNode(node) ? L.views.node.codeBlock : L.common.noTitle}</span>}</h1>
                 )}
               </div>
-              <button ref={menuBtn} className="btn btn-ghost btn-icon" onClick={openMenu} aria-label="Aktionen" title="Aktionen (Umschalt+F10)" aria-haspopup="menu">
+              <button ref={menuBtn} className="btn btn-ghost btn-icon" onClick={openMenu} aria-label={L.views.node.actions} title={L.views.node.actionsHint} aria-haspopup="menu">
                 <MoreHorizontal size={17} />
               </button>
             </div>
@@ -269,21 +270,21 @@ export function NodeView({ id, inbox }: { id: string; inbox?: boolean }) {
           {!isRoot && !bodyEdit && !node.body && (
             <div className="zoom-tools">
               <button className="btn btn-ghost btn-sm" onClick={() => store().set({ bodyEdit: id })}>
-                <StickyNote size={14} /> Notiz
+                <StickyNote size={14} /> {L.views.node.note}
               </button>
               {node.kind === 'page' && (
                 <button className="btn btn-ghost btn-sm" onClick={() => createSubpage(id)}>
-                  <FilePlus2 size={14} /> Unterseite
+                  <FilePlus2 size={14} /> {L.views.node.subpage}
                 </button>
               )}
               {node.kind === 'page' && (
                 <button className="btn btn-ghost btn-sm" onClick={() => store().set({ history: id })}>
-                  <History size={14} /> Versionen
+                  <History size={14} /> {L.views.node.versions}
                 </button>
               )}
               {node.kind === 'item' && (
                 <button className="btn btn-ghost btn-sm" onClick={() => store().set({ move: { ids: [id] } })}>
-                  <FolderInput size={14} /> Einsortieren
+                  <FolderInput size={14} /> {L.views.node.move}
                 </button>
               )}
             </div>
@@ -292,7 +293,8 @@ export function NodeView({ id, inbox }: { id: string; inbox?: boolean }) {
 
         {inbox && items.length > 0 && (
           <div className="inbox-hint">
-            Alles Neue landet hier. <b>Einsortieren</b> verschiebt einen Eintrag an seinen Platz (<kbd>Strg</kbd> <kbd>M</kbd>), <b>Zuordnen</b> vergibt Tags oder Links (<kbd>#</kbd> <kbd>@</kbd>), <kbd>/</kbd> setzt Termine.
+            {L.views.node.inboxIntro} <b>{L.views.node.move}</b> {L.views.node.inboxMoveDesc} (<kbd>{L.views.node.ctrl}</kbd> <kbd>M</kbd>), <b>{L.views.node.assign}</b> {L.views.node.inboxAssignDesc} (<kbd>#</kbd> <kbd>@</kbd>), <kbd>/</kbd>{' '}
+            {L.views.node.inboxSlashDesc}
           </div>
         )}
 
@@ -314,11 +316,11 @@ export function NodeView({ id, inbox }: { id: string; inbox?: boolean }) {
           )}
           {node.children.length === 0 && (
             <button className="outline-empty" onClick={addItem}>
-              {inbox ? 'Die Inbox ist leer. Neue Ideen mit Strg+Umschalt+Leertaste, Strg+N oder hier.' : isRoot ? 'Noch keine Seiten. Klicke hier, um die erste anzulegen.' : 'Leer. Klicke hier oder drücke Enter im Titel, um zu schreiben.'}
+              {inbox ? L.views.node.emptyInbox : isRoot ? L.views.node.emptyRoot : L.views.node.emptyPage}
             </button>
           )}
           <button className="outline-add" onClick={addItem}>
-            <Plus size={14} /> {isRoot ? 'Neue Seite' : 'Neuer Eintrag'}
+            <Plus size={14} /> {isRoot ? L.views.node.newPage : L.views.node.newEntry}
           </button>
         </div>
 

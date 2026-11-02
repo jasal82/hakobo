@@ -120,24 +120,41 @@ impl When {
         }
     }
 
+    /// Kurzform für die Oberfläche in deren Sprache (siehe `human_de`).
+    pub fn human(&self, today: NaiveDate) -> String {
+        self.human_in(today, crate::i18n::is_en())
+    }
+
     /// Kurzform für die Oberfläche, z. B. „Heute 14:00“, „Fr 30.10.“,
     /// „Di 27.10. 14:00–15:30“, „Mo 26.10. – Mi 28.10.“.
+    #[cfg(test)]
     pub fn human_de(&self, today: NaiveDate) -> String {
+        self.human_in(today, false)
+    }
+
+    /// Englisch: „Today 14:00“, „Fri, Oct 30“, „Mon, Oct 26 – Wed, Oct 28“.
+    fn human_in(&self, today: NaiveDate, en: bool) -> String {
+        let abs = |d: NaiveDate| if en { date_abs_en(d, today.year()) } else { date_abs_de(d, today.year()) };
         if let Some(end) = self.end_date {
-            let mut s = date_abs_de(self.start, today.year());
+            let mut s = abs(self.start);
             if let Some(t) = self.start_time {
                 s.push(' ');
                 s.push_str(&fmt_time(t));
             }
             s.push_str(" – ");
-            s.push_str(&date_abs_de(end, today.year()));
+            s.push_str(&abs(end));
             if let Some(t) = self.end_time {
                 s.push(' ');
                 s.push_str(&fmt_time(t));
             }
             return s;
         }
-        let mut s = date_label_de(self.start, today);
+        let mut s = match (self.start - today).num_days() {
+            0 => (if en { "Today" } else { "Heute" }).into(),
+            1 => (if en { "Tomorrow" } else { "Morgen" }).into(),
+            -1 => (if en { "Yesterday" } else { "Gestern" }).into(),
+            _ => abs(self.start),
+        };
         if let Some(t) = self.start_time {
             s.push(' ');
             s.push_str(&fmt_time(t));
@@ -245,13 +262,25 @@ fn date_abs_de(d: NaiveDate, year: i32) -> String {
     s
 }
 
-fn date_label_de(d: NaiveDate, today: NaiveDate) -> String {
-    match (d - today).num_days() {
-        0 => "Heute".into(),
-        1 => "Morgen".into(),
-        -1 => "Gestern".into(),
-        _ => date_abs_de(d, today.year()),
+const WD_EN_UI: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const MONTHS_EN: [&str; 12] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+fn wd_en_ui(w: Weekday) -> &'static str {
+    WD_EN_UI[w.num_days_from_monday() as usize]
+}
+
+/// „Oct 30“
+fn month_day_en(d: NaiveDate) -> String {
+    format!("{} {}", MONTHS_EN[d.month0() as usize], d.day())
+}
+
+/// „Fri, Oct 30“ bzw. „Fri, Oct 30, 2027“.
+fn date_abs_en(d: NaiveDate, year: i32) -> String {
+    let mut s = format!("{}, {}", wd_en_ui(d.weekday()), month_day_en(d));
+    if d.year() != year {
+        s.push_str(&format!(", {}", d.year()));
     }
+    s
 }
 
 // ---------------------------------------------------------------------------
@@ -1216,6 +1245,35 @@ impl Repeat {
         s
     }
 
+    /// Für die Oberfläche in deren Sprache (siehe `human_de`).
+    pub fn human(&self) -> String {
+        if crate::i18n::is_en() { self.human_en() } else { self.human_de() }
+    }
+
+    /// Englisch: „weekly (Mon, Thu)“, „every 2 weeks“, „daily until Oct 30, 2026“.
+    fn human_en(&self) -> String {
+        let n = self.every;
+        let mut s = if self.workdays {
+            "on weekdays".to_string()
+        } else {
+            let (one, many) = match self.unit {
+                RepeatUnit::Day => ("daily", "days"),
+                RepeatUnit::Week => ("weekly", "weeks"),
+                RepeatUnit::Month => ("monthly", "months"),
+                RepeatUnit::Year => ("yearly", "years"),
+            };
+            if n <= 1 { one.to_string() } else { format!("every {n} {many}") }
+        };
+        if self.unit == RepeatUnit::Week && !self.weekdays.is_empty() {
+            let days: Vec<&str> = self.weekdays.iter().map(|w| wd_en_ui(*w)).collect();
+            s.push_str(&format!(" ({})", days.join(", ")));
+        }
+        if let Some(u) = self.until {
+            s.push_str(&format!(" until {}, {}", month_day_en(u), u.year()));
+        }
+        s
+    }
+
     /// Für die Oberfläche: „wöchentlich (Mo, Do)“, „alle 2 Wochen“.
     pub fn human_de(&self) -> String {
         let n = self.every;
@@ -1578,6 +1636,36 @@ impl Remind {
 
     pub fn format_list(list: &[Remind]) -> String {
         list.iter().map(Remind::format).collect::<Vec<_>>().join(", ")
+    }
+
+    /// Für die Oberfläche in deren Sprache (siehe `human_de`).
+    pub fn human(&self) -> String {
+        if crate::i18n::is_en() { self.human_en() } else { self.human_de() }
+    }
+
+    /// Englisch: „15 min before“, „1 day before“, „at start“, „Oct 30 08:00“.
+    fn human_en(&self) -> String {
+        match self {
+            Remind::At(dt) => format!("{} {}", month_day_en(dt.date()), dt.format("%H:%M")),
+            Remind::Before(d) => {
+                let mins = d.num_minutes().abs();
+                if mins == 0 {
+                    return "at start".into();
+                }
+                let (days, h, m) = (mins / 1440, (mins % 1440) / 60, mins % 60);
+                let mut parts = Vec::new();
+                if days > 0 {
+                    parts.push(if days == 1 { "1 day".to_string() } else { format!("{days} days") });
+                }
+                if h > 0 {
+                    parts.push(format!("{h} h"));
+                }
+                if m > 0 {
+                    parts.push(format!("{m} min"));
+                }
+                format!("{} before", parts.join(" "))
+            }
+        }
     }
 
     /// Für die Oberfläche: „15 Min. vorher“, „1 Tag vorher“, „zu Beginn“.

@@ -9,6 +9,7 @@
 import { api } from './api';
 import { createOp, store } from './store';
 import type { Op } from './types';
+import { L } from '../i18n';
 
 const IMAGE = /\.(png|jpe?g|gif|webp|bmp|avif|svg)$/i;
 
@@ -80,7 +81,7 @@ function nameOf(f: File): string {
   const d = new Date();
   const p = (n: number) => String(n).padStart(2, '0');
   const ext = (/\/(\w+)/.exec(f.type)?.[1] ?? 'png').replace('jpeg', 'jpg').replace('svg+xml', 'svg');
-  return `Bild ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}.${ext}`;
+  return `${L.lib.images.pastedName(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`)}.${ext}`;
 }
 
 /** Lädt die Bilder hoch; liefert Markdown und Anzeigenamen der gespeicherten. */
@@ -125,7 +126,7 @@ export async function insertImageNodes(parent: string, index: number | undefined
 export async function imagesToInbox(files: File[]) {
   const s = store();
   const ids = await insertImageNodes(s.inbox, undefined, files);
-  if (ids?.length) s.toast(`${ids.length === 1 ? 'Bild' : `${ids.length} Bilder`} in der Inbox`, 'success', { label: 'Öffnen', run: () => store().reveal(ids[0]) });
+  if (ids?.length) s.toast(L.lib.images.inInbox(ids.length), 'success', { label: L.common.open, run: () => store().reveal(ids[0]) });
 }
 
 /**
@@ -151,7 +152,7 @@ export function pickImages(): Promise<File[]> {
 export async function chooseImages(id: string, { edit = false }: { edit?: boolean } = {}) {
   const picked = await pickImages();
   const files = picked.filter((f) => f.type.startsWith('image/') || IMAGE.test(f.name));
-  if (picked.length && !files.length) store().toast('Nur Bilder lassen sich einfügen', 'info');
+  if (picked.length && !files.length) store().toast(L.lib.images.onlyImages, 'info');
   const n = store().nodes[id];
   if (files.length && n) {
     if (n.kind === 'item') await attachImages(id, files);

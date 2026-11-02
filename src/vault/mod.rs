@@ -604,17 +604,17 @@ impl Vault {
 
     /// Linktext auf einen beliebigen Knoten.
     pub fn link_to(&mut self, id: &str) -> Result<String> {
-        let node = self.nodes.get(id).ok_or_else(|| anyhow!("Knoten nicht gefunden"))?;
+        let node = self.nodes.get(id).ok_or_else(|| anyhow!(crate::tr!("Knoten nicht gefunden", "Node not found")))?;
         match node.kind {
             Kind::Page => Ok(inline::format_link(&self.link_target(id), None, None)),
             Kind::Item => {
-                let page = self.page_of(id).map(|p| p.id.clone()).ok_or_else(|| anyhow!("Seite nicht gefunden"))?;
+                let page = self.page_of(id).map(|p| p.id.clone()).ok_or_else(|| anyhow!(crate::tr!("Seite nicht gefunden", "Page not found")))?;
                 let alias = display_title(&node.text);
                 let target = self.link_target(&page);
                 self.pin(id);
                 Ok(inline::format_link(&target, Some(&format!("^{id}")), Some(alias.trim())))
             }
-            Kind::Root => bail!("Die Wurzel kann nicht verlinkt werden."),
+            Kind::Root => bail!(crate::tr!("Die Wurzel kann nicht verlinkt werden.", "The root cannot be linked.")),
         }
     }
 
@@ -1225,9 +1225,9 @@ impl Vault {
         task: Option<Task>,
         ch: &mut Changes,
     ) -> Result<NodeId> {
-        let p = self.nodes.get(parent).ok_or_else(|| anyhow!("Übergeordneter Knoten nicht gefunden"))?;
+        let p = self.nodes.get(parent).ok_or_else(|| anyhow!(crate::tr!("Übergeordneter Knoten nicht gefunden", "Parent node not found")))?;
         if p.kind == Kind::Root {
-            bail!("In der obersten Ebene stehen nur Seiten.");
+            bail!(crate::tr!("In der obersten Ebene stehen nur Seiten.", "Only pages can be at the top level."));
         }
         let id = match id {
             Some(i) if valid_id(&i) && !self.nodes.contains_key(&i) => i,
@@ -1280,11 +1280,11 @@ impl Vault {
     }
 
     pub fn create_page(&mut self, parent: &str, title: &str, id: Option<String>, ch: &mut Changes) -> Result<NodeId> {
-        let p = self.nodes.get(parent).ok_or_else(|| anyhow!("Übergeordnete Seite nicht gefunden"))?;
+        let p = self.nodes.get(parent).ok_or_else(|| anyhow!(crate::tr!("Übergeordnete Seite nicht gefunden", "Parent page not found")))?;
         let parent_path = match p.kind {
             Kind::Root => None,
             Kind::Page => p.page.as_ref().map(|m| m.path.clone()),
-            Kind::Item => bail!("Seiten können nur unter Seiten angelegt werden."),
+            Kind::Item => bail!(crate::tr!("Seiten können nur unter Seiten angelegt werden.", "Pages can only be created under pages.")),
         };
         let title = self.unique_title(parent_path.as_deref(), &sanitize_title(title), None);
         let path = match &parent_path {
@@ -1342,9 +1342,9 @@ impl Vault {
     }
 
     fn update(&mut self, id: &str, text: Option<String>, body: Option<String>, task: Option<Option<Task>>, fields: Option<Vec<Field>>, ch: &mut Changes) -> Result<()> {
-        let kind = self.nodes.get(id).map(|n| n.kind).ok_or_else(|| anyhow!("Knoten nicht gefunden"))?;
+        let kind = self.nodes.get(id).map(|n| n.kind).ok_or_else(|| anyhow!(crate::tr!("Knoten nicht gefunden", "Node not found")))?;
         if kind == Kind::Root {
-            bail!("Die Wurzel kann nicht geändert werden.");
+            bail!(crate::tr!("Die Wurzel kann nicht geändert werden.", "The root cannot be changed."));
         }
         if kind == Kind::Page
             && let Some(t) = &text
@@ -1441,7 +1441,7 @@ impl Vault {
 
     fn rename_page(&mut self, id: &str, new_title: &str, ch: &mut Changes) -> Result<()> {
         if id == self.inbox {
-            bail!("Die Inbox kann nicht umbenannt werden.");
+            bail!(crate::tr!("Die Inbox kann nicht umbenannt werden.", "The inbox cannot be renamed."));
         }
         let n = &self.nodes[id];
         let old_path = n.page.as_ref().map(|p| p.path.clone()).unwrap_or_default();
@@ -1497,20 +1497,20 @@ impl Vault {
     }
 
     fn move_node(&mut self, id: &str, parent: &str, index: Option<usize>, ch: &mut Changes) -> Result<()> {
-        let node = self.nodes.get(id).ok_or_else(|| anyhow!("Knoten nicht gefunden"))?;
-        let target = self.nodes.get(parent).ok_or_else(|| anyhow!("Ziel nicht gefunden"))?;
+        let node = self.nodes.get(id).ok_or_else(|| anyhow!(crate::tr!("Knoten nicht gefunden", "Node not found")))?;
+        let target = self.nodes.get(parent).ok_or_else(|| anyhow!(crate::tr!("Ziel nicht gefunden", "Target not found")))?;
         if id == parent || self.is_descendant(parent, id) {
-            bail!("Ein Knoten kann nicht in sich selbst verschoben werden.");
+            bail!(crate::tr!("Ein Knoten kann nicht in sich selbst verschoben werden.", "An entry cannot be moved into itself."));
         }
         let old_parent = node.parent.clone().unwrap_or_default();
         match node.kind {
-            Kind::Root => bail!("Die Wurzel kann nicht verschoben werden."),
+            Kind::Root => bail!(crate::tr!("Die Wurzel kann nicht verschoben werden.", "The root cannot be moved.")),
             Kind::Page => {
                 if target.kind == Kind::Item {
-                    bail!("Seiten können nur unter Seiten liegen.");
+                    bail!(crate::tr!("Seiten können nur unter Seiten liegen.", "Pages can only be placed under pages."));
                 }
                 if id == self.inbox {
-                    bail!("Die Inbox bleibt in der obersten Ebene.");
+                    bail!(crate::tr!("Die Inbox bleibt in der obersten Ebene.", "The inbox stays at the top level."));
                 }
                 if old_parent == parent {
                     return Ok(());
@@ -1533,7 +1533,7 @@ impl Vault {
             }
             Kind::Item => {
                 if target.kind == Kind::Root {
-                    bail!("In der obersten Ebene stehen nur Seiten.");
+                    bail!(crate::tr!("In der obersten Ebene stehen nur Seiten.", "Only pages can be at the top level."));
                 }
                 let old_page = self.page_of(id).map(|p| p.id.clone());
                 let pinned: HashSet<NodeId> = self.subtree(id).into_iter().filter(|x| self.nodes.get(x).is_some_and(|n| n.pin_id)).collect();
@@ -1558,22 +1558,22 @@ impl Vault {
     }
 
     fn delete(&mut self, id: &str, ch: &mut Changes) -> Result<()> {
-        let node = self.nodes.get(id).ok_or_else(|| anyhow!("Knoten nicht gefunden"))?;
+        let node = self.nodes.get(id).ok_or_else(|| anyhow!(crate::tr!("Knoten nicht gefunden", "Node not found")))?;
         let parent = node.parent.clone().unwrap_or_default();
         match node.kind {
-            Kind::Root => bail!("Die Wurzel kann nicht gelöscht werden."),
+            Kind::Root => bail!(crate::tr!("Die Wurzel kann nicht gelöscht werden.", "The root cannot be deleted.")),
             Kind::Page => {
                 if id == self.inbox {
-                    bail!("Die Inbox kann nicht gelöscht werden.");
+                    bail!(crate::tr!("Die Inbox kann nicht gelöscht werden.", "The inbox cannot be deleted."));
                 }
                 let path = node.page.as_ref().map(|p| p.path.clone()).unwrap_or_default();
                 let file = self.page_file(&path);
                 let dir = self.page_dir(&path);
                 if file.exists() {
-                    std::fs::remove_file(&file).with_context(|| format!("{} konnte nicht gelöscht werden", file.display()))?;
+                    std::fs::remove_file(&file).with_context(|| crate::tr!("{} konnte nicht gelöscht werden", "{} could not be deleted", file.display()))?;
                 }
                 if dir.is_dir() {
-                    std::fs::remove_dir_all(&dir).with_context(|| format!("{} konnte nicht gelöscht werden", dir.display()))?;
+                    std::fs::remove_dir_all(&dir).with_context(|| crate::tr!("{} konnte nicht gelöscht werden", "{} could not be deleted", dir.display()))?;
                 }
                 for p in self.subtree(id) {
                     if let Some(m) = self.nodes.get(&p).and_then(|n| n.page.as_ref()) {
@@ -1601,11 +1601,11 @@ impl Vault {
     /// Notiz und Felder wandern mit, Tags ins Frontmatter; der Knoten bleibt
     /// als Link auf die neue Seite stehen.
     pub fn item_to_page(&mut self, id: &str, ch: &mut Changes) -> Result<NodeId> {
-        let n = self.nodes.get(id).ok_or_else(|| anyhow!("Knoten nicht gefunden"))?.clone();
+        let n = self.nodes.get(id).ok_or_else(|| anyhow!(crate::tr!("Knoten nicht gefunden", "Node not found")))?.clone();
         if n.kind != Kind::Item {
-            bail!("Nur Einträge können als Seite ausgelagert werden.");
+            bail!(crate::tr!("Nur Einträge können als Seite ausgelagert werden.", "Only entries can be turned into a page."));
         }
-        let host = self.page_of(id).map(|p| p.id.clone()).ok_or_else(|| anyhow!("Seite nicht gefunden"))?;
+        let host = self.page_of(id).map(|p| p.id.clone()).ok_or_else(|| anyhow!(crate::tr!("Seite nicht gefunden", "Page not found")))?;
         let title = display_title(&n.text);
         let title = if title.trim().is_empty() { "Unbenannt".to_string() } else { title };
         let page = self.create_page(&host, &title, None, ch)?;

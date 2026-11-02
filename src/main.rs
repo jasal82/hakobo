@@ -21,6 +21,7 @@ mod files;
 #[cfg(any(windows, target_os = "macos"))]
 mod desktop;
 mod git;
+mod i18n;
 mod instance;
 mod legacy;
 mod notify;
@@ -37,7 +38,7 @@ use std::sync::Arc;
 
 use anyhow::{Result, bail};
 use chrono::{Duration, Local};
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, FromArgMatches, Parser, Subcommand};
 use serde_json::{Value, json};
 
 use crate::app::App;
@@ -114,6 +115,39 @@ enum Command {
     },
 }
 
+/// Befehlszeile lesen. Die Hilfe (`--help`) folgt der Sprache aus den Einstellungen (bzw. des
+/// Systems); die deutschen Texte stehen an den Feldern oben, die englischen hier.
+fn parse_cli() -> Cli {
+    let lang = Settings::load(&settings::config_dir()).language;
+    if i18n::resolve(&lang) == i18n::Lang::De {
+        return Cli::parse();
+    }
+    let cmd = Cli::command()
+        .about("Hakobo – notes, todos and events as an outline, versioned with Git")
+        .mut_arg("vault", |a| a.help("Notebook folder (default: setting or Documents/Hakobo)."))
+        .mut_arg("port", |a| a.help("Port for the desktop app (if taken: a free port)."))
+        .mut_arg("no_open", |a| a.help("Don't open a window (server only, for development)."))
+        .mut_arg("browser", |a| a.help("Open in the browser instead of the app window."))
+        .mut_arg("tray", |a| a.help("Start in the tray only (e.g. at login)."))
+        .mut_subcommand("add", |c| {
+            c.about("Add an idea, todo or event to the inbox, e.g. `hakobo add \"Dentist /tomorrow 2pm\"`.")
+                .mut_arg("to", |a| a.help("Put it under this page instead of the inbox (title or path)."))
+                .mut_arg("text", |a| {
+                    a.help("Text with slash commands (/tomorrow, /due fri, /todo, /repeat weekly, /remind 1h, #tag, @person). `-` reads from standard input.")
+                })
+        })
+        .mut_subcommand("agenda", |c| c.about("Events and due todos of the next days."))
+        .mut_subcommand("search", |c| c.about("Fuzzy search, e.g. `hakobo search \"invoice #client is:open\"`."))
+        .mut_subcommand("inbox", |c| c.about("Entries in the inbox."))
+        .mut_subcommand("sync", |c| c.about("Sync with the remote now."))
+        .mut_subcommand("clone", |c| {
+            c.about("Fetch an existing notebook from a Git remote (second device) and make it the default.")
+                .mut_arg("url", |a| a.help("Address of the repository, e.g. `git@github.com:name/notes.git`."))
+        })
+        .mut_subcommand("serve", |c| c.about("Start as a server, reachable from a browser (e.g. on the home network)."));
+    Cli::from_arg_matches(&cmd.get_matches()).unwrap_or_else(|e| e.exit())
+}
+
 fn random_token() -> String {
     use rand::Rng;
     let mut rng = rand::rng();
@@ -153,7 +187,9 @@ fn main() -> Result<()> {
     // Vor allem anderen: entfernt die Angaben aus der Umgebung, solange kein weiterer Thread läuft.
     let restart = update::take_restart();
     let has_console = attach_console();
-    let cli = Cli::parse();
+    // Sprache für Meldungen vor dem Laden der Einstellungen: die des Systems.
+    i18n::set(i18n::system());
+    let cli = parse_cli();
     let is_app = cli.command.is_none();
     let config = match cli.config_dir.clone().filter(|d| !d.as_os_str().is_empty()) {
         Some(dir) => dir,
@@ -170,6 +206,7 @@ fn main() -> Result<()> {
     };
     std::fs::create_dir_all(&config)?;
     let mut settings = Settings::load(&config);
+    i18n::apply(&settings.language);
     if cli.vault.is_none() && cli.config_dir.is_none() {
         legacy::take_over_vault(&mut settings, &config, &legacy::default_vault(), &settings::default_vault())?;
     }
@@ -189,7 +226,7 @@ fn main() -> Result<()> {
     if let Err(e) = &result {
         tracing::error!("{e:#}");
         if !is_app {
-            eprintln!("Fehler: {e:#}");
+            eprintln!("{}", tr!("Fehler: {e:#}", "Error: {e:#}"));
             std::process::exit(1);
         }
     }
@@ -268,7 +305,7 @@ fn run_app(cli: &Cli, vault_dir: &Path, config: PathBuf, settings: Settings, res
     }
 
     if cli.no_open {
-        println!("Hakobo läuft unter {base}/?token={token} – Strg+C zum Beenden.");
+        println!("{}", tr!("Hakobo läuft unter {base}/?token={token} – Strg+C zum Beenden.", "Hakobo is running at {base}/?token={token} – press Ctrl+C to quit."));
         return rt.block_on(serve_until_ctrl_c(cfg, listener, app));
     }
     instance::register(&config, addr.port(), &token, &app.vault_dir());
@@ -351,12 +388,12 @@ fn serve(vault_dir: &Path, config: PathBuf, settings: Settings, host: &str, port
     let cfg = server::ServerConfig { app: app.clone(), local: false, host: host.to_string(), port, token: Some(token.clone()), wait_for_port: false };
     let (listener, addr) = rt.block_on(server::bind(&cfg))?;
     app.spawn_background(rt.handle());
-    let shown = if host == "0.0.0.0" { format!("http://<rechnername>:{}", addr.port()) } else { format!("http://{addr}") };
+    let shown = if host == "0.0.0.0" { tr!("http://<rechnername>:{}", "http://<hostname>:{}", addr.port()) } else { format!("http://{addr}") };
     println!();
-    println!("  Hakobo {} läuft als Server", env!("CARGO_PKG_VERSION"));
-    println!("  Notizbuch:    {}", app.vault_dir().display());
-    println!("  Adresse:      {shown}");
-    println!("  Direktlink:   {shown}/?token={token}");
+    println!("{}", tr!("  Hakobo {} läuft als Server", "  Hakobo {} is running as a server", env!("CARGO_PKG_VERSION")));
+    println!("{}", tr!("  Notizbuch:    {}", "  Notebook:     {}", app.vault_dir().display()));
+    println!("{}", tr!("  Adresse:      {shown}", "  Address:      {shown}"));
+    println!("{}", tr!("  Direktlink:   {shown}/?token={token}", "  Direct link:  {shown}/?token={token}"));
     println!();
     rt.block_on(serve_until_ctrl_c(cfg, listener, app))
 }
@@ -388,7 +425,7 @@ fn system_dark() -> bool {
 
 fn open_in_browser(url: &str) {
     if let Err(e) = open::that_detached(url) {
-        eprintln!("Browser konnte nicht geöffnet werden ({e}). Bitte {url} manuell öffnen.");
+        eprintln!("{}", tr!("Browser konnte nicht geöffnet werden ({e}). Bitte {url} manuell öffnen.", "Could not open the browser ({e}). Please open {url} manually."));
     }
 }
 
@@ -403,7 +440,7 @@ fn cmd_add(vault_dir: &Path, config: &Path, settings: Settings, to: Option<&str>
         std::io::stdin().read_to_string(&mut text)?;
     }
     if text.trim().is_empty() {
-        bail!("Kein Text angegeben.");
+        bail!(tr!("Kein Text angegeben.", "No text given."));
     }
     if let Some(i) = running_instance(config, vault_dir) {
         let parent = match to {
@@ -416,7 +453,7 @@ fn cmd_add(vault_dir: &Path, config: &Path, settings: Settings, to: Option<&str>
     }
     let app = App::open(vault_dir, config.to_path_buf(), settings)?;
     let parent = match to {
-        Some(t) => Some(app.vault.lock().find_page(t).ok_or_else(|| anyhow::anyhow!("Seite „{t}“ nicht gefunden."))?),
+        Some(t) => Some(app.vault.lock().find_page(t).ok_or_else(|| anyhow::anyhow!(tr!("Seite „{t}“ nicht gefunden.", "Page “{t}” not found.")))?),
         None => None,
     };
     let (id, c) = app.capture(&text, parent.as_deref())?;
@@ -436,11 +473,11 @@ fn find_page_remote(i: &instance::Instance, title: &str) -> Result<String> {
         .filter(|n| n["kind"] == "page")
         .find(|n| n["text"].as_str().is_some_and(|t| t.to_lowercase() == want) || n["path"].as_str().is_some_and(|p| p.to_lowercase() == want))
         .and_then(|n| n["id"].as_str().map(str::to_string))
-        .ok_or_else(|| anyhow::anyhow!("Seite „{title}“ nicht gefunden."))
+        .ok_or_else(|| anyhow::anyhow!(tr!("Seite „{title}“ nicht gefunden.", "Page “{title}” not found.")))
 }
 
 fn print_captured(text: &Value, summary: &Value, to: Option<&str>) {
-    let place = to.map(|t| format!("Unter „{t}“")).unwrap_or_else(|| "In der Inbox".into());
+    let place = to.map(|t| tr!("Unter „{t}“", "Under “{t}”")).unwrap_or_else(|| tr!("In der Inbox", "In the inbox"));
     println!("✓ {place}: {}", text.as_str().unwrap_or(""));
     for s in summary.as_array().into_iter().flatten() {
         if let Some(s) = s.as_str() {
@@ -451,7 +488,7 @@ fn print_captured(text: &Value, summary: &Value, to: Option<&str>) {
 
 fn open_vault(vault_dir: &Path) -> Result<vault::Vault> {
     if !vault_dir.exists() {
-        bail!("Notizbuch {} gibt es nicht.", vault_dir.display());
+        bail!(tr!("Notizbuch {} gibt es nicht.", "Notebook {} does not exist.", vault_dir.display()));
     }
     vault::Vault::open(vault_dir)
 }
@@ -475,14 +512,14 @@ fn cmd_agenda(vault_dir: &Path, days: i64) -> Result<()> {
         format!("  {time}{check}{}{rep}  · {}", search::plain_text(&e.text), e.page)
     };
     if !a.overdue.is_empty() {
-        println!("Überfällig");
+        println!("{}", tr!("Überfällig", "Overdue"));
         for e in &a.overdue {
             println!("{}  ({})", line(e), e.human);
         }
         println!();
     }
     if a.entries.is_empty() {
-        println!("Keine Termine oder fälligen Todos in den nächsten {days} Tagen.");
+        println!("{}", tr!("Keine Termine oder fälligen Todos in den nächsten {days} Tagen.", "No events or due todos in the next {days} days."));
     }
     let mut day = None;
     for e in &a.entries {
@@ -491,7 +528,7 @@ fn cmd_agenda(vault_dir: &Path, days: i64) -> Result<()> {
             if day.is_some() {
                 println!();
             }
-            let label = dates::When { start: d, start_time: None, end_date: None, end_time: None }.human_de(today);
+            let label = dates::When { start: d, start_time: None, end_date: None, end_time: None }.human(today);
             println!("{label}");
             day = Some(d);
         }
@@ -505,7 +542,7 @@ fn cmd_search(vault_dir: &Path, query: &str, limit: usize) -> Result<()> {
     let docs = v.search_docs();
     let hits = search::search(&docs, &search::Query::parse(query), &search::SearchContext { today: Local::now().date_naive() }, limit);
     if hits.is_empty() {
-        println!("Keine Treffer.");
+        println!("{}", tr!("Keine Treffer.", "No results."));
     }
     for h in hits {
         let Some(d) = docs.iter().find(|d| d.id == h.id) else { continue };
@@ -519,7 +556,7 @@ fn cmd_search(vault_dir: &Path, query: &str, limit: usize) -> Result<()> {
             println!("    {}", d.path.join(" › "));
         }
         if let Some(s) = h.snippet {
-            println!("    „{}“", s.text);
+            println!("{}", tr!("    „{}“", "    “{}”", s.text));
         }
     }
     Ok(())
@@ -529,7 +566,7 @@ fn cmd_inbox(vault_dir: &Path) -> Result<()> {
     let v = open_vault(vault_dir)?;
     let inbox = v.get(&v.inbox).map(|n| n.children.clone()).unwrap_or_default();
     if inbox.is_empty() {
-        println!("Die Inbox ist leer.");
+        println!("{}", tr!("Die Inbox ist leer.", "The inbox is empty."));
     }
     let today = Local::now().date_naive();
     for id in inbox {
@@ -539,7 +576,7 @@ fn cmd_inbox(vault_dir: &Path) -> Result<()> {
             Some(_) => "[ ] ",
             None => "- ",
         };
-        let when = n.when().map(|w| format!("  ({})", w.human_de(today))).unwrap_or_default();
+        let when = n.when().map(|w| format!("  ({})", w.human(today))).unwrap_or_default();
         let kids = if n.children.is_empty() { String::new() } else { format!("  +{}", n.children.len()) };
         println!("{check}{}{when}{kids}", search::plain_text(&n.text));
     }
@@ -553,7 +590,7 @@ fn cmd_sync(vault_dir: &Path, config: &Path, settings: Settings) -> Result<()> {
     }
     let app = App::open(vault_dir, config.to_path_buf(), settings)?;
     if git::remote_url(&app.vault_dir()).is_none() {
-        bail!("Für dieses Notizbuch ist kein Remote eingerichtet (Einstellungen → Synchronisation).");
+        bail!(tr!("Für dieses Notizbuch ist kein Remote eingerichtet (Einstellungen → Synchronisation).", "No remote is set up for this notebook (Settings → Sync)."));
     }
     let rt = tokio::runtime::Runtime::new()?;
     let status = rt.block_on(app.sync_now())?;
@@ -562,29 +599,29 @@ fn cmd_sync(vault_dir: &Path, config: &Path, settings: Settings) -> Result<()> {
 
 fn print_sync(s: &serde_json::Map<String, Value>) -> Result<()> {
     if let Some(e) = s.get("lastError").and_then(|e| e.as_str()) {
-        bail!("Synchronisation fehlgeschlagen: {e}");
+        bail!(tr!("Synchronisation fehlgeschlagen: {e}", "Sync failed: {e}"));
     }
-    println!("✓ Synchronisiert mit {}", s.get("remote").and_then(|r| r.as_str()).unwrap_or("?"));
+    println!("{}", tr!("✓ Synchronisiert mit {}", "✓ Synced with {}", s.get("remote").and_then(|r| r.as_str()).unwrap_or("?")));
     if let Some(r) = s.get("resolved").and_then(|r| r.as_array()).filter(|r| !r.is_empty()) {
-        println!("  Automatisch zusammengeführt: {}", r.iter().filter_map(|x| x.as_str()).collect::<Vec<_>>().join(", "));
+        println!("{}", tr!("  Automatisch zusammengeführt: {}", "  Merged automatically: {}", r.iter().filter_map(|x| x.as_str()).collect::<Vec<_>>().join(", ")));
     }
     Ok(())
 }
 
 fn cmd_clone(url: &str, vault_dir: &Path, config: &Path, mut settings: Settings, explicit: bool) -> Result<()> {
     if instance::find(config).is_some() {
-        bail!("Bitte Hakobo zuerst beenden.");
+        bail!(tr!("Bitte Hakobo zuerst beenden.", "Please quit Hakobo first."));
     }
     let target = if explicit || !vault_dir.exists() || std::fs::read_dir(vault_dir)?.next().is_none() {
         vault_dir.to_path_buf()
     } else {
-        bail!("{} ist nicht leer. Bitte mit --vault einen leeren Ordner angeben.", vault_dir.display());
+        bail!(tr!("{} ist nicht leer. Bitte mit --vault einen leeren Ordner angeben.", "{} is not empty. Please choose an empty folder with --vault.", vault_dir.display()));
     };
-    println!("Hole {url} …");
+    println!("{}", tr!("Hole {url} …", "Fetching {url} …"));
     git::clone(url, &target)?;
     git::ensure_repo(&target)?;
     settings.vault = Some(vault::dunce(&target));
     settings.save(config)?;
-    println!("✓ Notizbuch liegt in {} und wird ab jetzt synchronisiert.", target.display());
+    println!("{}", tr!("✓ Notizbuch liegt in {} und wird ab jetzt synchronisiert.", "✓ The notebook is in {} and will be synced from now on.", target.display()));
     Ok(())
 }

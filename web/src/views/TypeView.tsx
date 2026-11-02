@@ -6,6 +6,7 @@
 
 import { useMemo, useState, type FormEvent } from 'react';
 import { ArrowDown, ArrowUp, Check, FileText, Hash, Plus, Search, Settings2, Table2 } from 'lucide-react';
+import { compareText, L } from '../i18n';
 import { humanRemind, humanRepeat } from '../lib/dates';
 import { plainText } from '../lib/inline';
 import { typeHome } from '../lib/outline';
@@ -20,8 +21,6 @@ import { TypeEditor } from './parts/TypeEditor';
 import { setFieldValue } from '../lib/outline';
 
 type Sort = { key: string; dir: 1 | -1 } | null;
-
-const collator = new Intl.Collator('de', { numeric: true, sensitivity: 'base' });
 
 /** Feldwert eines Knotens (beim Datum auch `due`). */
 function valueOf(n: Node, def: FieldDef): string {
@@ -68,8 +67,8 @@ function Cell({ n, def, onEdit, nav }: { n: Node; def: FieldDef; onEdit: (def: F
   if (def.kind === 'checkbox') {
     const toggle = () => setFieldValue(n.id, def.key, v === 'true' ? 'false' : 'true');
     return (
-      <td className="ty-cell is-check" {...nav} aria-label={`${def.label}: ${v === 'true' ? 'ja' : 'nein'}`} onKeyDown={cellKeys(toggle)}>
-        <button className={`ty-check${v === 'true' ? ' is-on' : ''}`} tabIndex={-1} onClick={toggle} aria-label={v === 'true' ? 'ja' : 'nein'}>
+      <td className="ty-cell is-check" {...nav} aria-label={`${def.label}: ${v === 'true' ? L.types.view.yes : L.types.view.no}`} onKeyDown={cellKeys(toggle)}>
+        <button className={`ty-check${v === 'true' ? ' is-on' : ''}`} tabIndex={-1} onClick={toggle} aria-label={v === 'true' ? L.types.view.yes : L.types.view.no}>
           {v === 'true' && <Check size={12} strokeWidth={3} />}
         </button>
       </td>
@@ -179,10 +178,10 @@ export function TypeView({ type }: { type: string }) {
         const vb = sortValue(b, sort.key, defs);
         // Leere Werte immer ans Ende
         if (!va !== !vb) return va ? -1 : 1;
-        return collator.compare(va, vb) * sort.dir;
+        return compareText(va, vb) * sort.dir;
       });
     } else {
-      list.sort((a, b) => collator.compare(plainText(a.text, false), plainText(b.text, false)));
+      list.sort((a, b) => compareText(plainText(a.text, false), plainText(b.text, false)));
     }
     return list;
   }, [nodes, t, query, sort, defs]);
@@ -201,7 +200,7 @@ export function TypeView({ type }: { type: string }) {
     const op = createOp(parent, undefined, `${text} #${t}`);
     if (store().commit([op])) {
       setTitle('');
-      store().toast(`„${text}“ angelegt unter ${store().nodes[parent]?.text ?? 'Inbox'}`, 'success', { label: 'Öffnen', run: () => store().reveal(op.id) });
+      store().toast(L.types.view.created(text, store().nodes[parent]?.text ?? L.common.inbox), 'success', { label: L.common.open, run: () => store().reveal(op.id) });
     }
   };
 
@@ -211,13 +210,13 @@ export function TypeView({ type }: { type: string }) {
         <div className="view-inner">
           <div className="empty">
             <Table2 size={28} />
-            <h3>Den Typ „{t}“ gibt es nicht (mehr)</h3>
+            <h3>{L.types.view.notFound(t)}</h3>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn" onClick={() => store().navigate({ view: 'tag', tag: t })}>
-                <Hash size={14} /> Einträge mit #{t}
+                <Hash size={14} /> {L.types.view.entriesWith(t)}
               </button>
               <button className="btn btn-primary" onClick={() => setEditor(true)}>
-                Typ anlegen
+                {L.types.view.create}
               </button>
             </div>
           </div>
@@ -241,16 +240,16 @@ export function TypeView({ type }: { type: string }) {
         <div className="view-head">
           <span className="type-dot ty-dot" style={{ ['--type-color' as string]: `var(--t-${def.color ?? 'gray'})` }} />
           <h1>{def.label}</h1>
-          <RouteLink className="tag" route={{ view: 'tag', tag: t }} title="Als Liste">
+          <RouteLink className="tag" route={{ view: 'tag', tag: t }} title={L.types.view.asList}>
             #{t}
           </RouteLink>
           <span className="ty-count">{rows.length}</span>
           <label className="tg-search">
             <Search size={14} />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filtern …" />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={L.types.filter} />
           </label>
           <button className="btn btn-sm" onClick={() => setEditor(true)}>
-            <Settings2 size={14} /> Typ bearbeiten
+            <Settings2 size={14} /> {L.types.view.edit}
           </button>
         </div>
 
@@ -266,7 +265,7 @@ export function TypeView({ type }: { type: string }) {
                       toggleSort('__title');
                     }}
                   >
-                    <span>Titel</span>
+                    <span>{L.types.view.title}</span>
                     {sortIcon('__title')}
                   </button>
                 </th>
@@ -284,7 +283,9 @@ export function TypeView({ type }: { type: string }) {
                     </button>
                   </th>
                 ))}
-                <th className="ty-page-col" title="Wo der Eintrag steht">Seite</th>
+                <th className="ty-page-col" title={L.types.view.whereTitle}>
+                  {L.common.page}
+                </th>
               </tr>
             </thead>
             <tbody onKeyDown={(e) => gridKeys(e, rows.length, cols)}>
@@ -305,7 +306,7 @@ export function TypeView({ type }: { type: string }) {
                       <div className="ty-title">
                         {n.kind === 'page' ? <FileText size={13} className="faint" /> : n.task ? <TaskBox node={n} size={14} tabIndex={-1} /> : null}
                         <a className="ty-title-link" onClick={() => store().reveal(n.id, { edit: n.kind !== 'page' })}>
-                          {n.text ? <RichText text={n.text.replace(new RegExp(`(^|\\s)#${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=\\s|$)`, 'i'), '$1').trim() || n.text} source={n} /> : <span className="faint">(leer)</span>}
+                          {n.text ? <RichText text={n.text.replace(new RegExp(`(^|\\s)#${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=\\s|$)`, 'i'), '$1').trim() || n.text} source={n} /> : <span className="faint">{L.types.empty}</span>}
                         </a>
                       </div>
                     </td>
@@ -333,7 +334,7 @@ export function TypeView({ type }: { type: string }) {
                         e.preventDefault();
                         e.currentTarget.closest('tbody')?.querySelector<HTMLElement>(`td[data-r="${rows.length - 1}"][data-c="${curC}"]`)?.focus();
                       }}
-                      placeholder={`Neu: ${def.label} … (landet in ${def.page || home?.text || 'Inbox'})`} />
+                      placeholder={L.types.view.newPlaceholder(def.label, def.page || home?.text || L.common.inbox)} />
                   </form>
                 </td>
               </tr>
@@ -343,7 +344,11 @@ export function TypeView({ type }: { type: string }) {
 
         {rows.length === 0 && !query && (
           <div className="ty-hint">
-            Noch keine Einträge vom Typ {def.label}. Schreibe <span className="tag">#{t}</span> in einen beliebigen Eintrag, wähle im Editor <kbd>/</kbd> → „Typ: {def.label}“ oder lege oben direkt einen an.
+            {L.types.view.hintA(def.label)}
+            <span className="tag">#{t}</span>
+            {L.types.view.hintB}
+            <kbd>/</kbd>
+            {L.types.view.hintC(def.label)}
           </div>
         )}
       </div>

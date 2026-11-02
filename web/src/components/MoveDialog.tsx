@@ -15,6 +15,7 @@ import { field, isAncestor, store, useStore } from '../lib/store';
 import type { Node, TagHit } from '../lib/types';
 import { allPages, NodeIcon, nodeTitle, PathLine, pathTitles, pushList, readList, useCandidates, useListKeys } from './search/common';
 import { Dialog, Highlighted, useScrollActive } from './ui';
+import { L } from '../i18n';
 
 const MOVE_TARGETS = 'hakobo-move-targets';
 
@@ -77,22 +78,22 @@ export function MoveDialog() {
 
   if (!ids.length) return null;
   const first = nodes[ids[0]];
-  const label = nodeTitle(first) || 'Eintrag';
+  const label = nodeTitle(first) || L.common.entry;
 
   return (
     <Dialog onClose={close} width={620} className="pick-dialog">
       <div className="pick-head">
         <FolderInput size={16} />
         <span className="pick-title">
-          Einsortieren: <b>{label.length > 60 ? `${label.slice(0, 60)}…` : label}</b>
-          {ids.length > 1 && <span className="faint"> und {ids.length - 1} weitere</span>}
+          {L.dialogs.move.title} <b>{label.length > 60 ? `${label.slice(0, 60)}…` : label}</b>
+          {ids.length > 1 && <span className="faint">{L.dialogs.move.more(ids.length - 1)}</span>}
         </span>
       </div>
       <div className="sp-input pick-input">
         <input
           autoFocus
           value={q}
-          placeholder="Ziel suchen: Seite oder Eintrag …"
+          placeholder={L.dialogs.move.placeholder}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {
             if (onKey(e)) return;
@@ -106,7 +107,7 @@ export function MoveDialog() {
         {loading && <span className="spinner" />}
       </div>
       <div className="pick-list" ref={listRef}>
-        {!q.trim() && <div className="menu-section">Seiten und zuletzt genutzte Ziele</div>}
+        {!q.trim() && <div className="menu-section">{L.dialogs.move.section}</div>}
         {list.map((c, i) => {
           const n = nodes[c.id];
           return (
@@ -117,7 +118,7 @@ export function MoveDialog() {
               <span className="sp-main">
                 <span className="sp-title">
                   <Highlighted text={nodeTitle(n)} ranges={c.hit?.titleRanges} />
-                  {parents.has(c.id) && <span className="chip">aktueller Ort</span>}
+                  {parents.has(c.id) && <span className="chip">{L.dialogs.move.currentPlace}</span>}
                 </span>
                 <PathLine parts={pathTitles(nodes, c.id)} ranges={c.hit?.pathRanges} />
               </span>
@@ -131,23 +132,23 @@ export function MoveDialog() {
               <FilePlus2 size={15} />
             </span>
             <span className="sp-main">
-              <span className="sp-title">Neue Seite „{newPage}“</span>
-              <span className="sp-path">in der obersten Ebene anlegen und hineinschieben</span>
+              <span className="sp-title">{L.dialogs.move.newPage(newPage)}</span>
+              <span className="sp-path">{L.dialogs.move.newPageHint}</span>
             </span>
           </button>
         )}
-        {q.trim() && !loading && !list.length && <div className="sp-empty">Kein passendes Ziel.</div>}
+        {q.trim() && !loading && !list.length && <div className="sp-empty">{L.dialogs.move.noTarget}</div>}
       </div>
       <div className="sp-foot">
         <span>
-          <kbd>↵</kbd> verschieben
+          <kbd>↵</kbd> {L.dialogs.move.keyMove}
         </span>
         <span>
-          <kbd>Umschalt</kbd>
-          <kbd>↵</kbd> verschieben und hinspringen
+          <kbd>{L.dialogs.keyShift}</kbd>
+          <kbd>↵</kbd> {L.dialogs.move.keyMoveJump}
         </span>
         <span>
-          <kbd>Esc</kbd> abbrechen
+          <kbd>Esc</kbd> {L.dialogs.move.keyCancel}
         </span>
       </div>
     </Dialog>
@@ -292,10 +293,10 @@ export function AssignDialog() {
       <div className="pick-head">
         <Hash size={16} />
         <span className="pick-title">
-          Zuordnen: <b>{nodeTitle(node).slice(0, 70) || 'Eintrag'}</b>
+          {L.dialogs.assign.title} <b>{nodeTitle(node).slice(0, 70) || L.common.entry}</b>
         </span>
         <button className="btn btn-ghost btn-sm" onClick={close}>
-          Fertig
+          {L.dialogs.assign.done}
         </button>
       </div>
       <div className="assign-current">
@@ -304,13 +305,13 @@ export function AssignDialog() {
             <span key={r.key + r.s} className={`chip assign-chip${r.kind === 'tag' ? ' is-tag' : ''}`}>
               {r.kind === 'link' && <Link2 size={12} />}
               {r.label}
-              <button className="chip-x" onClick={() => remove(r)} aria-label="Entfernen" title="Entfernen">
+              <button className="chip-x" onClick={() => remove(r)} aria-label={L.common.remove} title={L.common.remove}>
                 <X size={12} />
               </button>
             </span>
           ))
         ) : (
-          <span className="faint">Noch keine Tags oder Links.</span>
+          <span className="faint">{L.dialogs.assign.none}</span>
         )}
       </div>
       <div className="sp-input pick-input">
@@ -318,7 +319,7 @@ export function AssignDialog() {
           ref={inputRef}
           autoFocus
           value={q}
-          placeholder="Tag, Projekt, Person oder Seite … (# nur Tags, @ nur Personen)"
+          placeholder={L.dialogs.assign.placeholder}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {
             if (onKey(e)) return;
@@ -340,8 +341,8 @@ export function AssignDialog() {
                 <span className="sp-icon">{it.isNew ? <Plus size={15} /> : t ? <span className="ni-dot" style={{ ['--type-color' as string]: `var(--t-${t.color ?? 'gray'})` }} /> : <Hash size={15} />}</span>
                 <span className="sp-main">
                   <span className="sp-title">
-                    {it.isNew ? `Neuer Tag #${it.tag}` : <span>#<Highlighted text={it.tag} ranges={it.hit?.ranges} /></span>}
-                    {t && <span className="chip">Typ {t.label}</span>}
+                    {it.isNew ? L.dialogs.assign.newTag(it.tag) : <span>#<Highlighted text={it.tag} ranges={it.hit?.ranges} /></span>}
+                    {t && <span className="chip">{L.dialogs.assign.type(t.label)}</span>}
                   </span>
                 </span>
                 {it.hit && it.hit.count > 0 && <span className="faint sp-count">{it.hit.count}</span>}
@@ -364,18 +365,18 @@ export function AssignDialog() {
             </button>
           );
         })}
-        {!items.length && <div className="sp-empty">{q ? 'Nichts gefunden.' : 'Tippen, um Tags (auch verschachtelt wie projekte/sqonto) oder Seiten zu finden.'}</div>}
+        {!items.length && <div className="sp-empty">{q ? L.dialogs.assign.nothing : L.dialogs.assign.prompt}</div>}
       </div>
       <div className="sp-foot">
         <span>
-          <kbd>↵</kbd> zuordnen
+          <kbd>↵</kbd> {L.dialogs.assign.keyAssign}
         </span>
         <span>
           <kbd>Alt</kbd>
-          <kbd>↵</kbd> verlinken und dorthin einsortieren
+          <kbd>↵</kbd> {L.dialogs.assign.keyLinkMove}
         </span>
         <span>
-          <kbd>Esc</kbd> fertig
+          <kbd>Esc</kbd> {L.dialogs.assign.keyDone}
         </span>
       </div>
     </Dialog>
