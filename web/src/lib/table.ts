@@ -7,11 +7,25 @@
 // Zeile, Spalte k ihr k-tes Kind. Alles bleibt eine normale Gliederung.
 
 import { plainText } from './inline';
-import { simulate } from './outline';
-import { createOp, field, isTable, store, withField } from './store';
-import type { Node, Op } from './types';
+import { clearSelection, simulate } from './outline';
+import { createOp, field, isTable, store, withField, type CellSel } from './store';
+import type { Node, Op, Task } from './types';
 
 const S = () => store();
+
+/** Zelle: Zeile (0 = Kopfzeile) und Spalte (0 = Text der Zeile). */
+export interface Addr {
+  row: number;
+  col: number;
+}
+
+/** Rechteckiger Zellbereich (Grenzen einschließlich). */
+export interface CellRange {
+  r0: number;
+  r1: number;
+  c0: number;
+  c1: number;
+}
 
 /** Einträge (ohne Unterseiten) eines Knotens. */
 export function itemsOf(nodes: Record<string, Node>, id: string): string[] {
@@ -139,22 +153,38 @@ export function insertRow(table: string, at: number) {
   s.commit([op], { focusAfter: { id: op.id, caret: 'end' } });
 }
 
-export function deleteRow(table: string, row: number) {
+/** Zeilen `r0` bis `r1` löschen. */
+export function deleteRows(table: string, r0: number, r1: number) {
   const s = S();
   const rows = itemsOf(s.nodes, table);
-  const id = rows[row];
-  if (!id) return;
-  const next = rows[row + 1] ?? rows[row - 1] ?? table;
-  s.commit([{ op: 'delete', id }], { focusAfter: { id: next, caret: 'end' } });
+  const ids = rows.slice(Math.max(0, r0), r1 + 1);
+  if (!ids.length) return;
+  const next = rows[r1 + 1] ?? rows[r0 - 1] ?? table;
+  s.commit(
+    ids.map((id) => ({ op: 'delete', id }) as Op),
+    { focusAfter: { id: next, caret: 'end' } },
+  );
+  if (ids.length > 1) s.toast(`${ids.length} Zeilen gelöscht`, 'info', { label: 'Rückgängig', run: () => S().undo() });
+}
+
+export function deleteRow(table: string, row: number) {
+  deleteRows(table, row, row);
+}
+
+/** Zeilen `r0`–`r1` gemeinsam um eine Stelle nach oben/unten; die Kopfzeile bleibt oben. `false`: geht nicht. */
+export function moveRows(table: string, r0: number, r1: number, dir: -1 | 1, focus?: string): boolean {
+  const s = S();
+  const rows = itemsOf(s.nodes, table);
+  if (r0 < 1 || r1 >= rows.length || (dir < 0 ? r0 <= 1 : r1 >= rows.length - 1)) return false;
+  // Statt des Blocks wandert die Nachbarzeile auf seine andere Seite.
+  const op: Op = dir < 0 ? { op: 'move', id: rows[r0 - 1], parent: table, index: r1 } : { op: 'move', id: rows[r1 + 1], parent: table, index: r0 };
+  s.commit([op], { focusAfter: focus ? { id: focus, caret: 'end' } : null });
+  return true;
 }
 
 /** Zeile nach oben/unten; die Kopfzeile bleibt oben. */
 export function moveRow(table: string, row: number, dir: -1 | 1, focus?: string) {
-  const s = S();
-  const rows = itemsOf(s.nodes, table);
-  const target = row + dir;
-  if (row < 1 || target < 1 || target >= rows.length) return;
-  s.commit([{ op: 'move', id: rows[row], parent: table, index: target }], { focusAfter: focus ? { id: focus, caret: 'end' } : null });
+  moveRows(table, row, row, dir, focus);
 }
 
 // ---------------------------------------------------------------------------
@@ -215,51 +245,67 @@ export function insertColumn(table: string, col: number) {
   if (ops.length) s.commit(ops, { focusAfter: focus ? { id: focus, caret: 'end' } : null });
 }
 
-export function deleteColumn(table: string, col: number) {
+/** Spalten `c0` bis `c1` (≥ 1) löschen. */
+export function deleteColumns(table: string, c0: number, c1: number) {
   const s = S();
-  if (col < 1) return;
+  if (c0 < 1 || c1 < c0) return;
   const ops: Op[] = [];
   for (const r of itemsOf(s.nodes, table)) {
-    const cell = itemsOf(s.nodes, r)[col - 1];
-    if (cell) ops.push({ op: 'delete', id: cell });
+    for (const cell of itemsOf(s.nodes, r).slice(c0 - 1, c1)) ops.push({ op: 'delete', id: cell });
   }
   const w = widthsOf(s.nodes[table]);
-  w.splice(col, 1);
+  w.splice(c0, c1 - c0 + 1);
   const wop = widthsOp(s.nodes, table, w);
   if (wop) ops.push(wop);
   if (ops.length) {
+    const n = c1 - c0 + 1;
     s.commit(ops, { focusAfter: { id: itemsOf(s.nodes, table)[0] ?? table, caret: 'end' } });
-    s.toast('Spalte gelöscht', 'info', { label: 'Rückgängig', run: () => S().undo() });
+    s.toast(n === 1 ? 'Spalte gelöscht' : `${n} Spalten gelöscht`, 'info', { label: 'Rückgängig', run: () => S().undo() });
   }
 }
 
-/** Spalte `from` an die Stelle `to` (beide ≥ 1); die Breite wandert mit. */
-export function moveColumnTo(table: string, from: number, to: number, focusRow = 0) {
+export function deleteColumn(table: string, col: number) {
+  deleteColumns(table, col, col);
+}
+
+/**
+ * Spalten `from` … `from+n-1` (≥ 1) an die Grenze vor Spalte `edge` (alte Zählung) verschieben;
+ * die Breiten wandern mit. Fokus danach auf die erste verschobene Zelle in Zeile `focusRow`
+ * (`-1`: kein Fokus). Liefert die neue erste Spalte, `null`, wenn sich nichts ändert.
+ */
+export function moveColumns(table: string, from: number, n: number, edge: number, focusRow = 0): number | null {
   const s = S();
-  if (from < 1 || to < 1 || from === to) return;
+  if (from < 1 || n < 1 || edge < 1 || (edge >= from && edge <= from + n)) return null;
+  const right = edge > from;
+  const to = right ? edge - n : edge;
+  // Betroffen sind die Spalten zwischen Ziel und Block; kürzere Zeilen werden bis dahin aufgefüllt.
+  const lo = Math.min(from, edge);
+  const hi = Math.max(from + n - 1, edge - 1);
   let focus: string | null = null;
   const ops = simulate((get, push) => {
     for (const [i, r] of itemsOf(get(), table).entries()) {
-      if (itemsOf(get(), r).length < from) continue; // Zelle gibt es hier nicht
-      // Bis zur Zielspalte auffüllen, damit die Position stimmt
-      for (let c = itemsOf(get(), r).length; c < to; c++) push(createOp(r, c, ''));
-      const id = itemsOf(get(), r)[from - 1];
-      push({ op: 'move', id, parent: r, index: to - 1 });
-      if (i === focusRow) focus = id;
+      if (itemsOf(get(), r).length < lo) continue; // in dieser Zeile ist der ganze Bereich leer
+      for (let c = itemsOf(get(), r).length; c < hi; c++) push(createOp(r, c, ''));
+      const block = itemsOf(get(), r).slice(from - 1, from - 1 + n);
+      // Nach rechts: jede Zelle an die Zielgrenze (die vorige rückt nach links); nach links: der Reihe nach ab dem Ziel.
+      block.forEach((id, k) => push({ op: 'move', id, parent: r, index: right ? edge - 2 : edge - 1 + k }));
+      if (i === focusRow) focus = block[0] ?? null;
     }
     const w = widthsOf(get()[table]);
-    while (w.length <= Math.max(from, to)) w.push(0);
-    const [moved] = w.splice(from, 1);
-    w.splice(to, 0, moved);
+    while (w.length <= hi) w.push(0);
+    const moved = w.splice(from, n);
+    w.splice(to, 0, ...moved);
     const wop = widthsOp(get(), table, w);
     if (wop) push(wop);
   });
-  if (ops.length) s.commit(ops, { focusAfter: focus ? { id: focus, caret: 'end' } : null });
+  if (!ops.length) return null;
+  s.commit(ops, { focusAfter: focus ? { id: focus, caret: 'end' } : null });
+  return to;
 }
 
 /** Spalte `col` um eine Stelle nach links/rechts. */
 export function moveColumn(table: string, col: number, dir: -1 | 1, focusRow = 0) {
-  moveColumnTo(table, col, col + dir, focusRow);
+  moveColumns(table, col, 1, dir < 0 ? col - 1 : col + 2, focusRow);
 }
 
 /** Kopie eines Knotens samt Kindern (neue IDs). */
@@ -292,16 +338,23 @@ export function duplicateColumn(table: string, col: number, focusRow = 0) {
   if (ops.length) s.commit(ops, { focusAfter: focus ? { id: focus, caret: 'end' } : null });
 }
 
-/** Zeile samt Zellen darunter kopieren. */
-export function duplicateRow(table: string, row: number) {
+/** Zeilen `r0`–`r1` samt Zellen darunter kopieren (die Kopfzeile nicht). */
+export function duplicateRows(table: string, r0: number, r1: number) {
   const s = S();
-  const id = itemsOf(s.nodes, table)[row];
-  if (!id) return;
-  let copy: string | null = null;
+  const ids = itemsOf(s.nodes, table).slice(Math.max(1, r0), r1 + 1);
+  if (!ids.length) return;
+  let first: string | null = null;
   const ops = simulate((get, push) => {
-    copy = cloneInto(get(), id, table, row + 1, push);
+    ids.forEach((id, i) => {
+      const copy = cloneInto(get(), id, table, r1 + 1 + i, push);
+      if (i === 0) first = copy;
+    });
   });
-  if (ops.length) s.commit(ops, { focusAfter: copy ? { id: copy, caret: 'end' } : null });
+  if (ops.length) s.commit(ops, { focusAfter: first ? { id: first, caret: 'end' } : null });
+}
+
+export function duplicateRow(table: string, row: number) {
+  duplicateRows(table, row, row);
 }
 
 /** Zwei Zellen (Spalten ≥ 1) tauschen; fehlende werden leer angelegt, so wird Tauschen mit einer Lücke zum Verschieben. */
@@ -377,8 +430,14 @@ export function parseGrid(text: string): string[][] | null {
   return null;
 }
 
-/** Füllt die Tabelle ab Zeile `row`, Spalte `col`; fehlende Zeilen und Zellen entstehen dabei. */
-export function pasteGrid(table: string, row: number, col: number, grid: string[][]) {
+/** Eingefügter Zellinhalt: Text, aus Hakobo kopiert auch mit Todo-Status. */
+export type GridCell = string | { text: string; task?: Task | null };
+
+/**
+ * Füllt die Tabelle ab Zeile `row`, Spalte `col`; fehlende Zeilen und Zellen entstehen dabei.
+ * Danach steht der Fokus in der letzten Zelle oder (`select`) der eingefügte Bereich ist ausgewählt.
+ */
+export function pasteGrid(table: string, row: number, col: number, grid: GridCell[][], { select = false }: { select?: boolean } = {}) {
   const s = S();
   let last: string | null = null;
   const ops = simulate((get, push) => {
@@ -390,10 +449,12 @@ export function pasteGrid(table: string, row: number, col: number, grid: string[
         push(op);
         rowId = op.id;
       }
-      values.forEach((v, j) => {
+      values.forEach((cell, j) => {
+        const v = typeof cell === 'string' ? { text: cell } : cell;
+        const task = v.task !== undefined ? { task: v.task } : {};
         const c = col + j;
         if (c === 0) {
-          push({ op: 'update', id: rowId, text: v });
+          push({ op: 'update', id: rowId, text: v.text, ...task });
           last = rowId;
           return;
         }
@@ -401,17 +462,24 @@ export function pasteGrid(table: string, row: number, col: number, grid: string[
         for (let k = cells.length; k < c - 1; k++) push(createOp(rowId, k, ''));
         const existing = itemsOf(get(), rowId)[c - 1];
         if (existing) {
-          push({ op: 'update', id: existing, text: v });
+          push({ op: 'update', id: existing, text: v.text, ...task });
           last = existing;
         } else {
-          const op = createOp(rowId, c - 1, v);
+          const op = createOp(rowId, c - 1, v.text, task);
           push(op);
           last = op.id;
         }
       });
     });
   });
-  if (ops.length) s.commit(ops, { focusAfter: last ? { id: last, caret: 'end' } : null });
+  if (!ops.length) return;
+  if (!select) {
+    s.commit(ops, { focusAfter: last ? { id: last, caret: 'end' } : null });
+    return;
+  }
+  s.commit(ops, { focusAfter: null });
+  const width = Math.max(1, ...grid.map((r) => r.length));
+  selectCells(table, { row, col }, { row: row + grid.length - 1, col: col + width - 1 });
 }
 
 // ---------------------------------------------------------------------------
@@ -420,47 +488,162 @@ export function pasteGrid(table: string, row: number, col: number, grid: string[
 
 export type ExportFormat = 'markdown' | 'tsv' | 'html';
 
-/** Zellen als Raster (fehlende: `undefined`), erste Zeile = Kopfzeile. */
-function cellGrid(nodes: Record<string, Node>, table: string): (Node | undefined)[][] {
+/** Zellen eines Bereichs (ohne Angabe: der ganzen Tabelle) als Raster; fehlende: `undefined`. */
+function gridOf(nodes: Record<string, Node>, table: string, rg?: CellRange): (Node | undefined)[][] {
   const { rows, cols } = tableShape(nodes, table);
-  return rows.map((r) => Array.from({ length: cols }, (_, c) => {
-    const id = cellOf(nodes, r, c);
-    return id ? nodes[id] : undefined;
-  }));
+  const { r0, r1, c0, c1 } = rg ?? { r0: 0, r1: rows.length - 1, c0: 0, c1: cols - 1 };
+  const out: (Node | undefined)[][] = [];
+  for (let r = r0; r <= r1; r++) {
+    const line: (Node | undefined)[] = [];
+    for (let c = c0; c <= c1; c++) {
+      const id = rows[r] ? cellOf(nodes, rows[r], c) : null;
+      line.push(id ? nodes[id] : undefined);
+    }
+    out.push(line);
+  }
+  return out;
 }
 
 const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const box = (n: Node | undefined) => (n?.task ? (n.task === 'done' ? '[x] ' : '[ ] ') : '');
+const plainCell = (n: Node | undefined) => (n ? box(n) + plainText(n.text, false) : '');
+
+function toTsv(grid: (Node | undefined)[][]): string {
+  return grid.map((r) => r.map((n) => plainCell(n).replace(/[\t\n]/g, ' ')).join('\t')).join('\n') + '\n';
+}
+
+/** HTML-Tabelle; `head`: erste Zeile als Kopfzeile. */
+function toHtml(grid: (Node | undefined)[][], head: boolean): string {
+  const cells = (r: (Node | undefined)[], tag: 'th' | 'td') => r.map((n) => `<${tag}>${escapeHtml(plainCell(n))}</${tag}>`).join('');
+  const [first, ...rest] = grid;
+  const body = (rows: (Node | undefined)[][]) => `<tbody>\n${rows.map((r) => `<tr>${cells(r, 'td')}</tr>`).join('\n')}\n</tbody>`;
+  if (!head) return `<table>\n${body(grid)}\n</table>\n`;
+  return `<table>\n<thead><tr>${first ? cells(first, 'th') : ''}</tr></thead>\n${body(rest)}\n</table>\n`;
+}
 
 /** Text einer Tabelle im gewünschten Format. Markdown behält Formatierung und Links, TSV und HTML zeigen lesbaren Text. */
 export function exportTable(table: string, format: ExportFormat): string {
-  const nodes = S().nodes;
-  const grid = cellGrid(nodes, table);
-  const box = (n: Node | undefined) => (n?.task ? (n.task === 'done' ? '[x] ' : '[ ] ') : '');
-  const plain = (n: Node | undefined) => (n ? box(n) + plainText(n.text, false) : '');
-  if (format === 'tsv') return grid.map((r) => r.map((n) => plain(n).replace(/[\t\n]/g, ' ')).join('\t')).join('\n') + '\n';
+  const grid = gridOf(S().nodes, table);
+  if (format === 'tsv') return toTsv(grid);
   if (format === 'markdown') {
     const line = (r: (Node | undefined)[]) => `| ${r.map((n) => (n ? box(n) + n.text : '').replace(/\|/g, '\\|').trim()).join(' | ')} |`;
     const [head, ...body] = grid;
     if (!head) return '';
     return [line(head), `| ${head.map(() => '---').join(' | ')} |`, ...body.map(line)].join('\n') + '\n';
   }
-  const [head, ...body] = grid;
-  const cells = (r: (Node | undefined)[], tag: 'th' | 'td') => r.map((n) => `<${tag}>${escapeHtml(plain(n))}</${tag}>`).join('');
-  return `<table>\n<thead><tr>${head ? cells(head, 'th') : ''}</tr></thead>\n<tbody>\n${body.map((r) => `<tr>${cells(r, 'td')}</tr>`).join('\n')}\n</tbody>\n</table>\n`;
+  return toHtml(grid, true);
 }
 
-/** In die Zwischenablage; HTML zusätzlich als formatierte Tabelle (für Word, Mail, Tabellenkalkulation). */
+/** In die Zwischenablage; mit `html` zusätzlich als formatierte Tabelle (für Word, Mail, Tabellenkalkulation). */
+async function writeClipboard(plain: string, html?: string): Promise<boolean> {
+  try {
+    if (html && typeof ClipboardItem !== 'undefined') {
+      await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([plain], { type: 'text/plain' }) })]);
+    } else {
+      await navigator.clipboard.writeText(plain);
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function copyTable(table: string, format: ExportFormat) {
   const text = exportTable(table, format);
   const label = { markdown: 'Markdown', tsv: 'TSV', html: 'HTML' }[format];
-  try {
-    if (format === 'html' && typeof ClipboardItem !== 'undefined') {
-      await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([text], { type: 'text/html' }), 'text/plain': new Blob([text], { type: 'text/plain' }) })]);
-    } else {
-      await navigator.clipboard.writeText(text);
-    }
-    S().toast(`Tabelle als ${label} kopiert`, 'success');
-  } catch {
-    S().toast('Kopieren nicht möglich', 'error');
+  if (await writeClipboard(text, format === 'html' ? text : undefined)) S().toast(`Tabelle als ${label} kopiert`, 'success');
+  else S().toast('Kopieren nicht möglich', 'error');
+}
+
+// ---------------------------------------------------------------------------
+// Zellauswahl (mehrere Zellen, ganze Zeilen oder Spalten)
+// ---------------------------------------------------------------------------
+
+export function rangeOf(sel: CellSel): CellRange {
+  return {
+    r0: Math.min(sel.anchor.row, sel.head.row),
+    r1: Math.max(sel.anchor.row, sel.head.row),
+    c0: Math.min(sel.anchor.col, sel.head.col),
+    c1: Math.max(sel.anchor.col, sel.head.col),
+  };
+}
+
+export const inRange = (rg: CellRange, row: number, col: number) => row >= rg.r0 && row <= rg.r1 && col >= rg.c0 && col <= rg.c1;
+
+/** Zellen von `anchor` bis `head` auswählen (an die Tabelle angepasst); hebt Fokus und Auswahl von Einträgen auf. */
+export function selectCells(table: string, anchor: Addr, head: Addr) {
+  const s = S();
+  const { rows, cols } = tableShape(s.nodes, table);
+  if (!rows.length) return;
+  const fit = (a: Addr) => ({ row: Math.max(0, Math.min(rows.length - 1, a.row)), col: Math.max(0, Math.min(cols - 1, a.col)) });
+  if (s.selection.length) clearSelection();
+  s.set({ cellSel: { table, anchor: fit(anchor), head: fit(head) }, focus: null });
+}
+
+export function clearCellSel() {
+  if (S().cellSel) S().set({ cellSel: null });
+}
+
+/** Position der Zelle mit dem Fokus, sofern sie in dieser Tabelle liegt. */
+export function focusedCell(table: string): Addr | null {
+  const s = S();
+  const p = s.focus ? cellPos(s.nodes, s.focus.id) : null;
+  return p && p.table === table ? { row: p.row, col: p.col } : null;
+}
+
+/** Vorhandene Zellknoten im Bereich. */
+function cellsIn(nodes: Record<string, Node>, table: string, rg: CellRange): Node[] {
+  return gridOf(nodes, table, rg)
+    .flat()
+    .filter((n): n is Node => !!n);
+}
+
+/** Inhalt leeren (Text, Notiz, Todo); die Zellen selbst bleiben, damit keine Spalte verrutscht. */
+export function clearCells(table: string, rg: CellRange) {
+  const s = S();
+  const ops: Op[] = cellsIn(s.nodes, table, rg)
+    .filter((n) => n.text || n.body || n.task)
+    .map((n) => ({ op: 'update', id: n.id, text: '', body: '', task: null }));
+  if (ops.length) s.commit(ops);
+}
+
+/** Strg+Enter: alle als erledigt markieren (sind schon alle erledigt: wieder offen). */
+export function completeCells(table: string, rg: CellRange) {
+  const s = S();
+  const cells = cellsIn(s.nodes, table, rg);
+  if (!cells.length) return;
+  const allDone = cells.every((n) => n.task === 'done');
+  s.commit(cells.map((n) => ({ op: 'update', id: n.id, task: allDone ? 'open' : 'done' }) as Op));
+}
+
+/** Zuletzt kopierte Zellen: Beim Einfügen in Hakobo bleiben Formatierung, Links und Todos erhalten. */
+let lastCopy: { plain: string; grid: GridCell[][] } | null = null;
+
+const normalize = (t: string) => t.replace(/\r\n?/g, '\n').replace(/\n+$/, '');
+
+/** Bereich kopieren (TSV und HTML, z. B. für Excel oder Word); `cut`: danach leeren. */
+export async function copyCells(table: string, rg: CellRange, cut = false) {
+  const s = S();
+  const grid = gridOf(s.nodes, table, rg);
+  const plain = toTsv(grid);
+  lastCopy = { plain, grid: grid.map((r) => r.map((n) => ({ text: n?.text ?? '', task: n?.task ?? null }))) };
+  if (!(await writeClipboard(plain, toHtml(grid, rg.r0 === 0)))) {
+    s.toast('Kopieren nicht möglich', 'error');
+    return;
   }
+  const n = (rg.r1 - rg.r0 + 1) * (rg.c1 - rg.c0 + 1);
+  if (cut) clearCells(table, rg);
+  s.toast(`${n} ${n === 1 ? 'Zelle' : 'Zellen'} ${cut ? 'ausgeschnitten' : 'kopiert'}`, 'success');
+}
+
+/** Text in die Auswahl einfügen: Ein einzelner Wert füllt alle Zellen, ein Bereich beginnt oben links. */
+export function pasteIntoCells(table: string, rg: CellRange, text: string) {
+  let grid: GridCell[][];
+  if (lastCopy && normalize(lastCopy.plain) === normalize(text)) grid = lastCopy.grid;
+  else grid = parseGrid(text) ?? normalize(text).split('\n').map((l) => [l.trim()]);
+  if (grid.length === 1 && grid[0].length === 1) {
+    const v = grid[0][0];
+    grid = Array.from({ length: rg.r1 - rg.r0 + 1 }, () => Array.from({ length: rg.c1 - rg.c0 + 1 }, () => v));
+  }
+  pasteGrid(table, rg.r0, rg.c0, grid, { select: true });
 }

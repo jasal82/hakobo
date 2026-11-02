@@ -1447,3 +1447,36 @@ body.is-img-resizing * {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Tabellen: ausgewählte Zellen (Ziehen, Umschalt+Klick, Griffe, Umschalt+Pfeiltasten) */
+.ot-cell.is-sel::after {
+  content: '';
+  position: absolute;
+  inset: 0 -1px -1px 0;
+  background: var(--bg-selected);
+  pointer-events: none;
+}
+.ot-cell.sel-t::after {
+  border-top: 2px solid var(--accent);
+}
+.ot-cell.sel-b::after {
+  border-bottom: 2px solid var(--accent);
+}
+.ot-cell.sel-l::after {
+  border-left: 2px solid var(--accent);
+}
+.ot-cell.sel-r::after {
+  border-right: 2px solid var(--accent);
+}
+/* Unsichtbares Eingabefeld: nimmt bei ausgewählten Zellen Tasten und Einfügen entgegen */
+.ot-sink {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  overflow: hidden;
+  resize: none;
+  pointer-events: none;
+}

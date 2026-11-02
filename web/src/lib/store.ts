@@ -35,6 +35,13 @@ export interface Focus {
   nonce: number;
 }
 
+/** Zellauswahl in einer Tabelle: fester Startpunkt und bewegliches Ende (Zeile, Spalte). */
+export interface CellSel {
+  table: string;
+  anchor: { row: number; col: number };
+  head: { row: number; col: number };
+}
+
 export interface Toast {
   id: number;
   text: string;
@@ -68,6 +75,8 @@ interface State {
   flash: string | null;
   /** Mehrfachauswahl von Knoten (sichtbare Reihenfolge). */
   selection: string[];
+  /** Ausgewählte Zellen einer Tabelle (schließt `selection` und den Fokus aus). */
+  cellSel: CellSel | null;
   searchOpen: boolean;
   searchQuery: string;
   move: { ids: string[] } | null;
@@ -499,6 +508,7 @@ export const useStore = create<Store>()((set, get) => {
     collapsed: loadCollapsed(),
     flash: null,
     selection: [],
+    cellSel: null,
     searchOpen: false,
     searchQuery: '',
     move: null,
@@ -725,7 +735,7 @@ export const useStore = create<Store>()((set, get) => {
     navigate: (r) => {
       const h = routeToHash(r);
       if (location.hash !== h) location.hash = h;
-      set({ route: r, bodyEdit: null, selection: [], ...(window.innerWidth <= 760 ? { sidebar: false } : {}) });
+      set({ route: r, bodyEdit: null, selection: [], cellSel: null, ...(window.innerWidth <= 760 ? { sidebar: false } : {}) });
     },
 
     zoom: (id) => {
@@ -757,7 +767,7 @@ export const useStore = create<Store>()((set, get) => {
       }, 1800);
     },
 
-    setFocus: (f) => set(f ? { focus: { ...f, nonce: ++focusNonce }, selection: [] } : { focus: null }),
+    setFocus: (f) => set(f ? { focus: { ...f, nonce: ++focusNonce }, selection: [], cellSel: null } : { focus: null }),
 
     setCollapsed: (id, value) => {
       const collapsed = { ...get().collapsed, [id]: value };

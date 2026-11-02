@@ -15,6 +15,7 @@ import { TableBlock } from '../components/outline/Table';
 import type { Node } from '../lib/types';
 import { Markdown } from '../components/Markdown';
 import { hasFiles, imageFiles, imagesToInbox, insertImageNodes, setImageWidth } from '../lib/images';
+import { clearCellSel } from '../lib/table';
 import { RichText } from '../components/RichText';
 import { BodyEditor } from '../components/outline/BodyEditor';
 import { FieldsForm, TaskBox } from '../components/outline/fields';
@@ -177,6 +178,8 @@ export function NodeView({ id, inbox }: { id: string; inbox?: boolean }) {
         // Klick neben die Einträge (auch in eine Tabelle) hebt die Auswahl auf.
         const t = e.target as HTMLElement;
         if ((!t.closest('.row-line') || t.closest('.ot-wrap')) && !e.shiftKey && !e.ctrlKey) clearSelection();
+        // Klick außerhalb der Tabellen (nicht ins Menü) hebt die Zellauswahl auf; in einer Tabelle regelt sie das selbst.
+        if (e.button === 0 && !t.closest('.ot-wrap, .popover')) clearCellSel();
         // Ziehen über mehrere Einträge wählt sie aus (innerhalb eines Eintrags: Text).
         startDragSelect(e, id, e.currentTarget);
       }}

@@ -98,6 +98,21 @@ Wie in Workflowy wird jede Zeile mit `/tabelle` (oder „Als Tabelle anzeigen“
 
 Mit der Maus: Zeilen am Griff links ziehen, Spalten am Griff in der Kopfzelle, einzelne Zellen am Griff in der Zelle (auf eine andere Zelle ablegen tauscht beide). Der Rand zwischen zwei Kopfzellen ändert die Spaltenbreite (Doppelklick: wieder automatisch). `+` rechts neben der Kopfzeile fügt eine Spalte an, `+ Zeile` darunter eine Zeile. Im Menü der Zelle lassen sich Zeilen und Spalten außerdem duplizieren und die ganze Tabelle als Markdown, TSV oder HTML kopieren (HTML lässt sich als Tabelle in Word, Mail oder eine Tabellenkalkulation einfügen). Zellen können Todos sein (`Strg+Enter`).
 
+**Mehrere Zellen auswählen:** mit der Maus über die Zellen ziehen, `Umschalt+Klick` auf eine zweite Zelle, ein Klick auf den Griff einer Zeile bzw. Spalte (mit `Umschalt` bis dorthin erweitern) oder `Umschalt+Pfeiltaste` am Textrand einer Zelle; zweimal `Strg+A` wählt die ganze Tabelle. Für die Auswahl gilt:
+
+| Taste | Wirkung |
+| --- | --- |
+| `Umschalt+Pfeiltasten` | Auswahl vergrößern oder verkleinern |
+| `Strg+C` / `Strg+X` | kopieren / ausschneiden (als TSV und HTML, also direkt nach Excel oder Word) |
+| `Strg+V` | ab der linken oberen Zelle einfügen; ein einzelner Wert füllt alle ausgewählten Zellen |
+| `Entf` | Inhalt der Zellen löschen (die Zellen selbst bleiben, damit nichts verrutscht) |
+| `Strg+Umschalt+Entf` | ausgewählte Zeilen löschen (ganze Spalten ausgewählt: die Spalten) |
+| `Alt+Umschalt+↑/↓` | ausgewählte Zeilen verschieben |
+| `Strg+Enter` | als Todo erledigen |
+| `Enter` / `Esc` / Pfeiltasten | Auswahl aufheben und weiter in einer Zelle schreiben |
+
+Ausgewählte Zeilen und Spalten lassen sich gemeinsam an ihrem Griff ziehen; das Menü der Zelle (`Umschalt+F10` oder Rechtsklick) gilt dann für die ganze Auswahl.
+
 ### Bilder
 
 Bilder gehören wie in Workflowy zu einem Eintrag und stehen unter seinem Text. Sie lassen sich aus der Zwischenablage einfügen (`Strg+V`, z. B. ein Bildschirmfoto) oder aus dem Explorer, dem Browser oder einer anderen App in Hakobo ziehen:

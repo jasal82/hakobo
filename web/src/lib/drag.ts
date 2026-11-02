@@ -27,11 +27,22 @@ export function draggedIds(): string[] {
   return dragged;
 }
 
+/** Zieh-Bild mit einem kurzen Text („3 Einträge“) statt des gezogenen Elements. */
+export function dragGhost(e: DragEvent, text: string) {
+  const ghost = document.createElement('div');
+  ghost.className = 'drag-ghost';
+  ghost.textContent = text;
+  document.body.append(ghost);
+  e.dataTransfer.setDragImage(ghost, -12, -8);
+  window.setTimeout(() => ghost.remove(), 0);
+}
+
 /**
  * Beginnt das Ziehen; bei mehreren Knoten mit einem Zähler statt der Zeile als Bild.
  * `within`: nur zwischen die Kinder dieses Knotens (z. B. Zeilen einer Tabelle), ohne Text.
+ * `noun`: Wort für den Zähler (sonst „Einträge“ bzw. „Seiten“).
  */
-export function startDrag(e: DragEvent, ids: string[], opts: { within?: string } = {}) {
+export function startDrag(e: DragEvent, ids: string[], opts: { within?: string; noun?: string } = {}) {
   dragged = topLevel(ids);
   within = opts.within ?? null;
   const nodes = store().nodes;
@@ -39,12 +50,8 @@ export function startDrag(e: DragEvent, ids: string[], opts: { within?: string }
   if (within) e.dataTransfer.setData(INTERNAL, within);
   else e.dataTransfer.setData('text/plain', dragged.map((id) => nodes[id]?.text ?? '').join('\n'));
   if (dragged.length > 1) {
-    const ghost = document.createElement('div');
-    ghost.className = 'drag-ghost';
-    ghost.textContent = `${dragged.length} ${dragged.every((id) => nodes[id]?.kind === 'page') ? 'Seiten' : 'Einträge'}`;
-    document.body.append(ghost);
-    e.dataTransfer.setDragImage(ghost, -12, -8);
-    window.setTimeout(() => ghost.remove(), 0);
+    const noun = opts.noun ?? (dragged.every((id) => nodes[id]?.kind === 'page') ? 'Seiten' : 'Einträge');
+    dragGhost(e, `${dragged.length} ${noun}`);
   }
 }
 

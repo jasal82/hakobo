@@ -86,6 +86,19 @@ export const SHORTCUT_GROUPS: { title: string; keys: [string, string][] }[] = [
     ],
   },
   {
+    title: 'Ausgewählte Zellen',
+    keys: [
+      ['Umschalt+Pfeiltasten', 'Am Textrand: Zellen auswählen, danach Auswahl ändern (Maus: ziehen, Umschalt+Klick, Griffe)'],
+      ['Strg+A (zweimal)', 'Ganze Tabelle auswählen'],
+      ['Strg+C / Strg+X / Strg+V', 'Kopieren, ausschneiden, einfügen (ein Wert füllt alle Zellen)'],
+      ['Entf', 'Inhalt löschen'],
+      ['Strg+Umschalt+Entf', 'Zeilen löschen (ganze Spalten ausgewählt: Spalten)'],
+      ['Alt+Umschalt+↑ / Alt+Umschalt+↓', 'Zeilen verschieben'],
+      ['Strg+Enter', 'Erledigen'],
+      ['Enter / Esc', 'Auswahl aufheben und in der Zelle weiterschreiben'],
+    ],
+  },
+  {
     title: 'Bilder',
     keys: [
       ['Strg+V', 'Bild aus der Zwischenablage an den Eintrag hängen (in der Notiz: an der Cursorstelle)'],

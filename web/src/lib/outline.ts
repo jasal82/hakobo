@@ -408,7 +408,7 @@ export function selectRange(root: string, a: string, b: string) {
   if (i < 0 || j < 0) return;
   selAnchor = a;
   selHead = b;
-  S().set({ selection: list.slice(Math.min(i, j), Math.max(i, j) + 1), focus: null });
+  S().set({ selection: list.slice(Math.min(i, j), Math.max(i, j) + 1), focus: null, cellSel: null });
 }
 
 export function toggleSelected(id: string) {
@@ -416,7 +416,7 @@ export function toggleSelected(id: string) {
   const next = sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id];
   selAnchor = selAnchor ?? id;
   selHead = id;
-  S().set({ selection: next, focus: null });
+  S().set({ selection: next, focus: null, cellSel: null });
 }
 
 /** Umschalt+↑/↓: Auswahl erweitern bzw. verkleinern. */
