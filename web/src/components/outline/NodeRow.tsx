@@ -53,6 +53,9 @@ export const NodeRow = memo(function NodeRow({ id, root, inbox }: { id: string; 
 
   const startEdit = (e: MouseEvent) => {
     if ((e.target as HTMLElement).closest('a, button, .chip')) return;
+    // Text per Ziehen markiert: Markierung lassen (z. B. zum Kopieren), nicht bearbeiten.
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed && e.currentTarget.contains(sel.anchorNode)) return;
     const st = store();
     if (e.shiftKey) {
       const anchor = st.focus?.id ?? st.selection[0] ?? id;

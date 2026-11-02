@@ -18,6 +18,7 @@ import { BodyEditor } from '../components/outline/BodyEditor';
 import { FieldsForm, TaskBox } from '../components/outline/fields';
 import { Children, NodeRow, RowMenu } from '../components/outline/NodeRow';
 import { TitleEditor } from '../components/outline/TitleEditor';
+import { startDragSelect } from '../components/outline/dragSelect';
 import { RouteLink, type Anchor } from '../components/ui';
 
 export function Breadcrumbs({ id }: { id: string }) {
@@ -171,6 +172,8 @@ export function NodeView({ id, inbox }: { id: string; inbox?: boolean }) {
       className="view node-view"
       onMouseDown={(e) => {
         if (!(e.target as HTMLElement).closest('.row-line') && !e.shiftKey && !e.ctrlKey) clearSelection();
+        // Ziehen über mehrere Einträge wählt sie aus (innerhalb eines Eintrags: Text).
+        startDragSelect(e, id, e.currentTarget);
       }}
     >
       <div className="view-inner">
